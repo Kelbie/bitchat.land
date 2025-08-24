@@ -87,11 +87,11 @@ export function GeohashLayer({
         const centerLat = (bounds.minLat + bounds.maxLat) / 2;
         const centerPoint = projection([centerLng, centerLat]);
 
-        // Only show labels for precision 1-2, and only if the cell is large enough
+        // Show labels for higher precision levels when zoomed in
         const showLabel =
-          effectivePrecision <= 4 &&
+          effectivePrecision <= 8 &&
           (!shouldShowLocalizedPrecision ||
-            (shouldShowLocalizedPrecision && searchGeohash.length <= 3));
+            (shouldShowLocalizedPrecision && searchGeohash.length <= 6));
 
         return (
           <g key={`geohash-${geohash}`}>
@@ -128,7 +128,15 @@ export function GeohashLayer({
                     ? "16"
                     : effectivePrecision === 2
                     ? "14"
-                    : "12"
+                    : effectivePrecision === 3
+                    ? "13"
+                    : effectivePrecision === 4
+                    ? "12"
+                    : effectivePrecision === 5
+                    ? "11"
+                    : effectivePrecision === 6
+                    ? "10"
+                    : "9"
                 }
                 fontWeight="bold"
                 fontFamily="Courier New, monospace"

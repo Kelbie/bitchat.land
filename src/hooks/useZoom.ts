@@ -47,11 +47,39 @@ export function useZoom(width: number, height: number, projection: string) {
     const bottomRight = tempProjection([bounds.maxLng, bounds.minLat]);
 
     if (!topLeft || !bottomRight) {
-      // Fallback to old method if projection fails
+      // Fallback: use geographic bounds to calculate optimal scale
+      const lngSpan = Math.abs(bounds.maxLng - bounds.minLng);
+      const latSpan = Math.abs(bounds.maxLat - bounds.minLat);
+      
+      // Handle antimeridian crossing for longitude
+      const actualLngSpan = lngSpan > 180 ? 360 - lngSpan : lngSpan;
+      
+      // Calculate how much of the world this geohash represents
+      const worldLngSpan = 360;
+      const worldLatSpan = 180;
+      
+      // More aggressive scaling for higher precision levels
       const precision = geohash.length;
-      const baseScale = 250;
-      const zoomMultiplier = Math.pow(8, precision);
-      const newScale = Math.min(baseScale * zoomMultiplier, 50000);
+      const baseDesiredCoverage = precision <= 3 ? 0.6 : precision <= 5 ? 0.4 : 0.2;
+      const availableWidth = width * baseDesiredCoverage;
+      const availableHeight = height * baseDesiredCoverage;
+      
+      // Calculate scale needed to fit this geographic region in desired screen space
+      // At scale 1, the world is approximately 2π × scale pixels wide
+      const baseWorldWidth = 2 * Math.PI;
+      const scaleForLng = (availableWidth * worldLngSpan) / (actualLngSpan * baseWorldWidth);
+      const scaleForLat = (availableHeight * worldLatSpan) / (latSpan * baseWorldWidth);
+      
+      // Use the more restrictive scale
+      let calculatedScale = Math.min(scaleForLng, scaleForLat);
+      
+      // Apply additional multiplier for very high precision levels
+      if (precision >= 6) {
+        const extraMultiplier = Math.pow(2, precision - 5); // 2x, 4x, 8x, 16x for levels 6, 7, 8, 9+
+        calculatedScale *= extraMultiplier;
+      }
+      
+      const newScale = Math.max(250, Math.min(calculatedScale, 5000000)); // Higher max for deep zoom
 
       const finalProjection = PROJECTIONS[projection]()
         .scale(newScale)
@@ -74,17 +102,25 @@ export function useZoom(width: number, height: number, projection: string) {
     const pixelWidth = Math.abs(bottomRight[0] - topLeft[0]);
     const pixelHeight = Math.abs(bottomRight[1] - topLeft[1]);
 
-    // Add padding (10% on each side)
-    const padding = 0.1;
+    // More aggressive padding for higher precision levels
+    const precision = geohash.length;
+    const padding = precision <= 3 ? 0.1 : precision <= 5 ? 0.05 : 0.02;
     const availableWidth = width * (1 - 2 * padding);
     const availableHeight = height * (1 - 2 * padding);
 
     // Calculate scale to fit both width and height
-    const scaleX = pixelWidth > 0 ? availableWidth / pixelWidth : 1;
-    const scaleY = pixelHeight > 0 ? availableHeight / pixelHeight : 1;
+    let scaleX = pixelWidth > 0 ? availableWidth / pixelWidth : 1;
+    let scaleY = pixelHeight > 0 ? availableHeight / pixelHeight : 1;
+
+    // Apply additional multiplier for very high precision levels
+    if (precision >= 6) {
+      const extraMultiplier = Math.pow(2, precision - 5); // 2x, 4x, 8x, 16x for levels 6, 7, 8, 9+
+      scaleX *= extraMultiplier;
+      scaleY *= extraMultiplier;
+    }
 
     // Use the smaller scale to ensure the entire region fits
-    const newScale = Math.min(scaleX, scaleY, 50000); // Cap max zoom
+    const newScale = Math.max(250, Math.min(scaleX, scaleY, 5000000)); // Higher max for deep zoom
 
     // Create a temporary projection to get the screen coordinates
     const finalProjection = PROJECTIONS[projection]()
