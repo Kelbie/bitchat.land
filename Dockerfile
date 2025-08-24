@@ -6,19 +6,19 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json ./
-COPY yarn.lock ./
+COPY package-lock.json ./
 
 # Install dependencies
-RUN yarn install --frozen-lockfile
+RUN npm ci
 
 # Copy source code
 COPY . .
 
 # Build the application
-RUN yarn build
+RUN npm run build
 
 # Install serve to run the production build
-RUN yarn global add serve
+RUN npm install -g serve
 
 # Expose port (Railway will assign PORT env variable)
 EXPOSE 3000
