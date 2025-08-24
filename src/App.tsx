@@ -6,7 +6,7 @@ import {
   generateLocalizedGeohashes,
   getHierarchicalCounts 
 } from "./utils/geohashUtils";
-import { PROJECTIONS } from "./constants/projections";
+
 import { GeoMercatorProps } from "./types";
 import { useDrag } from "./hooks/useDrag";
 import { useZoom } from "./hooks/useZoom";
@@ -64,37 +64,26 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   const [searchGeohash, setSearchGeohash] = useState("");
   const [animatingGeohashes, setAnimatingGeohashes] = useState<Set<string>>(new Set());
 
+  // Header height constant - measured exact value
+  const headerHeight = 182.2;
+
+  // Calculate available map dimensions accounting for header
+  const availableHeight = isMobile ? height - headerHeight : height;
+  
+  // Map positioning constants
+  const mapWidth = width;
+  const mapHeight = availableHeight;
+
   // Custom hooks
   const { isDragging, hasDragged, handleMouseDown, handleMouseMove, handleMouseUp } = useDrag();
-  const { zoomedGeohash, zoomScale, zoomTranslate, zoomToGeohash, updateTranslate } = useZoom(width, height, projection);
-
-  // State for header height (no longer needed with flex layout)
-  // const [headerHeight, setHeaderHeight] = useState(0);
+  const { zoomedGeohash, zoomScale, zoomTranslate, zoomToGeohash, updateTranslate } = useZoom(mapWidth, mapHeight, projection);
 
   // Force mobile view for all screen sizes
   useEffect(() => {
     setIsMobile(true);
   }, []);
 
-  // Header height measurement no longer needed with flex layout
-  // useEffect(() => {
-  //   if (isMobile) {
-  //     const header = document.querySelector('header');
-  //     if (header) {
-  //       const resizeObserver = new ResizeObserver(() => {
-  //         setHeaderHeight(header.offsetHeight);
-  //       });
-  //       resizeObserver.observe(header);
-  //       
-  //       // Initial measurement
-  //       setHeaderHeight(header.offsetHeight);
-  //       
-  //       return () => resizeObserver.disconnect();
-  //     }
-  //   } else {
-  //     setHeaderHeight(0);
-  //   }
-  // }, [isMobile]);
+
 
   // Function to trigger geohash animation
   const animateGeohash = (geohash: string) => {
@@ -162,69 +151,26 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
     }
   };
 
-  // Calculate initial scale to fit the world map in viewport
-  const calculateInitialScale = () => {
-    if (width < 10 || height < 10) return 250;
 
-    // Create a temporary projection to calculate world bounds
-    const tempProjection = PROJECTIONS[projection as keyof typeof PROJECTIONS]().scale(1).translate([0, 0]);
 
-    // Calculate approximate world bounds in projected coordinates
-    // Sample points around the world to get bounds
-    const samplePoints = [
-      [-180, -85],
-      [180, -85], // Bottom corners
-      [-180, 85],
-      [180, 85], // Top corners
-      [-90, 0],
-      [90, 0], // Middle points
-      [0, -85],
-      [0, 85], // Poles
-    ];
-
-    const projectedPoints = samplePoints
-      .map((point) => tempProjection(point))
-      .filter(
-        (p) =>
-          p !== null &&
-          p !== undefined &&
-          !isNaN(p[0]) &&
-          !isNaN(p[1]) &&
-          isFinite(p[0]) &&
-          isFinite(p[1])
-      );
-
-    if (projectedPoints.length === 0) return 250;
-
-    // Find bounds of projected points
-    const minX = Math.min(...projectedPoints.map((p) => p[0]));
-    const maxX = Math.max(...projectedPoints.map((p) => p[0]));
-    const minY = Math.min(...projectedPoints.map((p) => p[1]));
-    const maxY = Math.max(...projectedPoints.map((p) => p[1]));
-
-    const projectedWidth = maxX - minX;
-    const projectedHeight = maxY - minY;
-
-    // Add padding (10% on each side)
-    const padding = 0.1;
-    const availableWidth = width * (1 - 2 * padding);
-    const availableHeight = height * (1 - 2 * padding);
-
-    // Calculate scale to fit both dimensions
-    const scaleX = projectedWidth > 0 ? availableWidth / projectedWidth : 1;
-    const scaleY = projectedHeight > 0 ? availableHeight / projectedHeight : 1;
-
-    // Use the smaller scale and ensure reasonable bounds
-    return Math.max(50, Math.min(scaleX, scaleY, 1000));
+  // Simple, proper projection setup without complex calculations
+  const getMapProjection = () => {
+    // Default scale that fits world nicely in most viewports
+    const baseScale = Math.min(mapWidth, mapHeight) / 4;
+    
+    // Current effective scale and center
+    const effectiveScale = zoomedGeohash ? zoomScale : baseScale;
+    const centerX = mapWidth / 2 + zoomTranslate[0];
+    const centerY = mapHeight / 2 + zoomTranslate[1];
+    
+    return {
+      scale: effectiveScale,
+      centerX,
+      centerY
+    };
   };
 
-  // Calculate initial scale based on viewport and projection
-  const initialScale = calculateInitialScale();
-
-  const scale = initialScale;
-  const centerX = width / 2 + zoomTranslate[0];
-  const centerY = height / 2 + zoomTranslate[1];
-  const currentScale = zoomedGeohash ? zoomScale : scale;
+  const { scale: currentScale, centerX, centerY } = getMapProjection();
 
   // Mouse move handler that includes drag logic
   const handleMouseMoveWithDrag = (e: React.MouseEvent) => {
@@ -256,10 +202,6 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   const hierarchicalCounts = searchGeohash 
     ? getHierarchicalCounts(searchGeohash.toLowerCase(), allEventsByGeohash)
     : { direct: 0, total: 0 };
-
-  // Adjust dimensions for mobile header (no longer needed with flex layout)
-  const adjustedHeight = height;
-  const adjustedWidth = width;
 
   return (
     <div
@@ -301,17 +243,14 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
         {/* Map - Always rendered, but might be hidden on mobile */}
         <div
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
             width: "100%",
             height: "100%",
             display: isMobile && activeView !== 'map' ? 'none' : 'block',
           }}
         >
           <Map
-            width={adjustedWidth}
-            height={adjustedHeight}
+            width={mapWidth}
+            height={mapHeight}
             projection={projection}
             currentScale={currentScale}
             centerX={centerX}
