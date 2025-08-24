@@ -3,7 +3,8 @@ import React, { useState, useEffect } from "react";
 // import { generateSampleHeatmapData } from "./utils/geohash"; // Currently unused
 import { 
   generateGeohashes, 
-  generateLocalizedGeohashes 
+  generateLocalizedGeohashes,
+  getHierarchicalCounts 
 } from "./utils/geohashUtils";
 import { PROJECTIONS } from "./constants/projections";
 import { GeoMercatorProps } from "./types";
@@ -67,33 +68,33 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   const { isDragging, hasDragged, handleMouseDown, handleMouseMove, handleMouseUp } = useDrag();
   const { zoomedGeohash, zoomScale, zoomTranslate, zoomToGeohash, updateTranslate } = useZoom(width, height, projection);
 
-  // State for header height
-  const [headerHeight, setHeaderHeight] = useState(0);
+  // State for header height (no longer needed with flex layout)
+  // const [headerHeight, setHeaderHeight] = useState(0);
 
   // Force mobile view for all screen sizes
   useEffect(() => {
     setIsMobile(true);
   }, []);
 
-  // Measure header height after it renders
-  useEffect(() => {
-    if (isMobile) {
-      const header = document.querySelector('header');
-      if (header) {
-        const resizeObserver = new ResizeObserver(() => {
-          setHeaderHeight(header.offsetHeight);
-        });
-        resizeObserver.observe(header);
-        
-        // Initial measurement
-        setHeaderHeight(header.offsetHeight);
-        
-        return () => resizeObserver.disconnect();
-      }
-    } else {
-      setHeaderHeight(0);
-    }
-  }, [isMobile]);
+  // Header height measurement no longer needed with flex layout
+  // useEffect(() => {
+  //   if (isMobile) {
+  //     const header = document.querySelector('header');
+  //     if (header) {
+  //       const resizeObserver = new ResizeObserver(() => {
+  //         setHeaderHeight(header.offsetHeight);
+  //       });
+  //       resizeObserver.observe(header);
+  //       
+  //       // Initial measurement
+  //       setHeaderHeight(header.offsetHeight);
+  //       
+  //       return () => resizeObserver.disconnect();
+  //     }
+  //   } else {
+  //     setHeaderHeight(0);
+  //   }
+  // }, [isMobile]);
 
   // Function to trigger geohash animation
   const animateGeohash = (geohash: string) => {
@@ -232,14 +233,36 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
 
   if (width < 10) return null;
 
-  // Adjust dimensions for mobile header
-  const adjustedHeight = isMobile ? height - headerHeight : height;
+  // Calculate data for mobile header
+  const eventsToShow = searchGeohash ? allStoredEvents : recentEvents;
+  const filteredEvents = eventsToShow.filter((event) => {
+    if (!searchGeohash) return true;
+    const geoTag = event.tags.find((tag: any) => tag[0] === "g");
+    const eventGeohash = geoTag ? geoTag[1] : "";
+    return eventGeohash.startsWith(searchGeohash.toLowerCase());
+  });
+
+  const topLevelCounts: { [key: string]: number } = {};
+  for (const [geohash, count] of allEventsByGeohash.entries()) {
+    const firstChar = geohash.charAt(0);
+    topLevelCounts[firstChar] = (topLevelCounts[firstChar] || 0) + count;
+  }
+  const totalEventsCount = Object.values(topLevelCounts).reduce((sum, count) => sum + count, 0);
+
+  // Get hierarchical counts for current search
+  const hierarchicalCounts = searchGeohash 
+    ? getHierarchicalCounts(searchGeohash.toLowerCase(), allEventsByGeohash)
+    : { direct: 0, total: 0 };
+
+  // Adjust dimensions for mobile header (no longer needed with flex layout)
+  const adjustedHeight = height;
   const adjustedWidth = width;
 
   return (
     <div
       style={{
-        position: "relative",
+        display: "flex",
+        flexDirection: "column",
         width: "100vw",
         height: "100vh",
         backgroundColor: "#000000",
@@ -256,16 +279,19 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
           searchGeohash={searchGeohash}
           onSearch={handleSearch}
           zoomedGeohash={zoomedGeohash}
+          nostrEnabled={nostrEnabled}
+          filteredEventsCount={filteredEvents.length}
+          totalEventsCount={totalEventsCount}
+          hierarchicalCounts={hierarchicalCounts}
         />
       )}
 
       {/* Main Content Area */}
       <div
         style={{
+          flex: 1,
           position: "relative",
           width: "100%",
-          height: isMobile ? `calc(100vh - ${headerHeight}px)` : "100vh",
-          marginTop: isMobile ? `${headerHeight}px` : "0",
           overflow: "hidden",
         }}
       >
@@ -327,6 +353,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
               searchGeohash={searchGeohash}
               allStoredEvents={allStoredEvents}
               recentEvents={recentEvents}
+              onSearch={handleSearch}
             />
           </>
         )}
@@ -355,6 +382,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                   allStoredEvents={allStoredEvents}
                   recentEvents={recentEvents}
                   isMobileView={true}
+                  onSearch={handleSearch}
                 />
               </div>
             )}

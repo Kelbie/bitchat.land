@@ -7,6 +7,8 @@ interface RecentEventsProps {
   allStoredEvents: NostrEvent[];
   recentEvents: NostrEvent[];
   isMobileView?: boolean;
+  onSearch?: (geohash: string) => void;
+
 }
 
 export function RecentEvents({ 
@@ -14,7 +16,9 @@ export function RecentEvents({
   searchGeohash, 
   allStoredEvents, 
   recentEvents,
-  isMobileView = false
+  isMobileView = false,
+  onSearch,
+
 }: RecentEventsProps) {
   if (!nostrEnabled) return null;
 
@@ -56,58 +60,59 @@ export function RecentEvents({
         margin: isMobileView ? "0" : "auto",
       }}
     >
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          backgroundColor: isMobileView ? "rgba(0, 0, 0, 0.98)" : "rgba(0, 0, 0, 0.95)",
-          border: isMobileView ? "none" : "1px solid #003300",
-          borderBottom: "2px solid #00ff00",
-          padding: isMobileView ? "16px 20px" : "10px",
-          margin: isMobileView ? "0 0 0 0" : "-1px -1px 0 -1px",
-          color: "#00aa00",
-          fontWeight: "bold",
-          zIndex: 10,
-          backdropFilter: isMobileView ? "blur(10px)" : "none",
-        }}
-      >
-        <div style={{ 
-          marginBottom: isMobileView ? "8px" : "5px",
-          fontSize: isMobileView ? "18px" : "12px",
-          textTransform: "uppercase",
-          letterSpacing: "1px",
-          textShadow: "0 0 10px rgba(0, 255, 0, 0.5)"
-        }}>
-          RECENT NOSTR EVENTS
-        </div>
-        {searchGeohash && (
-          <div style={{ 
-            fontSize: isMobileView ? "12px" : "10px", 
-            color: "#00ff00",
-            background: "rgba(0, 255, 0, 0.1)",
-            padding: isMobileView ? "4px 8px" : "2px 4px",
-            borderRadius: "4px",
-            border: "1px solid rgba(0, 255, 0, 0.3)"
-          }}>
-            FILTER: "{searchGeohash.toUpperCase()}"
-          </div>
-        )}
-        {!searchGeohash && (
-          <div style={{ 
-            fontSize: isMobileView ? "11px" : "9px", 
+      {!isMobileView && (
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.95)",
+            border: "1px solid #003300",
+            borderBottom: "2px solid #00ff00",
+            padding: "10px",
+            margin: "-1px -1px 0 -1px",
             color: "#00aa00",
-            fontStyle: "italic",
-            opacity: 0.8
+            fontWeight: "bold",
+            zIndex: 10,
+          }}
+        >
+          <div style={{ 
+            marginBottom: "5px",
+            fontSize: "12px",
+            textTransform: "uppercase",
+            letterSpacing: "1px",
+            textShadow: "0 0 10px rgba(0, 255, 0, 0.5)"
           }}>
-            Showing latest {filteredEvents.length} events from the network
+            RECENT NOSTR EVENTS
           </div>
-        )}
-      </div>
+          {searchGeohash && (
+            <div style={{ 
+              fontSize: "10px", 
+              color: "#00ff00",
+              background: "rgba(0, 255, 0, 0.1)",
+              padding: "2px 4px",
+              borderRadius: "4px",
+              border: "1px solid rgba(0, 255, 0, 0.3)"
+            }}>
+              FILTER: "{searchGeohash.toUpperCase()}"
+            </div>
+          )}
+          {!searchGeohash && (
+            <div style={{ 
+              fontSize: "9px", 
+              color: "#00aa00",
+              fontStyle: "italic",
+              opacity: 0.8
+            }}>
+              Showing latest {filteredEvents.length} events from the network
+            </div>
+          )}
+        </div>
+      )}
       <div
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: isMobileView ? "8px 20px 20px 20px" : "10px",
+          padding: isMobileView ? "20px 20px 20px 20px" : "10px",
           display: "flex",
           flexDirection: "column-reverse",
           gap: isMobileView ? "12px" : "8px",
@@ -231,15 +236,28 @@ export function RecentEvents({
                   }}>
                     [{isToday ? time : `${date} ${time}`}]
                   </span>
-                  <span style={{ 
-                    color: userColors.username,
-                    background: userColors.background,
-                    border: `1px solid ${userColors.border}`,
-                    padding: "2px 6px",
-                    borderRadius: "3px",
-                    fontFamily: "monospace",
-                    fontWeight: "bold"
-                  }}>
+                  <span 
+                    style={{ 
+                      color: userColors.username,
+                      background: userColors.background,
+                      border: `1px solid ${userColors.border}`,
+                      padding: "2px 6px",
+                      borderRadius: "3px",
+                      fontFamily: "monospace",
+                      fontWeight: "bold",
+                      cursor: onSearch ? "pointer" : "default",
+                      transition: "all 0.2s ease"
+                    }}
+                    onClick={onSearch ? () => onSearch(geohash.toLowerCase()) : undefined}
+                    onMouseEnter={onSearch ? (e) => {
+                      e.currentTarget.style.transform = "scale(1.05)";
+                      e.currentTarget.style.boxShadow = `0 0 8px ${userColors.glow}`;
+                    } : undefined}
+                    onMouseLeave={onSearch ? (e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.boxShadow = "none";
+                    } : undefined}
+                  >
                     #{geohash.toUpperCase()}
                   </span>
                 </div>

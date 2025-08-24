@@ -1,20 +1,21 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { getHierarchicalCounts } from "../utils/geohashUtils";
 import { getCachedLocationFromGeohash, LocationInfo } from "../utils/geocoder";
-import { BASE32 } from "../constants/projections";
 
 interface EventHierarchyProps {
   searchGeohash: string;
   allEventsByGeohash: Map<string, number>;
   onSearch: (geohash: string) => void;
   isMobileView?: boolean;
+
 }
 
 export function EventHierarchy({ 
   searchGeohash, 
   allEventsByGeohash, 
   onSearch,
-  isMobileView = false
+  isMobileView = false,
+
 }: EventHierarchyProps) {
   const [locationNames, setLocationNames] = useState<Map<string, LocationInfo>>(new Map());
 
@@ -80,48 +81,49 @@ export function EventHierarchy({
           margin: isMobileView ? "0" : "auto",
         }}
       >
-        <div
-          style={{
-            position: "sticky",
-            top: 0,
-            backgroundColor: isMobileView ? "rgba(0, 0, 0, 0.98)" : "rgba(0, 0, 0, 0.95)",
-            border: isMobileView ? "none" : "1px solid #003300",
-            borderBottom: "2px solid #00ff00",
-            padding: isMobileView ? "16px 20px" : "10px",
-            margin: isMobileView ? "0 0 0 0" : "-1px -1px 0 -1px",
-            color: "#00aa00",
-            fontWeight: "bold",
-            zIndex: 10,
-            backdropFilter: isMobileView ? "blur(10px)" : "none",
-          }}
-        >
-          <div style={{ 
-            marginBottom: isMobileView ? "8px" : "5px",
-            fontSize: isMobileView ? "18px" : "12px",
-            textTransform: "uppercase",
-            letterSpacing: "1px",
-            textShadow: "0 0 10px rgba(0, 255, 0, 0.5)"
-          }}>
-            ALL GEOHASH REGIONS
+        {!isMobileView && (
+          <div
+            style={{
+              position: "sticky",
+              top: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.95)",
+              border: "1px solid #003300",
+              borderBottom: "2px solid #00ff00",
+              padding: "10px",
+              margin: "-1px -1px 0 -1px",
+              color: "#00aa00",
+              fontWeight: "bold",
+              zIndex: 10,
+            }}
+          >
+            <div style={{ 
+              marginBottom: "5px",
+              fontSize: "12px",
+              textTransform: "uppercase",
+              letterSpacing: "1px",
+              textShadow: "0 0 10px rgba(0, 255, 0, 0.5)"
+            }}>
+              ALL GEOHASH REGIONS
+            </div>
+            <div style={{ 
+              fontSize: "10px", 
+              color: "#00ff00",
+              background: "rgba(0, 255, 0, 0.1)",
+              padding: "2px 4px",
+              borderRadius: "4px",
+              border: "1px solid rgba(0, 255, 0, 0.3)",
+              display: "inline-block"
+            }}>
+              TOTAL EVENTS: {Array.from(topLevelCounts.values()).reduce((sum, count) => sum + count, 0)}
+            </div>
           </div>
-          <div style={{ 
-            fontSize: isMobileView ? "12px" : "10px", 
-            color: "#00ff00",
-            background: "rgba(0, 255, 0, 0.1)",
-            padding: isMobileView ? "4px 8px" : "2px 4px",
-            borderRadius: "4px",
-            border: "1px solid rgba(0, 255, 0, 0.3)",
-            display: "inline-block"
-          }}>
-            TOTAL EVENTS: {Array.from(topLevelCounts.values()).reduce((sum, count) => sum + count, 0)}
-          </div>
-        </div>
+        )}
         <div
           style={{
             flex: 1,
             overflowY: "auto",
-            padding: isMobileView ? "8px 20px 20px 20px" : "10px",
-            paddingTop: isMobileView ? "8px" : "8px",
+            padding: isMobileView ? "20px 20px 20px 20px" : "10px",
+            paddingTop: isMobileView ? "20px" : "8px"
           }}
         >
           {Array.from(topLevelCounts.entries())
@@ -269,7 +271,7 @@ export function EventHierarchy({
 
     for (const [char, node] of sortedEntries) {
       const fullPath = prefix + char;
-      const indent = ">".repeat(depth + 1) + " ";
+      // const indent = ">".repeat(depth + 1) + " "; // Currently unused
       const hasChildren = node.children.size > 0;
       const totalCount =
         node.direct +
@@ -405,48 +407,49 @@ export function EventHierarchy({
         margin: isMobileView ? "0" : "auto",
       }}
     >
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          backgroundColor: isMobileView ? "rgba(0, 0, 0, 0.98)" : "rgba(0, 0, 0, 0.95)",
-          border: isMobileView ? "none" : "1px solid #003300",
-          borderBottom: "2px solid #00ff00",
-          padding: isMobileView ? "16px 20px" : "10px",
-          margin: isMobileView ? "0 0 0 0" : "-1px -1px 0 -1px",
-          color: "#00aa00",
-          fontWeight: "bold",
-          zIndex: 10,
-          backdropFilter: isMobileView ? "blur(10px)" : "none",
-        }}
-      >
-        <div style={{ 
-          marginBottom: isMobileView ? "8px" : "5px",
-          fontSize: isMobileView ? "18px" : "12px",
-          textTransform: "uppercase",
-          letterSpacing: "1px",
-          textShadow: "0 0 10px rgba(0, 255, 0, 0.5)"
-        }}>
-          EVENTS IN "{searchGeohash.toUpperCase()}"
+      {!isMobileView && (
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.95)",
+            border: "1px solid #003300",
+            borderBottom: "2px solid #00ff00",
+            padding: "10px",
+            margin: "-1px -1px 0 -1px",
+            color: "#00aa00",
+            fontWeight: "bold",
+            zIndex: 10,
+          }}
+        >
+          <div style={{ 
+            marginBottom: "5px",
+            fontSize: "12px",
+            textTransform: "uppercase",
+            letterSpacing: "1px",
+            textShadow: "0 0 10px rgba(0, 255, 0, 0.5)"
+          }}>
+            EVENTS IN "{searchGeohash.toUpperCase()}"
+          </div>
+          <div style={{ 
+            fontSize: "10px", 
+            color: "#00ff00",
+            background: "rgba(0, 255, 0, 0.1)",
+            padding: "2px 4px",
+            borderRadius: "4px",
+            border: "1px solid rgba(0, 255, 0, 0.3)",
+            display: "inline-block"
+          }}>
+            DIRECT: {hierarchicalCounts.direct} | TOTAL: {hierarchicalCounts.total}
+          </div>
         </div>
-        <div style={{ 
-          fontSize: isMobileView ? "12px" : "10px", 
-          color: "#00ff00",
-          background: "rgba(0, 255, 0, 0.1)",
-          padding: isMobileView ? "4px 8px" : "2px 4px",
-          borderRadius: "4px",
-          border: "1px solid rgba(0, 255, 0, 0.3)",
-          display: "inline-block"
-        }}>
-          DIRECT: {hierarchicalCounts.direct} | TOTAL: {hierarchicalCounts.total}
-        </div>
-      </div>
+      )}
       <div
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: isMobileView ? "8px 20px 20px 20px" : "10px",
-          paddingTop: isMobileView ? "8px" : "8px",
+          padding: isMobileView ? "20px 20px 20px 20px" : "10px",
+          paddingTop: isMobileView ? "20px" : "8px"
         }}
       >
         {/* Current Geohash Display */}

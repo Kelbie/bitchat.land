@@ -1,4 +1,4 @@
-import React from "react";
+// import React from "react"; // Not needed for JSX
 
 interface MobileHeaderProps {
   activeView: 'map' | 'chat' | 'panel';
@@ -6,26 +6,36 @@ interface MobileHeaderProps {
   searchGeohash: string;
   onSearch: (value: string) => void;
   zoomedGeohash: string | null;
+  // Content header props
+  nostrEnabled?: boolean;
+  filteredEventsCount?: number;
+  totalEventsCount?: number;
+  hierarchicalCounts?: { direct: number; total: number };
 }
 
-export function MobileHeader({ activeView, onViewChange, searchGeohash, onSearch, zoomedGeohash }: MobileHeaderProps) {
+export function MobileHeader({ 
+  activeView, 
+  onViewChange, 
+  searchGeohash, 
+  onSearch, 
+  zoomedGeohash,
+  nostrEnabled = false,
+  filteredEventsCount = 0,
+  totalEventsCount = 0,
+  hierarchicalCounts = { direct: 0, total: 0 }
+}: MobileHeaderProps) {
   return (
     <header
       style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
         backgroundColor: "rgba(0, 0, 0, 0.95)",
         backdropFilter: "blur(10px)",
         border: "none",
-        borderBottom: "2px solid #00ff00",
-        zIndex: 2000,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        padding: "8px 16px 10px 16px",
         fontFamily: "Courier New, monospace",
+        flexShrink: 0,
+        padding: "8px 16px 10px 16px",
       }}
     >
       {/* Brand Logo */}
@@ -201,6 +211,7 @@ export function MobileHeader({ activeView, onViewChange, searchGeohash, onSearch
           width: "100%",
           maxWidth: "400px",
           marginTop: "8px",
+          marginBottom: "8px",
         }}
       >
         <div
@@ -274,6 +285,109 @@ export function MobileHeader({ activeView, onViewChange, searchGeohash, onSearch
           </div>
         )}
       </div>
+
+      {/* Separator Bar - Only show if there's sub header content */}
+      {((activeView === 'chat' && nostrEnabled) || activeView === 'panel') && (
+        <div
+          style={{
+            width: "100%",
+            height: "2px",
+            background: "linear-gradient(90deg, transparent 0%, #00ff00 20%, #00ff00 80%, transparent 100%)",
+            boxShadow: "0 0 4px rgba(0, 255, 0, 0.5)",
+          }}
+        />
+      )}
+
+      {/* Content Headers */}
+      {((activeView === 'chat' && nostrEnabled) || activeView === 'panel') && (
+        <div
+          style={{
+            width: "100%",
+            backgroundColor: "rgba(0, 0, 0, 0.98)",
+            padding: "12px 20px",
+            color: "#00aa00",
+            fontWeight: "bold",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          {activeView === 'chat' && nostrEnabled && (
+            <>
+              <div style={{ 
+                marginBottom: "6px",
+                fontSize: "16px",
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+                textShadow: "0 0 10px rgba(0, 255, 0, 0.5)"
+              }}>
+                RECENT NOSTR EVENTS
+              </div>
+              {searchGeohash && (
+                <div style={{ 
+                  fontSize: "11px", 
+                  color: "#00ff00",
+                  background: "rgba(0, 255, 0, 0.1)",
+                  padding: "3px 6px",
+                  borderRadius: "4px",
+                  border: "1px solid rgba(0, 255, 0, 0.3)",
+                  display: "inline-block"
+                }}>
+                  FILTER: "{searchGeohash.toUpperCase()}"
+                </div>
+              )}
+              {!searchGeohash && (
+                <div style={{ 
+                  fontSize: "10px", 
+                  color: "#00aa00",
+                  fontStyle: "italic",
+                  opacity: 0.8
+                }}>
+                  Showing latest {filteredEventsCount} events from the network
+                </div>
+              )}
+            </>
+          )}
+          
+          {activeView === 'panel' && (
+            <>
+              <div style={{ 
+                marginBottom: "6px",
+                fontSize: "16px",
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+                textShadow: "0 0 10px rgba(0, 255, 0, 0.5)"
+              }}>
+                {searchGeohash ? `EVENTS IN "${searchGeohash.toUpperCase()}"` : "ALL GEOHASH REGIONS"}
+              </div>
+              <div style={{ 
+                fontSize: "11px", 
+                color: "#00ff00",
+                background: "rgba(0, 255, 0, 0.1)",
+                padding: "3px 6px",
+                borderRadius: "4px",
+                border: "1px solid rgba(0, 255, 0, 0.3)",
+                display: "inline-block"
+              }}>
+                {searchGeohash 
+                  ? `DIRECT: ${hierarchicalCounts.direct} | TOTAL: ${hierarchicalCounts.total}`
+                  : `TOTAL EVENTS: ${totalEventsCount}`
+                }
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Bottom Separator Bar - Only show if there's sub header content */}
+      {/* {((activeView === 'chat' && nostrEnabled) || activeView === 'panel') && ( */}
+        <div
+          style={{
+            width: "100%",
+            height: "2px",
+            background: "linear-gradient(90deg, transparent 0%, #00ff00 20%, #00ff00 80%, transparent 100%)",
+            boxShadow: "0 0 4px rgba(0, 255, 0, 0.5)",
+          }}
+        />
+      {/* )} */}
     </header>
   );
 }
