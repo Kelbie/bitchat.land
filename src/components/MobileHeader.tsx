@@ -1,8 +1,8 @@
 // import React from "react"; // Not needed for JSX
 
 interface MobileHeaderProps {
-  activeView: 'map' | 'chat' | 'panel';
-  onViewChange: (view: 'map' | 'chat' | 'panel') => void;
+  activeView: "map" | "chat" | "panel";
+  onViewChange: (view: "map" | "chat" | "panel") => void;
   searchGeohash: string;
   onSearch: (value: string) => void;
   zoomedGeohash: string | null;
@@ -13,16 +13,16 @@ interface MobileHeaderProps {
   hierarchicalCounts?: { direct: number; total: number };
 }
 
-export function MobileHeader({ 
-  activeView, 
-  onViewChange, 
-  searchGeohash, 
-  onSearch, 
+export function MobileHeader({
+  activeView,
+  onViewChange,
+  searchGeohash,
+  onSearch,
   zoomedGeohash,
   nostrEnabled = false,
   filteredEventsCount = 0,
   totalEventsCount = 0,
-  hierarchicalCounts = { direct: 0, total: 0 }
+  hierarchicalCounts = { direct: 0, total: 0 },
 }: MobileHeaderProps) {
   return (
     <header
@@ -41,16 +41,30 @@ export function MobileHeader({
       {/* Brand Logo */}
       <div
         style={{
-          color: "#00ff00",
-          fontSize: "18px",
-          fontWeight: "bold",
-          textTransform: "uppercase",
-          letterSpacing: "1px",
-          textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-          marginBottom: "12px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          marginBottom: "0px",
         }}
       >
-        bitchat.land
+        <img
+          src="/favicon.webp"
+          alt="bitchat.land"
+          style={{ width: "48px", height: "48px", marginLeft: "-12px" }}
+        />
+        <div
+          style={{
+            color: "#00ff00",
+            fontSize: "18px",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            letterSpacing: "1px",
+            textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
+            marginLeft: "-8px",
+          }}
+        >
+          bitchat.land
+        </div>
       </div>
 
       {/* Navigation Toggles */}
@@ -65,12 +79,13 @@ export function MobileHeader({
       >
         {/* Menu Button (Panel) */}
         <button
-          onClick={() => onViewChange('panel')}
+          onClick={() => onViewChange("panel")}
           style={{
             flex: 1,
             padding: "8px 12px",
-            background: activeView === 'panel' ? "#00ff00" : "rgba(0, 0, 0, 0.7)",
-            color: activeView === 'panel' ? "#000000" : "#00ff00",
+            background:
+              activeView === "panel" ? "#00ff00" : "rgba(0, 0, 0, 0.7)",
+            color: activeView === "panel" ? "#000000" : "#00ff00",
             border: "1px solid #00ff00",
             borderRadius: "0",
             cursor: "pointer",
@@ -80,16 +95,17 @@ export function MobileHeader({
             fontWeight: "bold",
             transition: "all 0.2s ease",
             textAlign: "center",
-            boxShadow: activeView === 'panel' ? "0 0 10px rgba(0, 255, 0, 0.5)" : "none",
+            boxShadow:
+              activeView === "panel" ? "0 0 10px rgba(0, 255, 0, 0.5)" : "none",
           }}
           onMouseEnter={(e) => {
-            if (activeView !== 'panel') {
+            if (activeView !== "panel") {
               e.currentTarget.style.background = "rgba(0, 255, 0, 0.1)";
               e.currentTarget.style.boxShadow = "0 0 5px rgba(0, 255, 0, 0.3)";
             }
           }}
           onMouseLeave={(e) => {
-            if (activeView !== 'panel') {
+            if (activeView !== "panel") {
               e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
               e.currentTarget.style.boxShadow = "none";
             }
@@ -100,12 +116,12 @@ export function MobileHeader({
 
         {/* Map Button */}
         <button
-          onClick={() => onViewChange('map')}
+          onClick={() => onViewChange("map")}
           style={{
             flex: 1,
             padding: "8px 12px",
-            background: activeView === 'map' ? "#00ff00" : "rgba(0, 0, 0, 0.7)",
-            color: activeView === 'map' ? "#000000" : "#00ff00",
+            background: activeView === "map" ? "#00ff00" : "rgba(0, 0, 0, 0.7)",
+            color: activeView === "map" ? "#000000" : "#00ff00",
             border: "1px solid #00ff00",
             borderRadius: "0",
             cursor: "pointer",
@@ -115,16 +131,17 @@ export function MobileHeader({
             fontWeight: "bold",
             transition: "all 0.2s ease",
             textAlign: "center",
-            boxShadow: activeView === 'map' ? "0 0 10px rgba(0, 255, 0, 0.5)" : "none",
+            boxShadow:
+              activeView === "map" ? "0 0 10px rgba(0, 255, 0, 0.5)" : "none",
           }}
           onMouseEnter={(e) => {
-            if (activeView !== 'map') {
+            if (activeView !== "map") {
               e.currentTarget.style.background = "rgba(0, 255, 0, 0.1)";
               e.currentTarget.style.boxShadow = "0 0 5px rgba(0, 255, 0, 0.3)";
             }
           }}
           onMouseLeave={(e) => {
-            if (activeView !== 'map') {
+            if (activeView !== "map") {
               e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
               e.currentTarget.style.boxShadow = "none";
             }
@@ -135,12 +152,13 @@ export function MobileHeader({
 
         {/* Chat Button */}
         <button
-          onClick={() => onViewChange('chat')}
+          onClick={() => onViewChange("chat")}
           style={{
             flex: 1,
             padding: "8px 12px",
-            background: activeView === 'chat' ? "#00ff00" : "rgba(0, 0, 0, 0.7)",
-            color: activeView === 'chat' ? "#000000" : "#00ff00",
+            background:
+              activeView === "chat" ? "#00ff00" : "rgba(0, 0, 0, 0.7)",
+            color: activeView === "chat" ? "#000000" : "#00ff00",
             border: "1px solid #00ff00",
             borderRadius: "0",
             cursor: "pointer",
@@ -150,16 +168,17 @@ export function MobileHeader({
             fontWeight: "bold",
             transition: "all 0.2s ease",
             textAlign: "center",
-            boxShadow: activeView === 'chat' ? "0 0 10px rgba(0, 255, 0, 0.5)" : "none",
+            boxShadow:
+              activeView === "chat" ? "0 0 10px rgba(0, 255, 0, 0.5)" : "none",
           }}
           onMouseEnter={(e) => {
-            if (activeView !== 'chat') {
+            if (activeView !== "chat") {
               e.currentTarget.style.background = "rgba(0, 255, 0, 0.1)";
               e.currentTarget.style.boxShadow = "0 0 5px rgba(0, 255, 0, 0.3)";
             }
           }}
           onMouseLeave={(e) => {
-            if (activeView !== 'chat') {
+            if (activeView !== "chat") {
               e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
               e.currentTarget.style.boxShadow = "none";
             }
@@ -205,7 +224,7 @@ export function MobileHeader({
         </a>
       </div>
 
-              {/* Search Section */}
+      {/* Search Section */}
       <div
         style={{
           width: "100%",
@@ -273,9 +292,9 @@ export function MobileHeader({
           )}
         </div>
         {zoomedGeohash && (
-          <div 
-            style={{ 
-              fontSize: "10px", 
+          <div
+            style={{
+              fontSize: "10px",
               color: "#00aa00",
               marginTop: "4px",
               textAlign: "center",
@@ -287,19 +306,20 @@ export function MobileHeader({
       </div>
 
       {/* Separator Bar - Only show if there's sub header content */}
-      {((activeView === 'chat' && nostrEnabled) || activeView === 'panel') && (
+      {((activeView === "chat" && nostrEnabled) || activeView === "panel") && (
         <div
           style={{
             width: "100%",
             height: "2px",
-            background: "linear-gradient(90deg, transparent 0%, #00ff00 20%, #00ff00 80%, transparent 100%)",
+            background:
+              "linear-gradient(90deg, transparent 0%, #00ff00 20%, #00ff00 80%, transparent 100%)",
             boxShadow: "0 0 4px rgba(0, 255, 0, 0.5)",
           }}
         />
       )}
 
       {/* Content Headers */}
-      {((activeView === 'chat' && nostrEnabled) || activeView === 'panel') && (
+      {((activeView === "chat" && nostrEnabled) || activeView === "panel") && (
         <div
           style={{
             width: "100%",
@@ -310,69 +330,79 @@ export function MobileHeader({
             backdropFilter: "blur(10px)",
           }}
         >
-          {activeView === 'chat' && nostrEnabled && (
+          {activeView === "chat" && nostrEnabled && (
             <>
-              <div style={{ 
-                marginBottom: "6px",
-                fontSize: "16px",
-                textTransform: "uppercase",
-                letterSpacing: "1px",
-                textShadow: "0 0 10px rgba(0, 255, 0, 0.5)"
-              }}>
+              <div
+                style={{
+                  marginBottom: "6px",
+                  fontSize: "16px",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                  textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
+                }}
+              >
                 RECENT NOSTR EVENTS
               </div>
               {searchGeohash && (
-                <div style={{ 
-                  fontSize: "11px", 
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: "#00ff00",
+                    background: "rgba(0, 255, 0, 0.1)",
+                    padding: "3px 6px",
+                    borderRadius: "4px",
+                    border: "1px solid rgba(0, 255, 0, 0.3)",
+                    display: "inline-block",
+                  }}
+                >
+                  FILTER: "{searchGeohash.toUpperCase()}"
+                </div>
+              )}
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "#00aa00",
+                  fontStyle: "italic",
+                  opacity: 0.8,
+                  marginTop: searchGeohash ? "4px" : "0",
+                }}
+              >
+                {searchGeohash
+                  ? `Found ${filteredEventsCount} matching events`
+                  : `Showing latest ${filteredEventsCount} events from the network`}
+              </div>
+            </>
+          )}
+
+          {activeView === "panel" && (
+            <>
+              <div
+                style={{
+                  marginBottom: "6px",
+                  fontSize: "16px",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                  textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
+                }}
+              >
+                {searchGeohash
+                  ? `EVENTS IN "${searchGeohash.toUpperCase()}"`
+                  : "ALL GEOHASH REGIONS"}
+              </div>
+              <div
+                style={{
+                  fontSize: "11px",
                   color: "#00ff00",
                   background: "rgba(0, 255, 0, 0.1)",
                   padding: "3px 6px",
                   borderRadius: "4px",
                   border: "1px solid rgba(0, 255, 0, 0.3)",
-                  display: "inline-block"
-                }}>
-                  FILTER: "{searchGeohash.toUpperCase()}"
-                </div>
-              )}
-              <div style={{ 
-                fontSize: "10px", 
-                color: "#00aa00",
-                fontStyle: "italic",
-                opacity: 0.8,
-                marginTop: searchGeohash ? "4px" : "0"
-              }}>
-                {searchGeohash 
-                  ? `Found ${filteredEventsCount} matching events`
-                  : `Showing latest ${filteredEventsCount} events from the network`
-                }
-              </div>
-            </>
-          )}
-          
-          {activeView === 'panel' && (
-            <>
-              <div style={{ 
-                marginBottom: "6px",
-                fontSize: "16px",
-                textTransform: "uppercase",
-                letterSpacing: "1px",
-                textShadow: "0 0 10px rgba(0, 255, 0, 0.5)"
-              }}>
-                {searchGeohash ? `EVENTS IN "${searchGeohash.toUpperCase()}"` : "ALL GEOHASH REGIONS"}
-              </div>
-              <div style={{ 
-                fontSize: "11px", 
-                color: "#00ff00",
-                background: "rgba(0, 255, 0, 0.1)",
-                padding: "3px 6px",
-                borderRadius: "4px",
-                border: "1px solid rgba(0, 255, 0, 0.3)",
-                display: "inline-block"
-              }}>
-                {searchGeohash 
+                  display: "inline-block",
+                }}
+              >
+                {searchGeohash
                   ? `DIRECT: ${hierarchicalCounts.direct} | TOTAL: ${hierarchicalCounts.total}`
-                  : `TOTAL EVENTS: ${totalEventsCount}`
-                }
+                  : `TOTAL EVENTS: ${totalEventsCount}`}
               </div>
             </>
           )}
@@ -381,14 +411,15 @@ export function MobileHeader({
 
       {/* Bottom Separator Bar - Only show if there's sub header content */}
       {/* {((activeView === 'chat' && nostrEnabled) || activeView === 'panel') && ( */}
-        <div
-          style={{
-            width: "100%",
-            height: "2px",
-            background: "linear-gradient(90deg, transparent 0%, #00ff00 20%, #00ff00 80%, transparent 100%)",
-            boxShadow: "0 0 4px rgba(0, 255, 0, 0.5)",
-          }}
-        />
+      <div
+        style={{
+          width: "100%",
+          height: "2px",
+          background:
+            "linear-gradient(90deg, transparent 0%, #00ff00 20%, #00ff00 80%, transparent 100%)",
+          boxShadow: "0 0 4px rgba(0, 255, 0, 0.5)",
+        }}
+      />
       {/* )} */}
     </header>
   );

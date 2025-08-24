@@ -1,0 +1,17 @@
+{
+  "name": "bitchat.land",
+  "short_name": "bitchat",
+  "description": "Decentralized geohash-based messaging platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#00ff00",
+  "icons": [
+    {
+      "src": "/favicon.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ]
+}
