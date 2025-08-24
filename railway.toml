@@ -1,8 +1,5 @@
 [build]
 builder = "dockerfile"
-dockerfilePath = "Dockerfile"
 
 [deploy]
-healthcheckPath = "/"
-healthcheckTimeout = 100
-restartPolicyType = "on_failure"
+startCommand = "serve -s dist -l 3000"
