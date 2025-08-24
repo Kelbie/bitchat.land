@@ -6,13 +6,15 @@ interface RecentEventsProps {
   searchGeohash: string;
   allStoredEvents: NostrEvent[];
   recentEvents: NostrEvent[];
+  isMobileView?: boolean;
 }
 
 export function RecentEvents({ 
   nostrEnabled, 
   searchGeohash, 
   allStoredEvents, 
-  recentEvents 
+  recentEvents,
+  isMobileView = false
 }: RecentEventsProps) {
   if (!nostrEnabled) return null;
 
@@ -37,18 +39,20 @@ export function RecentEvents({
   return (
     <div
       style={{
-        position: "absolute",
-        bottom: "10px",
-        right: "10px",
+        position: isMobileView ? "relative" : "absolute",
+        bottom: isMobileView ? "auto" : "10px",
+        right: isMobileView ? "auto" : "10px",
+        width: isMobileView ? "100%" : "auto",
         zIndex: 1000,
         background: "rgba(0, 0, 0, 0.8)",
         border: "1px solid #003300",
         borderRadius: "0px",
-        maxWidth: "400px",
-        maxHeight: "400px",
-        fontSize: "10px",
+        maxWidth: isMobileView ? "100%" : "400px",
+        maxHeight: isMobileView ? "70vh" : "400px",
+        fontSize: isMobileView ? "12px" : "10px",
         display: "flex",
         flexDirection: "column",
+        margin: isMobileView ? "0" : "auto",
       }}
     >
       <div
@@ -79,9 +83,11 @@ export function RecentEvents({
           flex: 1,
           overflowY: "auto",
           padding: "10px",
+          display: "flex",
+          flexDirection: "column-reverse",
         }}
       >
-      {filteredEvents.map((event, i) => {
+      {filteredEvents.slice().reverse().map((event, i) => {
         const geoTag = event.tags.find((tag: any) => tag[0] === "g");
         const geohash = geoTag ? geoTag[1] : "unknown";
         const time = new Date(event.created_at * 1000).toLocaleTimeString();

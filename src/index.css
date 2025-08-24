@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile-first responsive design */
+* {
+  box-sizing: border-box;
+}
+
 /* Disable text selection/highlighting across the entire website */
 * {
   -webkit-user-select: none;
@@ -21,4 +26,79 @@ textarea,
   -moz-user-select: text;
   -ms-user-select: text;
   user-select: text;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+  /* Ensure touch targets are at least 44px */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improve text readability on mobile */
+  body {
+    font-size: 16px; /* Prevents zoom on iOS */
+    line-height: 1.4;
+  }
+  
+  /* Optimize form inputs for mobile */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: 12px;
+    border-radius: 4px;
+  }
+  
+  /* Improve scrolling performance */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Hide scrollbars but keep functionality */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 0, 0.3);
+    border-radius: 3px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 0, 0.5);
+  }
+}
+
+/* Mobile landscape adjustments */
+@media (max-width: 768px) and (orientation: landscape) {
+  /* Reduce header height in landscape for more map space */
+  .mobile-header {
+    height: 50px !important;
+  }
+}
+
+/* Tablet styles */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Slightly larger touch targets for tablets */
+  button {
+    min-height: 40px;
+    min-width: 40px;
+  }
+}
+
+/* Desktop styles */
+@media (min-width: 1025px) {
+  /* Standard desktop interactions */
+  button {
+    min-height: auto;
+    min-width: auto;
+  }
 }

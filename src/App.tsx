@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { scaleQuantize } from "@visx/scale";
-import { generateSampleHeatmapData } from "./utils/geohash";
+import React, { useState, useEffect } from "react";
+// import { scaleQuantize } from "@visx/scale"; // Currently unused
+// import { generateSampleHeatmapData } from "./utils/geohash"; // Currently unused
 import { 
   generateGeohashes, 
   generateLocalizedGeohashes 
@@ -14,21 +14,22 @@ import { SearchPanel } from "./components/SearchPanel";
 import { EventHierarchy } from "./components/EventHierarchy";
 import { RecentEvents } from "./components/RecentEvents";
 import { Map } from "./components/Map";
+import { MobileHeader } from "./components/MobileHeader";
 
 export const background = "#000000";
 
-// Matrix-themed heatmap color scale
-const heatmapColor = scaleQuantize({
-  domain: [0, 100],
-  range: [
-    "rgba(0, 20, 0, 0.1)", // Very dark green - low values
-    "rgba(0, 50, 0, 0.3)", // Dark green
-    "rgba(0, 100, 0, 0.4)", // Medium dark green
-    "rgba(0, 150, 0, 0.5)", // Medium green
-    "rgba(0, 200, 0, 0.6)", // Bright green
-    "rgba(0, 255, 0, 0.8)", // Full green - high values
-  ],
-});
+// Matrix-themed heatmap color scale (currently unused but may be needed for future features)
+// const heatmapColor = scaleQuantize({
+//   domain: [0, 100],
+//   range: [
+//     "rgba(0, 20, 0, 0.1)", // Very dark green - low values
+//     "rgba(0, 50, 0, 0.3)", // Dark green
+//     "rgba(0, 100, 0, 0.4)", // Medium dark green
+//     "rgba(0, 150, 0, 0.5)", // Medium green
+//     "rgba(0, 200, 0, 0.6)", // Bright green
+//     "rgba(0, 255, 0, 0.8)", // Full green - high values
+//   ],
+// });
 
 // Add array prototype extensions
 declare global {
@@ -48,11 +49,15 @@ Array.prototype.min = function () {
 
 export default function App({ width, height, events = true }: GeoMercatorProps) {
   const [projection] = useState("natural_earth");
-  const [showHeatmap] = useState(true);
-  const [geohashPrecision] = useState(4);
+  // const [showHeatmap] = useState(true); // Currently unused
+  // const [geohashPrecision] = useState(4); // Currently unused
   const [showSingleCharGeohashes] = useState(true);
   const [geohashDisplayPrecision, setGeohashDisplayPrecision] = useState(1);
   const [showGeohashText] = useState(true);
+
+  // Mobile view state
+  const [isMobile, setIsMobile] = useState(false);
+  const [activeView, setActiveView] = useState<'map' | 'chat' | 'panel'>('map');
 
   // Search and zoom state
   const [searchGeohash, setSearchGeohash] = useState("");
@@ -61,6 +66,40 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   // Custom hooks
   const { isDragging, hasDragged, handleMouseDown, handleMouseMove, handleMouseUp } = useDrag();
   const { zoomedGeohash, zoomScale, zoomTranslate, zoomToGeohash, updateTranslate } = useZoom(width, height, projection);
+
+  // State for header height
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  // Check if mobile on mount and window resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Measure header height after it renders
+  useEffect(() => {
+    if (isMobile) {
+      const header = document.querySelector('header');
+      if (header) {
+        const resizeObserver = new ResizeObserver(() => {
+          setHeaderHeight(header.offsetHeight);
+        });
+        resizeObserver.observe(header);
+        
+        // Initial measurement
+        setHeaderHeight(header.offsetHeight);
+        
+        return () => resizeObserver.disconnect();
+      }
+    } else {
+      setHeaderHeight(0);
+    }
+  }, [isMobile]);
 
   // Function to trigger geohash animation
   const animateGeohash = (geohash: string) => {
@@ -99,8 +138,8 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
     allEventsByGeohash,
   } = useNostr(searchGeohash, currentGeohashes, animateGeohash);
 
-  // Generate heatmap data
-  const heatmapData = generateSampleHeatmapData(geohashPrecision);
+  // Generate heatmap data (currently unused but may be needed for future features)
+  // const heatmapData = generateSampleHeatmapData(geohashPrecision);
 
   // Handle search input
   const handleSearch = (value: string) => {
@@ -199,6 +238,10 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
 
   if (width < 10) return null;
 
+  // Adjust dimensions for mobile header
+  const adjustedHeight = isMobile ? height - headerHeight : height;
+  const adjustedWidth = width;
+
   return (
     <div
       style={{
@@ -211,50 +254,145 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
         overflow: "hidden",
       }}
     >
-      <SearchPanel
-        searchGeohash={searchGeohash}
-        onSearch={handleSearch}
-        zoomedGeohash={zoomedGeohash}
-      />
+      {/* Mobile Header */}
+      {isMobile && (
+        <MobileHeader
+          activeView={activeView}
+          onViewChange={setActiveView}
+          searchGeohash={searchGeohash}
+          onSearch={handleSearch}
+          zoomedGeohash={zoomedGeohash}
+        />
+      )}
 
-      <EventHierarchy
-        searchGeohash={searchGeohash}
-        allEventsByGeohash={allEventsByGeohash}
-        onSearch={handleSearch}
-      />
+      {/* Main Content Area */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: isMobile ? `calc(100vh - ${headerHeight}px)` : "100vh",
+          marginTop: isMobile ? `${headerHeight}px` : "0",
+          overflow: "hidden",
+        }}
+      >
+        {/* Map - Always rendered, but might be hidden on mobile */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            display: isMobile && activeView !== 'map' ? 'none' : 'block',
+          }}
+        >
+          <Map
+            width={adjustedWidth}
+            height={adjustedHeight}
+            projection={projection}
+            currentScale={currentScale}
+            centerX={centerX}
+            centerY={centerY}
+            isDragging={isDragging}
+            hasDragged={hasDragged}
+            events={!!events}
+            onMapClick={handleMapClick}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMoveWithDrag}
+            onMouseUp={handleMouseUp}
+            currentGeohashes={currentGeohashes}
+            geohashActivity={geohashActivity}
+            allEventsByGeohash={allEventsByGeohash}
+            animatingGeohashes={animatingGeohashes}
+            showSingleCharGeohashes={showSingleCharGeohashes}
+            showGeohashText={showGeohashText}
+            effectivePrecision={effectivePrecision}
+            shouldShowLocalizedPrecision={!!shouldShowLocalizedPrecision}
+            searchGeohash={searchGeohash}
+            onGeohashClick={handleSearch}
+          />
+        </div>
 
-      <RecentEvents
-        nostrEnabled={nostrEnabled}
-        searchGeohash={searchGeohash}
-        allStoredEvents={allStoredEvents}
-        recentEvents={recentEvents}
-      />
+        {/* Desktop Layout - Show all panels */}
+        {!isMobile && (
+          <>
+            <SearchPanel
+              searchGeohash={searchGeohash}
+              onSearch={handleSearch}
+              zoomedGeohash={zoomedGeohash}
+            />
 
-      <Map
-        width={width}
-        height={height}
-        projection={projection}
-        currentScale={currentScale}
-        centerX={centerX}
-        centerY={centerY}
-        isDragging={isDragging}
-        hasDragged={hasDragged}
-        events={events}
-        onMapClick={handleMapClick}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMoveWithDrag}
-        onMouseUp={handleMouseUp}
-        currentGeohashes={currentGeohashes}
-        geohashActivity={geohashActivity}
-        allEventsByGeohash={allEventsByGeohash}
-        animatingGeohashes={animatingGeohashes}
-        showSingleCharGeohashes={showSingleCharGeohashes}
-        showGeohashText={showGeohashText}
-        effectivePrecision={effectivePrecision}
-        shouldShowLocalizedPrecision={shouldShowLocalizedPrecision}
-        searchGeohash={searchGeohash}
-        onGeohashClick={handleSearch}
-      />
+            <EventHierarchy
+              searchGeohash={searchGeohash}
+              allEventsByGeohash={allEventsByGeohash}
+              onSearch={handleSearch}
+            />
+
+            <RecentEvents
+              nostrEnabled={nostrEnabled}
+              searchGeohash={searchGeohash}
+              allStoredEvents={allStoredEvents}
+              recentEvents={recentEvents}
+            />
+          </>
+        )}
+
+        {/* Mobile Layout - Show panels based on activeView */}
+        {isMobile && (
+          <>
+            {/* Chat View */}
+            {activeView === 'chat' && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: "100%",
+                  backgroundColor: "#000000",
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                  padding: "10px",
+                }}
+              >
+                <div style={{ flex: 1, overflow: "hidden" }}>
+                  <RecentEvents
+                    nostrEnabled={nostrEnabled}
+                    searchGeohash={searchGeohash}
+                    allStoredEvents={allStoredEvents}
+                    recentEvents={recentEvents}
+                    isMobileView={true}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Panel View */}
+            {activeView === 'panel' && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: "100%",
+                  backgroundColor: "#000000",
+                  overflow: "hidden",
+                  padding: "10px",
+                }}
+              >
+                <EventHierarchy
+                  searchGeohash={searchGeohash}
+                  allEventsByGeohash={allEventsByGeohash}
+                  onSearch={handleSearch}
+                  isMobileView={true}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

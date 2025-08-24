@@ -7,12 +7,14 @@ interface EventHierarchyProps {
   searchGeohash: string;
   allEventsByGeohash: Map<string, number>;
   onSearch: (geohash: string) => void;
+  isMobileView?: boolean;
 }
 
 export function EventHierarchy({ 
   searchGeohash, 
   allEventsByGeohash, 
-  onSearch 
+  onSearch,
+  isMobileView = false
 }: EventHierarchyProps) {
   const [locationNames, setLocationNames] = useState<Map<string, LocationInfo>>(new Map());
 
@@ -57,22 +59,24 @@ export function EventHierarchy({
     return (
       <div
         style={{
-          position: "absolute",
-          top: "10px",
-          left: "10px",
+          position: isMobileView ? "relative" : "absolute",
+          top: isMobileView ? "0" : "10px",
+          left: isMobileView ? "0" : "10px",
+          width: isMobileView ? "100%" : "auto",
           zIndex: 1000,
           background: "rgba(0, 0, 0, 0.8)",
           border: "1px solid #003300",
           borderRadius: "0px",
-          fontSize: "12px",
+          fontSize: isMobileView ? "14px" : "12px",
           color: "#00ff00",
           fontFamily: "Courier New, monospace",
-          maxWidth: "calc(50vw - 20px)",
-          maxHeight: "calc(100vh - 20px)",
+          maxWidth: isMobileView ? "100%" : "calc(50vw - 20px)",
+          maxHeight: isMobileView ? "70vh" : "calc(100vh - 20px)",
           display: "flex",
           flexDirection: "column",
           overflowX: "hidden",
           wordWrap: "break-word",
+          margin: isMobileView ? "0" : "auto",
         }}
       >
         <div
@@ -319,22 +323,24 @@ export function EventHierarchy({
   return (
     <div
       style={{
-        position: "absolute",
-        top: "10px",
-        left: "10px",
+        position: isMobileView ? "relative" : "absolute",
+        top: isMobileView ? "0" : "10px",
+        left: isMobileView ? "0" : "10px",
+        width: isMobileView ? "100%" : "auto",
         zIndex: 1000,
         background: "rgba(0, 0, 0, 0.8)",
         border: "1px solid #003300",
         borderRadius: "0px",
-        fontSize: "12px",
+        fontSize: isMobileView ? "14px" : "12px",
         color: "#00ff00",
         fontFamily: "Courier New, monospace",
-        maxWidth: "calc(50vw - 20px)",
-        maxHeight: "calc(100vh - 20px)",
+        maxWidth: isMobileView ? "100%" : "calc(50vw - 20px)",
+        maxHeight: isMobileView ? "70vh" : "calc(100vh - 20px)",
         display: "flex",
         flexDirection: "column",
         overflowX: "hidden",
         wordWrap: "break-word",
+        margin: isMobileView ? "0" : "auto",
       }}
     >
       <div
@@ -366,6 +372,64 @@ export function EventHierarchy({
           paddingTop: "8px",
         }}
       >
+        {/* Current Geohash Display */}
+        {hierarchicalCounts.direct > 0 && (
+          <div
+            style={{
+              padding: "8px 10px",
+              marginBottom: "12px",
+              background: "rgba(0, 100, 0, 0.2)",
+              border: "2px solid rgba(0, 255, 0, 0.4)",
+              borderLeft: "4px solid #00ff00",
+              cursor: "pointer",
+              fontFamily: "Courier New, monospace",
+              transition: "all 0.2s ease",
+            }}
+            onClick={() => onSearch(searchGeohash)}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(0, 100, 0, 0.3)";
+              e.currentTarget.style.borderColor = "rgba(0, 255, 0, 0.6)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(0, 100, 0, 0.2)";
+              e.currentTarget.style.borderColor = "rgba(0, 255, 0, 0.4)";
+            }}
+          >
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "4px",
+            }}>
+              <span style={{
+                fontSize: isMobileView ? "16px" : "14px",
+                color: "#00ff00",
+                fontWeight: "bold",
+              }}>
+                {searchGeohash.toUpperCase()} (CURRENT)
+              </span>
+              <span style={{ 
+                fontSize: isMobileView ? "12px" : "10px", 
+                color: "#00aa00",
+                background: "rgba(0, 0, 0, 0.6)",
+                padding: "2px 6px",
+                borderRadius: "3px",
+              }}>
+                {hierarchicalCounts.direct} events
+              </span>
+            </div>
+            {locationNames.get(searchGeohash.toLowerCase()) && (
+              <div style={{ 
+                fontSize: isMobileView ? "11px" : "9px", 
+                color: "#888888",
+                fontStyle: "italic",
+              }}>
+                {locationNames.get(searchGeohash.toLowerCase())?.formatted}
+              </div>
+            )}
+          </div>
+        )}
+
         {hierarchy.size > 0 && (
           <div>
             <div

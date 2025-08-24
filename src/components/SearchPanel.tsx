@@ -4,21 +4,28 @@ interface SearchPanelProps {
   searchGeohash: string;
   onSearch: (value: string) => void;
   zoomedGeohash: string | null;
+  isMobileView?: boolean;
 }
 
-export function SearchPanel({ searchGeohash, onSearch, zoomedGeohash }: SearchPanelProps) {
+export function SearchPanel({ searchGeohash, onSearch, zoomedGeohash, isMobileView = false }: SearchPanelProps) {
+  const isMobile = isMobileView || window.innerWidth <= 768;
+  
   return (
     <div
       style={{
-        position: "absolute",
-        top: "10px",
-        right: "10px",
+        position: "relative",
+        width: "100%",
+        maxWidth: isMobile ? "100%" : "300px",
+        margin: isMobile ? "0" : "0 0 0 auto",
+        top: isMobile ? "0" : "10px",
+        right: isMobile ? "0" : "10px",
         zIndex: 1000,
-        background: "rgba(0, 0, 0, 0.8)",
+        background: "rgba(0, 0, 0, 0.9)",
         border: "1px solid #003300",
-        borderRadius: "0px",
+        borderRadius: isMobile ? "6px" : "0px",
         display: "flex",
         flexDirection: "column",
+        backdropFilter: isMobile ? "blur(10px)" : "none",
       }}
     >
       <div
@@ -55,15 +62,16 @@ export function SearchPanel({ searchGeohash, onSearch, zoomedGeohash }: SearchPa
         onChange={(e) => onSearch(e.target.value)}
         placeholder="e.g. 21m"
         style={{
-          padding: "4px 8px",
+          padding: isMobile ? "12px 16px" : "4px 8px",
           background: "#000000",
           color: "#00ff00",
           border: "1px solid #00ff00",
-          borderRadius: "0px",
-          fontSize: "12px",
+          borderRadius: isMobile ? "4px" : "0px",
+          fontSize: isMobile ? "16px" : "12px",
           fontFamily: "Courier New, monospace",
           width: "100%",
-          outline: "none", // Remove default outline
+          outline: "none",
+          minHeight: isMobile ? "44px" : "auto",
         }}
         onFocus={(e) => {
           e.target.style.border = "1px solid #00ff00";
@@ -77,17 +85,18 @@ export function SearchPanel({ searchGeohash, onSearch, zoomedGeohash }: SearchPa
       <button
         onClick={() => onSearch("")}
         style={{
-          padding: "4px 8px",
+          padding: isMobile ? "12px 16px" : "4px 8px",
           background: "#003300",
           color: "#00ff00",
           border: "1px solid #00ff00",
-          borderRadius: "0px",
+          borderRadius: isMobile ? "4px" : "0px",
           cursor: "pointer",
-          fontSize: "10px",
+          fontSize: isMobile ? "14px" : "10px",
           fontFamily: "Courier New, monospace",
           textTransform: "uppercase",
           marginTop: "5px",
           width: "100%",
+          minHeight: isMobile ? "44px" : "auto",
         }}
       >
         RESET
@@ -115,17 +124,18 @@ export function SearchPanel({ searchGeohash, onSearch, zoomedGeohash }: SearchPa
         }}
         id="follow-nostr-btn"
         style={{
-          padding: "4px 8px",
+          padding: isMobile ? "12px 16px" : "4px 8px",
           background: "#330066",
           color: "#bb88ff",
           border: "1px solid #bb88ff",
-          borderRadius: "0px",
+          borderRadius: isMobile ? "4px" : "0px",
           cursor: "pointer",
-          fontSize: "10px",
+          fontSize: isMobile ? "14px" : "10px",
           fontFamily: "Courier New, monospace",
           textTransform: "uppercase",
           marginTop: "5px",
           width: "100%",
+          minHeight: isMobile ? "44px" : "auto",
           transition: "all 0.2s ease",
         }}
         onMouseEnter={(e) => {
