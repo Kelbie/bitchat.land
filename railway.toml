@@ -1,5 +1,0 @@
-[build]
-builder = "dockerfile"
-
-[deploy]
-startCommand = "serve -s dist -l 3000"
