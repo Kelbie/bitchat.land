@@ -47,8 +47,8 @@ interface MapProps {
   hasDragged: boolean;
   events: boolean;
   onMapClick: () => void;
-  onMouseDown: (e: React.MouseEvent) => void;
-  onMouseMove: (e: React.MouseEvent) => void;
+  onMouseDown: (e: React.MouseEvent | React.TouchEvent) => void;
+  onMouseMove: (e: React.MouseEvent | React.TouchEvent) => void;
   onMouseUp: () => void;
   // Geohash layer props
   currentGeohashes: string[];
@@ -108,6 +108,10 @@ export function Map({
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp} // Stop dragging if mouse leaves the SVG
+      onTouchStart={onMouseDown}
+      onTouchMove={onMouseMove}
+      onTouchEnd={onMouseUp}
+      onTouchCancel={onMouseUp}
     >
       <defs>
         <filter id="matrixGlow">

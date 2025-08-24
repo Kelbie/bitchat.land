@@ -172,8 +172,8 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
 
   const { scale: currentScale, centerX, centerY } = getMapProjection();
 
-  // Mouse move handler that includes drag logic
-  const handleMouseMoveWithDrag = (e: React.MouseEvent) => {
+  // Mouse/touch move handler that includes drag logic
+  const handleMouseMoveWithDrag = (e: React.MouseEvent | React.TouchEvent) => {
     handleMouseMove(e, updateTranslate);
   };
 

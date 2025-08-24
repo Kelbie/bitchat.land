@@ -6,21 +6,31 @@ export function useDrag() {
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const [hasDragged, setHasDragged] = useState(false);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  // Helper to get coordinates from mouse or touch event
+  const getEventCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
+    if ('touches' in e && e.touches.length > 0) {
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    return { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY };
+  };
+
+  const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
+    const coords = getEventCoordinates(e);
     setIsDragging(true);
-    setDragStart({ x: e.clientX, y: e.clientY });
+    setDragStart(coords);
     setHasDragged(false);
   };
 
   const handleMouseMove = (
-    e: React.MouseEvent,
+    e: React.MouseEvent | React.TouchEvent,
     onDrag: (deltaX: number, deltaY: number) => void
   ) => {
     if (!isDragging || !dragStart) return;
 
-    const deltaX = e.clientX - dragStart.x;
-    const deltaY = e.clientY - dragStart.y;
+    const coords = getEventCoordinates(e);
+    const deltaX = coords.x - dragStart.x;
+    const deltaY = coords.y - dragStart.y;
 
     // Only consider it a drag if movement is significant enough
     if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
@@ -31,7 +41,7 @@ export function useDrag() {
     onDrag(deltaX, deltaY);
 
     // Update drag start position for continuous dragging
-    setDragStart({ x: e.clientX, y: e.clientY });
+    setDragStart(coords);
   };
 
   const handleMouseUp = () => {
