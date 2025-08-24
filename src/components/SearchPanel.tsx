@@ -103,24 +103,8 @@ export function SearchPanel({ searchGeohash, onSearch, zoomedGeohash, isMobileVi
       </button>
       <button
         onClick={() => {
-          // Copy npub to clipboard and show visual feedback
-          const npub = "npub1your_public_key_here"; // Replace with actual npub
-          navigator.clipboard.writeText(npub).then(() => {
-            // Visual feedback - briefly change button text
-            const button = document.getElementById('follow-nostr-btn');
-            if (button) {
-              const originalText = button.textContent;
-              button.textContent = "COPIED!";
-              button.style.background = "#004400";
-              setTimeout(() => {
-                button.textContent = originalText;
-                button.style.background = "#330066";
-              }, 1000);
-            }
-          }).catch(() => {
-            // Fallback - open nostr client or show instructions
-            window.open('https://nostr.com/nprofile1qqsvvullpd0j9rltp2a3qqvgy9udf3vgh389p7zhzu65fd258dz5lqgpqqtlt0d2', '_blank');
-          });
+          // Open Primal profile
+          window.open('https://primal.net/p/nprofile1qqsvvullpd0j9rltp2a3qqvgy9udf3vgh389p7zhzu65fd258dz5lqg9ryan5', '_blank');
         }}
         id="follow-nostr-btn"
         style={{
