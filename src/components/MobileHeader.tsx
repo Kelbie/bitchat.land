@@ -341,7 +341,7 @@ export function MobileHeader({
                   textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
                 }}
               >
-                RECENT NOSTR EVENTS
+                RECENT NOSTR EVENTS {searchGeohash ? `IN "${searchGeohash.toUpperCase()}"` : ""}
               </div>
               {searchGeohash && (
                 <div
@@ -355,22 +355,10 @@ export function MobileHeader({
                     display: "inline-block",
                   }}
                 >
-                  FILTER: "{searchGeohash.toUpperCase()}"
+                  FOUND {filteredEventsCount} EVENTS
                 </div>
               )}
-              <div
-                style={{
-                  fontSize: "10px",
-                  color: "#00aa00",
-                  fontStyle: "italic",
-                  opacity: 0.8,
-                  marginTop: searchGeohash ? "4px" : "0",
-                }}
-              >
-                {searchGeohash
-                  ? `Found ${filteredEventsCount} matching events`
-                  : `Showing latest ${filteredEventsCount} events from the network`}
-              </div>
+
             </>
           )}
 
@@ -402,7 +390,7 @@ export function MobileHeader({
               >
                 {searchGeohash
                   ? `DIRECT: ${hierarchicalCounts.direct} | TOTAL: ${hierarchicalCounts.total}`
-                  : `TOTAL EVENTS: ${totalEventsCount}`}
+                  : `TOTAL: ${totalEventsCount} EVENTS`}
               </div>
             </>
           )}
