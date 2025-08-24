@@ -24,7 +24,7 @@ export function MobileHeader({ activeView, onViewChange, searchGeohash, onSearch
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        padding: "12px 16px 16px 16px",
+        padding: "8px 16px 10px 16px",
         fontFamily: "Courier New, monospace",
       }}
     >
@@ -47,10 +47,10 @@ export function MobileHeader({ activeView, onViewChange, searchGeohash, onSearch
       <div
         style={{
           display: "flex",
-          gap: "8px",
+          gap: "6px",
           justifyContent: "center",
           width: "100%",
-          maxWidth: "300px",
+          maxWidth: "400px",
         }}
       >
         {/* Menu Button (Panel) */}
@@ -157,14 +157,50 @@ export function MobileHeader({ activeView, onViewChange, searchGeohash, onSearch
         >
           chat
         </button>
+
+        {/* Download Button */}
+        <a
+          href="https://bitchat.free/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            flex: 1,
+            padding: "8px 12px",
+            background: "rgba(0, 0, 0, 0.7)",
+            color: "#00ff00",
+            border: "1px solid #00ff00",
+            borderRadius: "0",
+            cursor: "pointer",
+            fontSize: "14px",
+            fontFamily: "Courier New, monospace",
+            textTransform: "uppercase",
+            fontWeight: "bold",
+            transition: "all 0.2s ease",
+            textAlign: "center",
+            textDecoration: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(0, 255, 0, 0.1)";
+            e.currentTarget.style.boxShadow = "0 0 5px rgba(0, 255, 0, 0.3)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
+            e.currentTarget.style.boxShadow = "none";
+          }}
+        >
+          download
+        </a>
       </div>
 
-      {/* Search Section */}
+              {/* Search Section */}
       <div
         style={{
           width: "100%",
           maxWidth: "400px",
-          marginTop: "12px",
+          marginTop: "8px",
         }}
       >
         <div
