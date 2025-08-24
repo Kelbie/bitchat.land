@@ -8,7 +8,7 @@ interface SearchPanelProps {
 }
 
 export function SearchPanel({ searchGeohash, onSearch, zoomedGeohash, isMobileView = false }: SearchPanelProps) {
-  const isMobile = isMobileView || window.innerWidth <= 768;
+  const isMobile = isMobileView;
   
   return (
     <div

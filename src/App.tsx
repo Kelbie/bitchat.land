@@ -70,15 +70,9 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   // State for header height
   const [headerHeight, setHeaderHeight] = useState(0);
 
-  // Check if mobile on mount and window resize
+  // Force mobile view for all screen sizes
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    setIsMobile(true);
   }, []);
 
   // Measure header height after it renders
