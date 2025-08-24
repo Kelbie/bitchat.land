@@ -63,15 +63,16 @@ export function EventHierarchy({
           top: isMobileView ? "0" : "10px",
           left: isMobileView ? "0" : "10px",
           width: isMobileView ? "100%" : "auto",
+          height: isMobileView ? "100%" : "auto",
           zIndex: 1000,
-          background: "rgba(0, 0, 0, 0.8)",
-          border: "1px solid #003300",
+          background: isMobileView ? "#000000" : "rgba(0, 0, 0, 0.8)",
+          border: isMobileView ? "none" : "1px solid #003300",
           borderRadius: "0px",
           fontSize: isMobileView ? "14px" : "12px",
           color: "#00ff00",
           fontFamily: "Courier New, monospace",
           maxWidth: isMobileView ? "100%" : "calc(50vw - 20px)",
-          maxHeight: isMobileView ? "70vh" : "calc(100vh - 20px)",
+          maxHeight: isMobileView ? "100%" : "calc(100vh - 20px)",
           display: "flex",
           flexDirection: "column",
           overflowX: "hidden",
@@ -83,20 +84,35 @@ export function EventHierarchy({
           style={{
             position: "sticky",
             top: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.95)",
-            border: "1px solid #003300",
-            borderBottom: "1px solid #00ff00",
-            padding: "10px",
-            margin: "-1px -1px 0 -1px",
+            backgroundColor: isMobileView ? "rgba(0, 0, 0, 0.98)" : "rgba(0, 0, 0, 0.95)",
+            border: isMobileView ? "none" : "1px solid #003300",
+            borderBottom: "2px solid #00ff00",
+            padding: isMobileView ? "16px 20px" : "10px",
+            margin: isMobileView ? "0 0 0 0" : "-1px -1px 0 -1px",
             color: "#00aa00",
             fontWeight: "bold",
             zIndex: 10,
+            backdropFilter: isMobileView ? "blur(10px)" : "none",
           }}
         >
-          <div style={{ marginBottom: "5px" }}>
-            ALL GEOHASH REGIONS:
+          <div style={{ 
+            marginBottom: isMobileView ? "8px" : "5px",
+            fontSize: isMobileView ? "18px" : "12px",
+            textTransform: "uppercase",
+            letterSpacing: "1px",
+            textShadow: "0 0 10px rgba(0, 255, 0, 0.5)"
+          }}>
+            ALL GEOHASH REGIONS
           </div>
-          <div style={{ fontSize: "10px", color: "#00ff00" }}>
+          <div style={{ 
+            fontSize: isMobileView ? "12px" : "10px", 
+            color: "#00ff00",
+            background: "rgba(0, 255, 0, 0.1)",
+            padding: isMobileView ? "4px 8px" : "2px 4px",
+            borderRadius: "4px",
+            border: "1px solid rgba(0, 255, 0, 0.3)",
+            display: "inline-block"
+          }}>
             TOTAL EVENTS: {Array.from(topLevelCounts.values()).reduce((sum, count) => sum + count, 0)}
           </div>
         </div>
@@ -104,8 +120,8 @@ export function EventHierarchy({
           style={{
             flex: 1,
             overflowY: "auto",
-            padding: "10px",
-            paddingTop: "8px",
+            padding: isMobileView ? "8px 20px 20px 20px" : "10px",
+            paddingTop: isMobileView ? "8px" : "8px",
           }}
         >
           {Array.from(topLevelCounts.entries())
@@ -116,49 +132,74 @@ export function EventHierarchy({
                 <div
                   key={geohash}
                   style={{
-                    padding: "6px 8px",
-                    marginBottom: "4px",
-                    background: "rgba(0, 50, 0, 0.2)",
+                    padding: isMobileView ? "16px 20px" : "12px 16px",
+                    marginBottom: isMobileView ? "12px" : "8px",
+                    background: "linear-gradient(135deg, rgba(0, 50, 0, 0.4), rgba(0, 30, 0, 0.2))",
                     border: "1px solid rgba(0, 204, 0, 0.3)",
+                    borderLeft: "4px solid #00ff00",
+                    borderRadius: isMobileView ? "8px" : "4px",
                     cursor: "pointer",
                     fontFamily: "Courier New, monospace",
                     transition: "all 0.2s ease",
+                    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
                   }}
                   onClick={() => onSearch(geohash)}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "rgba(0, 50, 0, 0.4)";
+                    e.currentTarget.style.background = "linear-gradient(135deg, rgba(0, 80, 0, 0.5), rgba(0, 50, 0, 0.3))";
                     e.currentTarget.style.borderColor = "rgba(0, 204, 0, 0.6)";
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 255, 0, 0.2)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "rgba(0, 50, 0, 0.2)";
+                    e.currentTarget.style.background = "linear-gradient(135deg, rgba(0, 50, 0, 0.4), rgba(0, 30, 0, 0.2))";
                     e.currentTarget.style.borderColor = "rgba(0, 204, 0, 0.3)";
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.3)";
                   }}
                 >
                   <div style={{
-                    fontSize: "11px",
-                    color: "#00ff00",
-                    fontWeight: "bold",
-                    marginBottom: "2px",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
+                    marginBottom: isMobileView ? "8px" : "4px",
+                    flexWrap: "wrap",
+                    gap: "8px"
                   }}>
-                    <span>{geohash.toUpperCase()}</span>
-                    <span style={{ 
-                      fontSize: "10px", 
-                      color: "#00aa00",
-                      background: "rgba(0, 0, 0, 0.5)",
-                      padding: "1px 4px",
-                      borderRadius: "2px",
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px"
                     }}>
-                      {count}
-                    </span>
+                      <span style={{
+                        fontSize: isMobileView ? "16px" : "12px",
+                        color: "#00ff00",
+                        fontWeight: "bold",
+                        background: "rgba(0, 255, 0, 0.1)",
+                        padding: "2px 6px",
+                        borderRadius: "3px",
+                        fontFamily: "monospace"
+                      }}>
+                        #{geohash.toUpperCase()}
+                      </span>
+                      <span style={{ 
+                        fontSize: isMobileView ? "12px" : "10px", 
+                        color: "#00aa00",
+                        background: "rgba(0, 0, 0, 0.5)",
+                        padding: "2px 6px",
+                        borderRadius: "3px",
+                        fontFamily: "monospace"
+                      }}>
+                        [{count} events]
+                      </span>
+                    </div>
                   </div>
                   {location && (
                     <div style={{ 
-                      fontSize: "9px", 
-                      color: "#888888",
-                      fontStyle: "italic",
+                      fontSize: isMobileView ? "13px" : "11px", 
+                      color: "#00dd00",
+                      fontFamily: "system-ui, -apple-system, sans-serif",
+                      lineHeight: isMobileView ? "1.4" : "1.3",
+                      letterSpacing: "0.3px"
                     }}>
                       {location.formatted}
                     </div>
@@ -243,54 +284,74 @@ export function EventHierarchy({
         <div
           key={fullPath}
           style={{
-            marginLeft: `${depth * 12}px`,
-            marginBottom: "3px",
-            padding: "4px 6px",
-            background: depth % 2 === 0 ? "rgba(0, 30, 0, 0.3)" : "rgba(0, 40, 0, 0.2)",
-            border: "1px solid rgba(0, 150, 0, 0.2)",
+            marginLeft: isMobileView ? `${depth * 16}px` : `${depth * 12}px`,
+            marginBottom: isMobileView ? "8px" : "6px",
+            padding: isMobileView ? "12px 16px" : "8px 12px",
+            background: depth % 2 === 0 
+              ? "linear-gradient(135deg, rgba(0, 40, 0, 0.4), rgba(0, 25, 0, 0.2))"
+              : "linear-gradient(135deg, rgba(0, 35, 0, 0.4), rgba(0, 20, 0, 0.2))",
+            border: "1px solid rgba(0, 150, 0, 0.3)",
+            borderLeft: `4px solid ${depth === 0 ? "#00ff00" : depth === 1 ? "#00cc00" : "#00aa00"}`,
+            borderRadius: isMobileView ? "6px" : "4px",
             cursor: "pointer",
             fontFamily: "Courier New, monospace",
-            transition: "all 0.15s ease",
-            borderLeft: `3px solid ${depth === 0 ? "#00ff00" : depth === 1 ? "#00cc00" : "#00aa00"}`,
+            transition: "all 0.2s ease",
+            boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
           }}
           onClick={() => onSearch(fullPath)}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(0, 60, 0, 0.4)";
-            e.currentTarget.style.borderColor = "rgba(0, 150, 0, 0.5)";
+            e.currentTarget.style.background = depth % 2 === 0
+              ? "linear-gradient(135deg, rgba(0, 70, 0, 0.5), rgba(0, 45, 0, 0.3))"
+              : "linear-gradient(135deg, rgba(0, 65, 0, 0.5), rgba(0, 40, 0, 0.3))";
+            e.currentTarget.style.borderColor = "rgba(0, 150, 0, 0.6)";
+            e.currentTarget.style.transform = "translateY(-1px)";
+            e.currentTarget.style.boxShadow = "0 3px 8px rgba(0, 255, 0, 0.15)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = depth % 2 === 0 ? "rgba(0, 30, 0, 0.3)" : "rgba(0, 40, 0, 0.2)";
-            e.currentTarget.style.borderColor = "rgba(0, 150, 0, 0.2)";
+            e.currentTarget.style.background = depth % 2 === 0 
+              ? "linear-gradient(135deg, rgba(0, 40, 0, 0.4), rgba(0, 25, 0, 0.2))"
+              : "linear-gradient(135deg, rgba(0, 35, 0, 0.4), rgba(0, 20, 0, 0.2))";
+            e.currentTarget.style.borderColor = "rgba(0, 150, 0, 0.3)";
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.2)";
           }}
         >
           <div style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            marginBottom: isMobileView ? "4px" : "2px",
+            gap: "8px"
           }}>
             <span style={{
-              fontSize: "10px",
+              fontSize: isMobileView ? "14px" : "11px",
               color: depth === 0 ? "#00ff00" : "#00cc00",
               fontWeight: depth === 0 ? "bold" : "normal",
+              background: "rgba(0, 255, 0, 0.1)",
+              padding: "2px 6px",
+              borderRadius: "3px",
+              fontFamily: "monospace"
             }}>
-              {fullPath.toUpperCase()}
+              #{fullPath.toUpperCase()}
             </span>
             <span style={{
-              fontSize: "9px",
+              fontSize: isMobileView ? "11px" : "9px",
               color: "#00aa00",
-              background: "rgba(0, 0, 0, 0.6)",
-              padding: "1px 3px",
-              borderRadius: "2px",
+              background: "rgba(0, 0, 0, 0.5)",
+              padding: "2px 6px",
+              borderRadius: "3px",
+              fontFamily: "monospace"
             }}>
-              {totalCount}
+              [{totalCount}]
             </span>
           </div>
           {locationNames.get(fullPath) && (
             <div style={{ 
-              fontSize: "8px", 
-              color: "#777777",
-              fontStyle: "italic",
-              marginTop: "2px",
+              fontSize: isMobileView ? "12px" : "10px", 
+              color: "#00dd00",
+              fontFamily: "system-ui, -apple-system, sans-serif",
+              lineHeight: "1.3",
+              letterSpacing: "0.3px"
             }}>
               {locationNames.get(fullPath)?.formatted}
             </div>
@@ -327,15 +388,16 @@ export function EventHierarchy({
         top: isMobileView ? "0" : "10px",
         left: isMobileView ? "0" : "10px",
         width: isMobileView ? "100%" : "auto",
+        height: isMobileView ? "100%" : "auto",
         zIndex: 1000,
-        background: "rgba(0, 0, 0, 0.8)",
-        border: "1px solid #003300",
+        background: isMobileView ? "#000000" : "rgba(0, 0, 0, 0.8)",
+        border: isMobileView ? "none" : "1px solid #003300",
         borderRadius: "0px",
         fontSize: isMobileView ? "14px" : "12px",
         color: "#00ff00",
         fontFamily: "Courier New, monospace",
         maxWidth: isMobileView ? "100%" : "calc(50vw - 20px)",
-        maxHeight: isMobileView ? "70vh" : "calc(100vh - 20px)",
+        maxHeight: isMobileView ? "100%" : "calc(100vh - 20px)",
         display: "flex",
         flexDirection: "column",
         overflowX: "hidden",
@@ -347,20 +409,35 @@ export function EventHierarchy({
         style={{
           position: "sticky",
           top: 0,
-          backgroundColor: "rgba(0, 0, 0, 0.95)",
-          border: "1px solid #003300",
-          borderBottom: "1px solid #00ff00",
-          padding: "10px",
-          margin: "-1px -1px 0 -1px",
+          backgroundColor: isMobileView ? "rgba(0, 0, 0, 0.98)" : "rgba(0, 0, 0, 0.95)",
+          border: isMobileView ? "none" : "1px solid #003300",
+          borderBottom: "2px solid #00ff00",
+          padding: isMobileView ? "16px 20px" : "10px",
+          margin: isMobileView ? "0 0 0 0" : "-1px -1px 0 -1px",
           color: "#00aa00",
           fontWeight: "bold",
           zIndex: 10,
+          backdropFilter: isMobileView ? "blur(10px)" : "none",
         }}
       >
-        <div style={{ marginBottom: "5px" }}>
-          EVENTS IN "{searchGeohash.toUpperCase()}":
+        <div style={{ 
+          marginBottom: isMobileView ? "8px" : "5px",
+          fontSize: isMobileView ? "18px" : "12px",
+          textTransform: "uppercase",
+          letterSpacing: "1px",
+          textShadow: "0 0 10px rgba(0, 255, 0, 0.5)"
+        }}>
+          EVENTS IN "{searchGeohash.toUpperCase()}"
         </div>
-        <div style={{ fontSize: "10px", color: "#00ff00" }}>
+        <div style={{ 
+          fontSize: isMobileView ? "12px" : "10px", 
+          color: "#00ff00",
+          background: "rgba(0, 255, 0, 0.1)",
+          padding: isMobileView ? "4px 8px" : "2px 4px",
+          borderRadius: "4px",
+          border: "1px solid rgba(0, 255, 0, 0.3)",
+          display: "inline-block"
+        }}>
           DIRECT: {hierarchicalCounts.direct} | TOTAL: {hierarchicalCounts.total}
         </div>
       </div>
@@ -368,61 +445,93 @@ export function EventHierarchy({
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: "10px",
-          paddingTop: "8px",
+          padding: isMobileView ? "8px 20px 20px 20px" : "10px",
+          paddingTop: isMobileView ? "8px" : "8px",
         }}
       >
         {/* Current Geohash Display */}
         {hierarchicalCounts.direct > 0 && (
           <div
             style={{
-              padding: "8px 10px",
-              marginBottom: "12px",
-              background: "rgba(0, 100, 0, 0.2)",
+              padding: isMobileView ? "16px 20px" : "12px 16px",
+              marginBottom: isMobileView ? "16px" : "12px",
+              background: "linear-gradient(135deg, rgba(0, 80, 0, 0.5), rgba(0, 50, 0, 0.3))",
               border: "2px solid rgba(0, 255, 0, 0.4)",
               borderLeft: "4px solid #00ff00",
+              borderRadius: isMobileView ? "8px" : "6px",
               cursor: "pointer",
               fontFamily: "Courier New, monospace",
               transition: "all 0.2s ease",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
             }}
             onClick={() => onSearch(searchGeohash)}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(0, 100, 0, 0.3)";
-              e.currentTarget.style.borderColor = "rgba(0, 255, 0, 0.6)";
+              e.currentTarget.style.background = "linear-gradient(135deg, rgba(0, 120, 0, 0.6), rgba(0, 80, 0, 0.4))";
+              e.currentTarget.style.borderColor = "rgba(0, 255, 0, 0.7)";
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow = "0 6px 16px rgba(0, 255, 0, 0.2)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(0, 100, 0, 0.2)";
+              e.currentTarget.style.background = "linear-gradient(135deg, rgba(0, 80, 0, 0.5), rgba(0, 50, 0, 0.3))";
               e.currentTarget.style.borderColor = "rgba(0, 255, 0, 0.4)";
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
             }}
           >
             <div style={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              marginBottom: "4px",
+              marginBottom: isMobileView ? "8px" : "4px",
+              flexWrap: "wrap",
+              gap: "8px"
             }}>
-              <span style={{
-                fontSize: isMobileView ? "16px" : "14px",
-                color: "#00ff00",
-                fontWeight: "bold",
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px"
               }}>
-                {searchGeohash.toUpperCase()} (CURRENT)
-              </span>
+                <span style={{
+                  fontSize: isMobileView ? "18px" : "14px",
+                  color: "#00ff00",
+                  fontWeight: "bold",
+                  background: "rgba(0, 255, 0, 0.15)",
+                  padding: "4px 8px",
+                  borderRadius: "4px",
+                  fontFamily: "monospace"
+                }}>
+                  #{searchGeohash.toUpperCase()}
+                </span>
+                <span style={{
+                  fontSize: isMobileView ? "12px" : "10px",
+                  color: "#00ff00",
+                  background: "rgba(0, 0, 0, 0.6)",
+                  padding: "2px 6px",
+                  borderRadius: "3px",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px"
+                }}>
+                  CURRENT
+                </span>
+              </div>
               <span style={{ 
                 fontSize: isMobileView ? "12px" : "10px", 
                 color: "#00aa00",
-                background: "rgba(0, 0, 0, 0.6)",
+                background: "rgba(0, 0, 0, 0.5)",
                 padding: "2px 6px",
                 borderRadius: "3px",
+                fontFamily: "monospace"
               }}>
-                {hierarchicalCounts.direct} events
+                [{hierarchicalCounts.direct} events]
               </span>
             </div>
             {locationNames.get(searchGeohash.toLowerCase()) && (
               <div style={{ 
-                fontSize: isMobileView ? "11px" : "9px", 
-                color: "#888888",
-                fontStyle: "italic",
+                fontSize: isMobileView ? "14px" : "11px", 
+                color: "#00dd00",
+                fontFamily: "system-ui, -apple-system, sans-serif",
+                lineHeight: "1.4",
+                letterSpacing: "0.3px"
               }}>
                 {locationNames.get(searchGeohash.toLowerCase())?.formatted}
               </div>

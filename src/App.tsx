@@ -347,18 +347,15 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                   display: "flex",
                   flexDirection: "column",
                   overflow: "hidden",
-                  padding: "10px",
                 }}
               >
-                <div style={{ flex: 1, overflow: "hidden" }}>
-                  <RecentEvents
-                    nostrEnabled={nostrEnabled}
-                    searchGeohash={searchGeohash}
-                    allStoredEvents={allStoredEvents}
-                    recentEvents={recentEvents}
-                    isMobileView={true}
-                  />
-                </div>
+                <RecentEvents
+                  nostrEnabled={nostrEnabled}
+                  searchGeohash={searchGeohash}
+                  allStoredEvents={allStoredEvents}
+                  recentEvents={recentEvents}
+                  isMobileView={true}
+                />
               </div>
             )}
 
@@ -373,7 +370,6 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                   height: "100%",
                   backgroundColor: "#000000",
                   overflow: "hidden",
-                  padding: "10px",
                 }}
               >
                 <EventHierarchy
