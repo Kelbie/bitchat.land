@@ -334,16 +334,18 @@ export function MobileHeader({
                   FILTER: "{searchGeohash.toUpperCase()}"
                 </div>
               )}
-              {!searchGeohash && (
-                <div style={{ 
-                  fontSize: "10px", 
-                  color: "#00aa00",
-                  fontStyle: "italic",
-                  opacity: 0.8
-                }}>
-                  Showing latest {filteredEventsCount} events from the network
-                </div>
-              )}
+              <div style={{ 
+                fontSize: "10px", 
+                color: "#00aa00",
+                fontStyle: "italic",
+                opacity: 0.8,
+                marginTop: searchGeohash ? "4px" : "0"
+              }}>
+                {searchGeohash 
+                  ? `Found ${filteredEventsCount} matching events`
+                  : `Showing latest ${filteredEventsCount} events from the network`
+                }
+              </div>
             </>
           )}
           

@@ -241,6 +241,9 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
     const eventGeohash = geoTag ? geoTag[1] : "";
     return eventGeohash.startsWith(searchGeohash.toLowerCase());
   });
+  
+  // Debug logging for header updates
+  console.log(`Header update: search="${searchGeohash}", filteredCount=${filteredEvents.length}, totalStored=${allStoredEvents.length}, recent=${recentEvents.length}`);
 
   const topLevelCounts: { [key: string]: number } = {};
   for (const [geohash, count] of allEventsByGeohash.entries()) {

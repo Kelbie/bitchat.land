@@ -38,7 +38,34 @@ export function RecentEvents({
     return matches;
   });
 
-  if (filteredEvents.length === 0) return null;
+  // Always render the component container, even if no events match
+  // This ensures the header stays consistent
+  if (filteredEvents.length === 0) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          color: "#00aa00",
+          fontFamily: "Courier New, monospace",
+          fontSize: "14px",
+          textAlign: "center",
+          padding: "20px",
+        }}
+      >
+        <div>
+          <div style={{ marginBottom: "10px" }}>NO EVENTS FOUND</div>
+          {searchGeohash && (
+            <div style={{ fontSize: "12px", opacity: 0.7 }}>
+              No events in geohash: {searchGeohash.toUpperCase()}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
