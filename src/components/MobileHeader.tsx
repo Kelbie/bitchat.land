@@ -230,7 +230,7 @@ export function MobileHeader({
           width: "100%",
           maxWidth: "400px",
           marginTop: "8px",
-          marginBottom: "8px",
+          marginBottom: "16px",
         }}
       >
         <div

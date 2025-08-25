@@ -427,6 +427,42 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
           </>
         )}
       </div>
+      
+      {/* Nostr Watermark */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: "10px",
+          right: "10px",
+          zIndex: 9999,
+          fontSize: "16px",
+          fontFamily: "Courier New, monospace",
+          opacity: 0.7,
+          transition: "opacity 0.2s ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.opacity = "1";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = "0.7";
+        }}
+      >
+        <a
+          href="https://primal.net/p/nprofile1qqsvvullpd0j9rltp2a3qqvgy9udf3vgh389p7zhzu65fd258dz5lqg9ryan5"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: "#00aa00",
+            textDecoration: "none",
+            textShadow: "0 0 3px rgba(0, 255, 0, 0.3)",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+          }}
+        >
+          Follow me on Nostr
+        </a>
+      </div>
     </div>
   );
 }
