@@ -7,6 +7,7 @@ import {
   addUserToSearch,
   addClientToSearch,
 } from "../utils/searchParser";
+import { renderTextWithLinks } from "../utils/linkRenderer";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -483,7 +484,7 @@ export function RecentEvents({
                       paddingLeft: `${8}px`,
                     }}
                   >
-                    {event.content || "[No content]"}
+                    {event.content ? renderTextWithLinks(event.content) : "[No content]"}
                   </span>
 
                   {/* Date appended to message */}

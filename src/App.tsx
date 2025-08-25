@@ -161,7 +161,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   const [showGeohashText] = useState(true);
 
   // Mobile view state
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
   const [activeView, setActiveView] = useState<'map' | 'chat' | 'panel'>('map');
   
   // Profile generation modal state
@@ -189,11 +189,6 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   // Custom hooks
   const { isDragging, hasDragged, handleMouseDown, handleMouseMove, handleMouseUp } = useDrag();
   const { zoomedGeohash, zoomScale, zoomTranslate, zoomToGeohash, updateTranslate } = useZoom(mapWidth, mapHeight, projection);
-
-  // Force mobile view for all screen sizes
-  useEffect(() => {
-    setIsMobile(true);
-  }, []);
 
   // Load last-read map from localStorage
   useEffect(() => {
