@@ -1,4 +1,5 @@
 // import React from "react"; // Not needed for JSX
+import type { NostrEvent } from "../types";
 
 interface MobileHeaderProps {
   activeView: "map" | "chat" | "panel";
@@ -11,6 +12,8 @@ interface MobileHeaderProps {
   filteredEventsCount?: number;
   totalEventsCount?: number;
   hierarchicalCounts?: { direct: number; total: number };
+  allStoredEvents?: NostrEvent[]; // for channels sidebar (g and d tags)
+  onLoginClick?: () => void;
 }
 
 export function MobileHeader({
@@ -23,6 +26,8 @@ export function MobileHeader({
   filteredEventsCount = 0,
   totalEventsCount = 0,
   hierarchicalCounts = { direct: 0, total: 0 },
+  allStoredEvents = [],
+  onLoginClick,
 }: MobileHeaderProps) {
   return (
     <header
@@ -187,6 +192,36 @@ export function MobileHeader({
           chat
         </button>
 
+        {/* Login Button */}
+        <button
+          onClick={onLoginClick}
+          style={{
+            flex: 1,
+            padding: "8px 12px",
+            background: "rgba(0, 0, 0, 0.7)",
+            color: "#00ff00",
+            border: "1px solid #00ff00",
+            borderRadius: "0",
+            cursor: "pointer",
+            fontSize: "14px",
+            fontFamily: "Courier New, monospace",
+            textTransform: "uppercase",
+            fontWeight: "bold",
+            transition: "all 0.2s ease",
+            textAlign: "center",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(0, 255, 0, 0.1)";
+            e.currentTarget.style.boxShadow = "0 0 5px rgba(0, 255, 0, 0.3)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
+            e.currentTarget.style.boxShadow = "none";
+          }}
+        >
+          login
+        </button>
+
         {/* Download Button */}
         <a
           href="https://bitchat.free/"
@@ -340,8 +375,8 @@ export function MobileHeader({
         />
       )}
 
-      {/* Content Headers */}
-      {((activeView === "chat" && nostrEnabled) || activeView === "panel") && (
+      {/* Content sub header (panel only). The chat sub header is rendered next to the channels in App layout. */}
+      {activeView === "panel" && (
         <div
           style={{
             width: "100%",
@@ -352,70 +387,30 @@ export function MobileHeader({
             backdropFilter: "blur(10px)",
           }}
         >
-          {activeView === "chat" && nostrEnabled && (
-            <>
-              <div
-                style={{
-                  marginBottom: "6px",
-                  fontSize: "16px",
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
-                  textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-                }}
-              >
-                RECENT NOSTR EVENTS {searchText ? `MATCHING "${searchText}"` : ""}
-              </div>
-              {searchText && (
-                <div
-                  style={{
-                    fontSize: "11px",
-                    color: "#00ff00",
-                    background: "rgba(0, 255, 0, 0.1)",
-                    padding: "3px 6px",
-                    borderRadius: "4px",
-                    border: "1px solid rgba(0, 255, 0, 0.3)",
-                    display: "inline-block",
-                  }}
-                >
-                  FOUND {filteredEventsCount} EVENTS
-                </div>
-              )}
-
-            </>
-          )}
-
-          {activeView === "panel" && (
-            <>
-              <div
-                style={{
-                  marginBottom: "6px",
-                  fontSize: "16px",
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
-                  textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-                }}
-              >
-                {searchText
-                  ? `SEARCH RESULTS FOR "${searchText}"`
-                  : "ALL GEOHASH REGIONS"}
-              </div>
-              <div
-                style={{
-                  fontSize: "11px",
-                  color: "#00ff00",
-                  background: "rgba(0, 255, 0, 0.1)",
-                  padding: "3px 6px",
-                  borderRadius: "4px",
-                  border: "1px solid rgba(0, 255, 0, 0.3)",
-                  display: "inline-block",
-                }}
-              >
-                {searchText
-                  ? `FOUND: ${filteredEventsCount} MATCHING EVENTS`
-                  : `TOTAL: ${totalEventsCount} EVENTS`}
-              </div>
-            </>
-          )}
+          <div
+            style={{
+              marginBottom: "6px",
+              fontSize: "16px",
+              textTransform: "uppercase",
+              letterSpacing: "1px",
+              textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
+            }}
+          >
+            {searchText ? `SEARCH RESULTS FOR "${searchText}"` : "ALL GEOHASH REGIONS"}
+          </div>
+          <div
+            style={{
+              fontSize: "11px",
+              color: "#00ff00",
+              background: "rgba(0, 255, 0, 0.1)",
+              padding: "3px 6px",
+              borderRadius: "4px",
+              border: "1px solid rgba(0, 255, 0, 0.3)",
+              display: "inline-block",
+            }}
+          >
+            {searchText ? `FOUND: ${filteredEventsCount} MATCHING EVENTS` : `TOTAL: ${totalEventsCount} EVENTS`}
+          </div>
         </div>
       )}
 

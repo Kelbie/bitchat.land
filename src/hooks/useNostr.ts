@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { SimplePool, Event as NostrEventOriginal } from "nostr-tools/pool";
+import { SimplePool } from "nostr-tools/pool";
+import type { Event as NostrEventOriginal } from "nostr-tools";
 import { NostrEvent, GeohashActivity } from "../types";
 import { NOSTR_RELAYS } from "../constants/projections";
 import { findMatchingGeohash } from "../utils/geohashUtils";
@@ -26,7 +27,7 @@ export function useNostr(
 
   const poolRef = useRef<SimplePool | null>(null);
   const subRef = useRef<any>(null);
-  const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const statusIntervalRef = useRef<number | null>(null);
 
   const connectToNostr = () => {
     try {
@@ -36,22 +37,41 @@ export function useNostr(
       const pool = new SimplePool();
       poolRef.current = pool;
 
-      // Subscribe to kind 20000 events with geohash tags using subscribeMany
-      const sub = pool.subscribeMany(NOSTR_RELAYS, [{ kinds: [20000] }], {
+      // Subscribe to kind 20000 (strict geohash) and 23333 (no strict geohash) events
+      const sub = pool.subscribeMany(NOSTR_RELAYS, [{ kinds: [20000, 23333] }], {
         onevent(event: NostrEventOriginal) {
           console.log("Received Nostr event:", event);
 
           // Extract geohash from 'g' tag
-          const geoTag = event.tags.find((tag) => tag[0] === "g");
-          const eventGeohash = geoTag ? geoTag[1] : null;
+          const geoTag = event.tags.find((tag: any) => tag[0] === "g");
+          const eventGeohash = geoTag ? (geoTag[1] || null) : null;
+
+          const eventKind = (event as any).kind as number | undefined;
+
+          // Determine if we should include this event based on kind rules
+          // kind 20000: require a valid base32 geohash in 'g' tag
+          // kind 23333: no strict validation required (include regardless of g tag validity)
+          let allowEvent = true;
+          if (eventKind === 20000) {
+            const gh = (eventGeohash || "").toLowerCase();
+            if (!gh || !VALID_GEOHASH_CHARS.test(gh)) {
+              // For strict kind, skip events without a valid geohash
+              console.log("Skipping kind 20000 event without valid geohash:", event.id);
+              allowEvent = false;
+            }
+          }
 
           // Check for invalid geohash and log it
           if (eventGeohash && !VALID_GEOHASH_CHARS.test(eventGeohash)) {
-            const nameTag = event.tags.find((tag) => tag[0] === "n");
+            const nameTag = event.tags.find((tag: any) => tag[0] === "n");
             const username = nameTag ? nameTag[1] : "anonymous";
             const pubkeyHash = event.pubkey.slice(-4);
             console.log(`Invalid geohash detected in incoming message: "${eventGeohash}" from user ${username} (${pubkeyHash})`);
             console.log(`Message content: "${event.content?.slice(0, 100)}${event.content && event.content.length > 100 ? '...' : ''}"`);
+          }
+
+          if (!allowEvent) {
+            return;
           }
 
           if (eventGeohash) {
@@ -96,13 +116,13 @@ export function useNostr(
               // Trigger animation
               onGeohashAnimate(matchingGeohash);
             }
-
-            // Add to all stored events (no limit) - we'll filter dynamically
-            setAllStoredEvents((prev) => [event, ...prev]);
-            
-            // Always add to recent events for the live feed (no limit)
-            setRecentEvents((prev) => [event, ...prev]);
           }
+
+          // Add to all stored events (no limit) - we'll filter dynamically
+          setAllStoredEvents((prev) => [event, ...prev]);
+          
+          // Always add to recent events for the live feed (no limit)
+          setRecentEvents((prev) => [event, ...prev]);
         },
         oneose() {
           console.log("End of stored events");

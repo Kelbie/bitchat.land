@@ -55,7 +55,10 @@ export function RecentEvents({
     const nameTag = event.tags.find((tag: any) => tag[0] === "n");
     const username = (nameTag ? nameTag[1] : "").toLowerCase();
     const geoTag = event.tags.find((tag: any) => tag[0] === "g");
+    const groupTag = event.tags.find((tag: any) => tag[0] === "d"); // group tag is kind 23333 only
     const eventGeohash = (geoTag ? geoTag[1] : "").toLowerCase();
+    const eventGroup = (groupTag ? groupTag[1] : "").toLowerCase();
+    const eventLocationTag = (eventGeohash || eventGroup);
     const pubkeyHash = event.pubkey.slice(-4).toLowerCase();
     
     // Check for invalid geohash and log it
@@ -72,12 +75,24 @@ export function RecentEvents({
       if (!textMatch) matches = false;
     }
     
-    // Check geohash filters if specified
+    // Check geohash filters if specified (support kind 23333 arbitrary hashtag in tag "d")
     if (parsedSearch.geohashes.length > 0 && matches) {
-      const geohashMatch = parsedSearch.geohashes.some(searchGeohash => 
-        eventGeohash.startsWith(searchGeohash.toLowerCase())
-      );
-      if (!geohashMatch) matches = false;
+      if (!eventLocationTag) {
+        // Neither g nor d tag present → exclude under in: filter
+        matches = false;
+      } else if (eventGeohash && VALID_GEOHASH_CHARS.test(eventGeohash)) {
+        // Strict geohash: must startsWith any search geohash
+        const startsMatch = parsedSearch.geohashes.some((searchGeohash) =>
+          eventGeohash.startsWith(searchGeohash.toLowerCase())
+        );
+        if (!startsMatch) matches = false;
+      } else {
+        // Arbitrary tag (group "d" or invalid geohash) → do string startsWith on whatever tag value exists
+        const startsMatch = parsedSearch.geohashes.some((searchGeohash) =>
+          eventLocationTag.startsWith(searchGeohash.toLowerCase())
+        );
+        if (!startsMatch) matches = false;
+      }
     }
     
     // Check user filters if specified
@@ -93,11 +108,6 @@ export function RecentEvents({
         }
       });
       if (!userMatch) matches = false;
-    }
-    
-    // Debug logging
-    if (hasSearchTerms) {
-      console.log(`Filtering event: "${messageContent.slice(0, 30)}..." user: "${username}" geohash: "${eventGeohash}" - matches: ${matches}`);
     }
     
     return matches;
@@ -135,8 +145,10 @@ export function RecentEvents({
     if (!event) return null;
 
     const geoTag = event.tags.find((tag: any) => tag[0] === "g");
+    const groupTag = event.tags.find((tag: any) => tag[0] === "d"); // group tag is kind 23333 only
     const nameTag = event.tags.find((tag: any) => tag[0] === "n");
-    const geohash = geoTag ? geoTag[1] : "unknown";
+    const rawGeohash = geoTag && typeof geoTag[1] === "string" ? geoTag[1] : "";
+    const groupTagValue = groupTag && typeof groupTag[1] === "string" ? groupTag[1] : "";
     const username = nameTag ? nameTag[1] : "Anonymous";
     const pubkeyHash = event.pubkey.slice(-4);
     const time = new Date(event.created_at * 1000).toLocaleTimeString();
@@ -196,21 +208,7 @@ export function RecentEvents({
                 e.currentTarget.style.boxShadow = `0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 0 ${userColors.glow}`;
               }}
             >
-              <div style={{ 
-                marginBottom: isMobileView ? "8px" : "4px",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                flexWrap: "wrap",
-                gap: "8px"
-              }}>
-                <div style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "4px",
-                  flex: 1
-                }}>
-                  <div style={{
+              <div style={{
                     display: "flex",
                     alignItems: "center",
                     gap: "4px"
@@ -243,6 +241,32 @@ export function RecentEvents({
                       #{pubkeyHash}&gt;
                     </span>
                   </div>
+              <div style={{ 
+                color: userColors.message, 
+                fontSize: isMobileView ? "15px" : "12px", 
+                lineHeight: isMobileView ? "1.6" : "1.5",
+                wordWrap: "break-word",
+                whiteSpace: "pre-wrap",
+                fontFamily: "Courier New, monospace",
+                letterSpacing: "0.3px",
+                marginBottom: "8px"
+              }}>
+                {event.content || "[No content]"}
+              </div>
+              <div style={{ 
+                marginBottom: isMobileView ? "8px" : "4px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+                gap: "8px"
+              }}>
+                <div style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "4px",
+                  flex: 1
+                }}>
                   
                   <div style={{
                     display: "flex",
@@ -259,36 +283,28 @@ export function RecentEvents({
                     }}>
                       [{isToday ? time : `${date} ${time}`}]
                     </span>
-                    <span 
-                      style={{ 
-                        color: userColors.username,
-                        background: userColors.background,
-                        border: `1px solid ${userColors.border}`,
-                        padding: "2px 6px",
-                        borderRadius: "3px",
-                        fontFamily: "monospace",
-                        fontWeight: "bold",
-                        cursor: onSearch ? "pointer" : "default",
-                        transition: "all 0.2s ease"
-                      }}
-                      onClick={onSearch ? () => onSearch(addGeohashToSearch(searchText, geohash.toLowerCase())) : undefined}
-                    >
-                      #{geohash.toUpperCase()}
-                    </span>
+                      <span 
+                        style={{ 
+                          color: userColors.username,
+                          background: userColors.background,
+                          border: `1px solid ${userColors.border}`,
+                          padding: "2px 6px",
+                          borderRadius: "3px",
+                          fontFamily: "monospace",
+                          fontWeight: "bold",
+                          cursor: onSearch ? "pointer" : "default",
+                          transition: "all 0.2s ease"
+                        }}
+                        onClick={onSearch ? () => onSearch(addGeohashToSearch(searchText, rawGeohash.toLowerCase())) : undefined}
+                      >
+                        {
+                          eventGeohash ? `#${eventGeohash.toUpperCase()}` : `#${groupTagValue.toUpperCase()}`
+                        }
+                      </span>
                   </div>
                 </div>
               </div>
-              <div style={{ 
-                color: userColors.message, 
-                fontSize: isMobileView ? "15px" : "12px", 
-                lineHeight: isMobileView ? "1.6" : "1.5",
-                wordWrap: "break-word",
-                whiteSpace: "pre-wrap",
-                fontFamily: "Courier New, monospace",
-                letterSpacing: "0.3px"
-              }}>
-                {event.content || "[No content]"}
-              </div>
+              
             </div>
           </div>
         )}

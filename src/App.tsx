@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 // import { scaleQuantize } from "@visx/scale"; // Currently unused
 // import { generateSampleHeatmapData } from "./utils/geohash"; // Currently unused
 import { 
@@ -16,11 +16,108 @@ import { EventHierarchy } from "./components/EventHierarchy";
 import { RecentEvents } from "./components/RecentEvents";
 import { Map } from "./components/Map";
 import { MobileHeader } from "./components/MobileHeader";
+import { ProfileGenerationModal } from "./components/ProfileGenerationModal";
+import { ChatInput } from "./components/ChatInput";
 import { addGeohashToSearch, parseSearchQuery, buildSearchQuery } from "./utils/searchParser";
 import { PROJECTIONS } from "./constants/projections";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
+
+// Marquee Banner Component
+function MarqueeBanner() {
+  const marqueeRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState(0);
+  const animationRef = useRef<number>();
+  const lastTimeRef = useRef<number>(0);
+
+  useEffect(() => {
+    const animate = (currentTime: number) => {
+      // Calculate delta time for consistent speed regardless of frame rate
+      if (lastTimeRef.current !== 0) {
+        const deltaTime = currentTime - lastTimeRef.current;
+        const speed = 0.002; // Much slower speed for comfortable reading
+        
+        setPosition(prev => {
+          const newPos = prev - (speed * deltaTime);
+          // Reset position when content moves completely off screen
+          // Reset to 100vw to start from right edge again
+          return newPos <= -100 ? 100 : newPos;
+        });
+      }
+      lastTimeRef.current = currentTime;
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
+
+  const handleMarqueeClick = () => {
+    window.open('https://sovran.money/esims', '_blank', 'noopener,noreferrer');
+  };
+
+  return (
+    <div
+      onClick={handleMarqueeClick}
+      style={{
+        backgroundColor: "rgba(0, 25, 0",
+        border: "1px solid #00aa00",
+        borderLeft: "none",
+        borderRight: "none",
+        height: "30px",
+        display: "flex",
+        alignItems: "center",
+        overflow: "hidden",
+        position: "relative",
+        zIndex: 1000,
+        cursor: "pointer",
+        transition: "backgroundColor 0.2s ease",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = "#002200";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = "#001100";
+      }}
+    >
+      <div
+        ref={marqueeRef}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          whiteSpace: "nowrap",
+          fontSize: "12px",
+          fontWeight: "bold",
+          color: "#00ff00",
+          textShadow: "0 0 5px rgba(0, 255, 0, 0.5)",
+          transform: `translateX(${position}vw)`, // Use viewport width for better control
+          willChange: "transform", // Optimize for animations
+        }}
+      >
+        {/* Repeat content multiple times for seamless loop */}
+        {Array(4).fill(null).map((_, index) => (
+          <span key={index} style={{ paddingRight: "50px", minWidth: "max-content" }}>
+            🌍 GET GLOBAL eSIMS FOR BITCOIN • PRIVACY • NO KYC • INSTANT ACTIVATION •{" "}
+            <span style={{ 
+              color: "#ffaa00", 
+              fontWeight: "bold",
+              textShadow: "0 0 5px rgba(255, 170, 0, 0.5)"
+            }}>
+              SOVRAN.MONEY/ESIMS
+            </span>
+            {" "}• STAY CONNECTED WORLDWIDE • PAY WITH BITCOIN ₿ • TRAVEL WITHOUT LIMITS • ANONYMOUS CONNECTIVITY •{" "}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export const background = "#000000";
 
@@ -66,11 +163,15 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   // Mobile view state
   const [isMobile, setIsMobile] = useState(false);
   const [activeView, setActiveView] = useState<'map' | 'chat' | 'panel'>('map');
+  
+  // Profile generation modal state
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Search and zoom state
   const [searchText, setSearchText] = useState("");
   const [searchGeohash, setSearchGeohash] = useState("");
   const [animatingGeohashes, setAnimatingGeohashes] = useState<Set<string>>(new Set());
+  const [channelLastReadMap, setChannelLastReadMap] = useState<Record<string, number>>({});
 
   // Header height constant - measured exact value
   const headerHeight = 182.2;
@@ -91,6 +192,29 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
     setIsMobile(true);
   }, []);
 
+  // Load last-read map from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("channelLastReadMap");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          setChannelLastReadMap(parsed as Record<string, number>);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load channelLastReadMap from localStorage", e);
+    }
+  }, []);
+
+  const persistChannelLastRead = (next: Record<string, number>) => {
+    try {
+      localStorage.setItem("channelLastReadMap", JSON.stringify(next));
+    } catch (e) {
+      console.warn("Failed to persist channelLastReadMap to localStorage", e);
+    }
+  };
+
 
 
   // Function to trigger geohash animation
@@ -109,6 +233,12 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
 
   // Parse the search query to get geohash filters
   const parsedSearch = parseSearchQuery(searchText);
+  // Derive the currently selected channel key (e.g., "#nyc") from the first in: term
+  const selectedChannelKey = useMemo(() => {
+    const first = parsedSearch.geohashes[0];
+    return first ? `#${first.toLowerCase()}` : '';
+  }, [parsedSearch.geohashes]);
+  const previousSelectedChannelRef = useRef<string>('');
   
   // Determine the primary geohash for map display (use the first one if multiple)
   const primarySearchGeohash = parsedSearch.geohashes.length > 0 ? parsedSearch.geohashes[0] : "";
@@ -162,6 +292,56 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
     const newSearch = addGeohashToSearch(searchText, geohash);
     setSearchText(newSearch);
   };
+
+  // Build a map of latest event timestamp for each channel key like "#nyc"
+  const latestEventTimestampByChannel = useMemo(() => {
+    const latest: Record<string, number> = {};
+    for (const ev of allStoredEvents) {
+      const g = ev.tags.find((t: any) => t[0] === "g");
+      const d = ev.tags.find((t: any) => t[0] === "d");
+      const gv = g && typeof g[1] === "string" ? g[1].toLowerCase() : "";
+      const dv = d && typeof d[1] === "string" ? d[1].toLowerCase() : "";
+      const createdAt = ev.created_at || 0;
+      if (gv) {
+        const key = `#${gv}`;
+        latest[key] = Math.max(latest[key] || 0, createdAt);
+      }
+      if (dv) {
+        const key = `#${dv}`;
+        latest[key] = Math.max(latest[key] || 0, createdAt);
+      }
+    }
+    return latest;
+  }, [allStoredEvents]);
+
+  // When selected channel changes, mark the previous channel as read at switch-away time
+  useEffect(() => {
+    const prev = previousSelectedChannelRef.current;
+    if (prev && prev !== selectedChannelKey) {
+      const nowSec = Math.floor(Date.now() / 1000);
+      setChannelLastReadMap((prevMap) => {
+        const next = { ...prevMap, [prev]: nowSec };
+        persistChannelLastRead(next);
+        return next;
+      });
+    }
+    previousSelectedChannelRef.current = selectedChannelKey;
+  }, [selectedChannelKey]);
+
+  // If leaving chat view, consider the currently open channel as read
+  useEffect(() => {
+    if (activeView !== 'chat') {
+      const current = previousSelectedChannelRef.current;
+      if (current) {
+        const nowSec = Math.floor(Date.now() / 1000);
+        setChannelLastReadMap((prevMap) => {
+          const next = { ...prevMap, [current]: nowSec };
+          persistChannelLastRead(next);
+          return next;
+        });
+      }
+    }
+  }, [activeView]);
 
   // Function to handle clicks on the map background (zoom out one level)
   const handleMapClick = () => {
@@ -238,10 +418,19 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
     
     // Check geohash filters if specified
     if (parsedSearch.geohashes.length > 0 && matches) {
-      const geohashMatch = parsedSearch.geohashes.some(searchGeohash => 
-        eventGeohash.startsWith(searchGeohash.toLowerCase())
-      );
-      if (!geohashMatch) matches = false;
+      // Include events that have ANY geohash value (even invalid),
+      // and only exclude ones with no geohash at all.
+      if (!eventGeohash) {
+        matches = false;
+      } else if (VALID_GEOHASH_CHARS.test(eventGeohash)) {
+        const geohashMatch = parsedSearch.geohashes.some((searchGeohash) =>
+          eventGeohash.startsWith(searchGeohash.toLowerCase())
+        );
+        if (!geohashMatch) matches = false;
+      } else {
+        // Invalid geohash present -> include regardless of match
+        matches = true;
+      }
     }
     
     // Check user filters if specified
@@ -290,6 +479,8 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
         overflow: "hidden",
       }}
     >
+      {/* eSIM Marquee Banner */}
+      <MarqueeBanner />
       {/* Mobile Header */}
       {isMobile && (
         <MobileHeader
@@ -302,6 +493,8 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
           filteredEventsCount={filteredEvents.length}
           totalEventsCount={totalEventsCount}
           hierarchicalCounts={hierarchicalCounts}
+          allStoredEvents={allStoredEvents}
+          onLoginClick={() => setShowProfileModal(true)}
         />
       )}
 
@@ -388,18 +581,171 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                   height: "100%",
                   backgroundColor: "#000000",
                   display: "flex",
-                  flexDirection: "column",
+                  flexDirection: "row",
                   overflow: "hidden",
                 }}
               >
-                <RecentEvents
-                  nostrEnabled={nostrEnabled}
-                  searchText={searchText}
-                  allStoredEvents={allStoredEvents}
-                  recentEvents={recentEvents}
-                  isMobileView={true}
-                  onSearch={handleTextSearch}
-                />
+                {/* Left rail channels (persistent beside sub header and content) */}
+                <div
+                  style={{
+                    width: '160px',
+                    minWidth: '160px',
+                    borderRight: '1px solid #003300',
+                    background: 'rgba(0, 0, 0, 0.9)',
+                    color: '#00ff00',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div style={{
+                    backgroundColor: 'rgba(0, 0, 0, 0.98)',
+                    color: '#00aa00',
+                    padding: '12px',
+                    borderBottom: '1px solid #003300',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 2,
+                  }}>
+                    <div style={{
+                      fontSize: '16px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px',
+                      textShadow: '0 0 10px rgba(0, 255, 0, 0.5)'
+                    }}>
+                      CHANNELS
+                    </div>
+                  </div>
+                  <div style={{ overflowY: 'auto', padding: '10px 8px', flex: 1 }}>
+                    {(() => {
+                      const channelSet = new Set<string>();
+                      allStoredEvents.forEach((ev) => {
+                        const g = ev.tags.find((t: any) => t[0] === 'g');
+                        const d = ev.tags.find((t: any) => t[0] === 'd');
+                        const gv = g && typeof g[1] === 'string' ? g[1].toLowerCase() : '';
+                        const dv = d && typeof d[1] === 'string' ? d[1].toLowerCase() : '';
+                        if (gv) channelSet.add(`#${gv}`);
+                        if (dv) channelSet.add(`#${dv}`);
+                      });
+                      const channels = Array.from(channelSet).sort();
+                      if (channels.length === 0) {
+                        return (
+                          <div style={{ fontSize: '10px', opacity: 0.7 }}>no channels</div>
+                        );
+                      }
+                      return channels.map((ch) => {
+                        const channelValue = ch.slice(1).toLowerCase();
+                        const isSelected = parsedSearch.geohashes.some((gh) => gh.toLowerCase() === channelValue);
+                        const latestTs = latestEventTimestampByChannel[ch] || 0;
+                        const lastReadTs = channelLastReadMap[ch] || 0;
+                        const hasUnread = latestTs > lastReadTs;
+                        const showUnreadDot = hasUnread && !isSelected;
+
+                        const handleOpenChannel = () => {
+                          // Update search
+                          handleTextSearch(`in:${channelValue}`);
+                          // Mark channel as read now
+                          const nowSec = Math.floor(Date.now() / 1000);
+                          setChannelLastReadMap((prev) => {
+                            const next = { ...prev, [ch]: nowSec };
+                            persistChannelLastRead(next);
+                            return next;
+                          });
+                        };
+
+                        return (
+                          <button
+                            key={ch}
+                            onClick={handleOpenChannel}
+                            style={{
+                              width: '100%',
+                              textAlign: 'left',
+                              background: isSelected ? 'rgba(0, 255, 0, 0.08)' : 'transparent',
+                              color: isSelected ? '#00ff00' : '#00ff00',
+                              border: `1px solid ${isSelected ? '#00ff00' : '#003300'}`,
+                              boxShadow: isSelected ? '0 0 10px rgba(0,255,0,0.15) inset' : 'none',
+                              borderRadius: '4px',
+                              padding: '8px 8px',
+                              fontSize: '13px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              marginBottom: '8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '8px',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'rgba(0, 255, 0, 0.10)';
+                              e.currentTarget.style.borderColor = '#00ff00';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = isSelected ? 'rgba(0, 255, 0, 0.08)' : 'transparent';
+                              e.currentTarget.style.borderColor = isSelected ? '#00ff00' : '#003300';
+                            }}
+                          >
+                            <span style={{ fontWeight: isSelected ? 'bold' as const : 'normal' as const }}>{ch}</span>
+                            {showUnreadDot && (
+                              <span
+                                style={{
+                                  width: '8px',
+                                  height: '8px',
+                                  backgroundColor: '#ff0033',
+                                  borderRadius: '50%',
+                                  boxShadow: '0 0 6px rgba(255,0,51,0.6)'
+                                }}
+                                title="Unread messages"
+                              />
+                            )}
+                          </button>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+
+                {/* Chat column */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  {/* Sub header (chat) to align next to channels */}
+                  <div style={{
+                    backgroundColor: 'rgba(0, 0, 0, 0.98)',
+                    color: '#00aa00',
+                    padding: '12px 16px',
+                    borderBottom: '1px solid #003300',
+                  }}>
+                    <div style={{
+                      fontSize: '16px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px',
+                      textShadow: '0 0 10px rgba(0, 255, 0, 0.5)'
+                    }}>
+                      RECENT NOSTR EVENTS {searchText ? `MATCHING "${searchText}"` : ''}
+                    </div>
+                  </div>
+                  
+                  {/* Messages area */}
+                  <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <RecentEvents
+                      nostrEnabled={nostrEnabled}
+                      searchText={searchText}
+                      allStoredEvents={allStoredEvents}
+                      recentEvents={recentEvents}
+                      isMobileView={true}
+                      onSearch={handleTextSearch}
+                    />
+                  </div>
+                  
+                  {/* Chat input */}
+                  {selectedChannelKey && (
+                    <ChatInput 
+                      currentChannel={selectedChannelKey.slice(1)} // Remove the # prefix
+                      onMessageSent={(message) => {
+                        console.log('Message sent:', message);
+                        // Could trigger a refresh or optimistic update here
+                      }}
+                    />
+                  )}
+                </div>
               </div>
             )}
 
@@ -532,6 +878,12 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
         ))}
         </div>
       )}
+
+      {/* Profile Generation Modal */}
+      <ProfileGenerationModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
     </div>
   );
 }

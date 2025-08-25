@@ -15,6 +15,7 @@
     "@visx/geo": "latest",
     "@visx/responsive": "latest",
     "@visx/scale": "latest",
+    "buffer": "^6.0.3",
     "d3-geo": "3.0.1",
     "d3-geo-polygon": "1.12.1",
     "latlon-geohash": "^2.0.0",
