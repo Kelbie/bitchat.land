@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.8.4",
-    "@types/react-virtualized": "^9.22.2",
+
     "@visx/geo": "latest",
     "@visx/responsive": "latest",
     "@visx/scale": "latest",
@@ -19,13 +19,14 @@
     "d3-geo": "3.0.1",
     "d3-geo-polygon": "1.12.1",
     "latlon-geohash": "^2.0.0",
+    "lucide-react": "^0.541.0",
     "ngeohash": "^0.6.3",
     "nostr-tools": "^2.16.2",
     "polished": "4.2.2",
     "react": "^18",
     "react-dom": "^18",
     "react-scripts-ts": "3.1.0",
-    "react-virtualized": "^9.22.6",
+    "react-virtuoso": "^4.14.0",
     "react-window": "^1.8.11",
     "react-window-infinite-loader": "^1.0.10",
     "topojson-client": "^3.1.0"

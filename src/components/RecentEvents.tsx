@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { AutoSizer, CellMeasurer, CellMeasurerCache, List } from "react-virtualized";
+import { Virtuoso } from "react-virtuoso";
 import { NostrEvent } from "../types";
 import { parseSearchQuery, addGeohashToSearch, addUserToSearch } from "../utils/searchParser";
 
@@ -13,7 +13,7 @@ interface RecentEventsProps {
   recentEvents: NostrEvent[];
   isMobileView?: boolean;
   onSearch?: (text: string) => void;
-
+  forceScrollToBottom?: boolean;
 }
 
 export function RecentEvents({ 
@@ -23,21 +23,13 @@ export function RecentEvents({
   recentEvents,
   isMobileView = false,
   onSearch,
-
+  forceScrollToBottom = false,
 }: RecentEventsProps) {
-  const listRef = useRef<List>(null);
+  const virtuosoRef = useRef<any>(null);
+  const scrollTimeoutRef = useRef<number | null>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [userScrolled, setUserScrolled] = useState(false);
-  const [previousScrollTop, setPreviousScrollTop] = useState(0);
-  const [previousListHeight, setPreviousListHeight] = useState(0);
-  
-  // CellMeasurer cache for dynamic heights
-  const cache = useRef(
-    new CellMeasurerCache({
-      fixedWidth: true,
-      defaultHeight: isMobileView ? 120 : 80,
-    })
-  );
+  const [isAutoScrolling, setIsAutoScrolling] = useState(false);
   
   if (!nostrEnabled) return null;
 
@@ -139,8 +131,46 @@ export function RecentEvents({
     };
   }, []);
 
-  // Row renderer for react-virtualized
-  const rowRenderer = useCallback(({ index, key, parent, style }: any) => {
+  // Handle scroll state changes for Virtuoso
+  const handleAtBottomStateChange = useCallback((atBottom: boolean) => {
+    setIsAtBottom(atBottom);
+  }, []);
+
+  const handleRangeChanged = useCallback(({ endIndex }: any) => {
+    // Clear any pending scroll timeout when user manually scrolls
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = null;
+    }
+    
+    // Detect if user is scrolling up (away from bottom)
+    if (!isAutoScrolling && endIndex < sortedEvents.length - 1) {
+      setUserScrolled(true);
+    } else if (endIndex === sortedEvents.length - 1) {
+      setUserScrolled(false);
+    }
+  }, [sortedEvents.length, isAutoScrolling]);
+
+  // Scroll to bottom function with animation
+  const scrollToBottom = useCallback((behavior: 'auto' | 'smooth' = 'smooth') => {
+    if (virtuosoRef.current) {
+      setIsAutoScrolling(true);
+      virtuosoRef.current.scrollToIndex({
+        index: sortedEvents.length - 1,
+        align: 'end',
+        behavior
+      });
+      
+      // Reset auto-scrolling flag after animation
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsAutoScrolling(false);
+        setUserScrolled(false);
+      }, 1000);
+    }
+  }, [sortedEvents.length]);
+
+  // Event item component for react-virtuoso
+  const EventItem = useCallback(({ index }: { index: number }) => {
     const event = sortedEvents[index];
     if (!event) return null;
 
@@ -165,199 +195,175 @@ export function RecentEvents({
     const userColors = generateUserColors(event.pubkey);
 
     return (
-      // @ts-expect-error - react-virtualized types issue with React 18
-      <CellMeasurer
-        cache={cache.current}
-        columnIndex={0}
-        key={key}
-        parent={parent}
-        rowIndex={index}
+      <div
+        style={{
+          paddingBottom: isMobileView ? "16px" : "12px", // Consistent spacing
+        }}
       >
-        {({ measure, registerChild }) => (
-          <div
-            ref={registerChild}
-            style={{
-              ...style,
-              paddingBottom: isMobileView ? "16px" : "12px", // Consistent spacing
-            }}
-            onLoad={measure}
-          >
-            <div
-              style={{
-                margin: isMobileView ? "0 20px 0 20px" : "0 10px 0 10px",
-                padding: isMobileView ? "16px 20px" : "12px 16px",
-                background: userColors.background,
-                border: `1px solid ${userColors.border}`,
-                borderLeft: `4px solid ${userColors.leftBorder}`,
-                borderRadius: isMobileView ? "8px" : "4px",
-                opacity: 1,
-                transition: "all 0.2s ease",
-                cursor: "pointer",
-                boxShadow: `0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 0 ${userColors.glow}`,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = userColors.backgroundHover;
-                e.currentTarget.style.borderColor = userColors.borderHover;
-                e.currentTarget.style.transform = "translateY(-1px)";
-                e.currentTarget.style.boxShadow = `0 4px 12px rgba(0, 0, 0, 0.4), 0 0 8px ${userColors.glow}`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = userColors.background;
-                e.currentTarget.style.borderColor = userColors.border;
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = `0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 0 ${userColors.glow}`;
-              }}
-            >
-              <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px"
-                  }}>
-                    <span 
-                      style={{
-                        color: userColors.username,
-                        fontSize: isMobileView ? "14px" : "12px",
-                        fontFamily: "Courier New, monospace",
-                        fontWeight: "bold",
-                        cursor: onSearch ? "pointer" : "default",
-                        transition: "all 0.2s ease"
-                      }}
-                      onClick={onSearch ? () => onSearch(addUserToSearch(searchText, username, pubkeyHash)) : undefined}
-                    >
-                      &lt;@{username}
-                    </span>
-                    <span 
-                      style={{
-                        color: userColors.username,
-                        fontSize: isMobileView ? "12px" : "10px",
-                        fontFamily: "monospace",
-                        fontWeight: "normal",
-                        opacity: 0.8,
-                        cursor: onSearch ? "pointer" : "default",
-                        transition: "all 0.2s ease"
-                      }}
-                      onClick={onSearch ? () => onSearch(addUserToSearch(searchText, username, pubkeyHash)) : undefined}
-                    >
-                      #{pubkeyHash}&gt;
-                    </span>
-                  </div>
-              <div style={{ 
-                color: userColors.message, 
-                fontSize: isMobileView ? "15px" : "12px", 
-                lineHeight: isMobileView ? "1.6" : "1.5",
-                wordWrap: "break-word",
-                whiteSpace: "pre-wrap",
-                fontFamily: "Courier New, monospace",
-                letterSpacing: "0.3px",
-                marginBottom: "8px"
-              }}>
-                {event.content || "[No content]"}
-              </div>
-              <div style={{ 
-                marginBottom: isMobileView ? "8px" : "4px",
+        <div
+          style={{
+            margin: isMobileView ? "0 20px 0 20px" : "0 10px 0 10px",
+            padding: isMobileView ? "16px 20px" : "12px 16px",
+            background: userColors.background,
+            border: `1px solid ${userColors.border}`,
+            borderLeft: `4px solid ${userColors.leftBorder}`,
+            borderRadius: isMobileView ? "8px" : "4px",
+            opacity: 1,
+            transition: "all 0.2s ease",
+            cursor: "pointer",
+            boxShadow: `0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 0 ${userColors.glow}`,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = userColors.backgroundHover;
+            e.currentTarget.style.borderColor = userColors.borderHover;
+            e.currentTarget.style.transform = "translateY(-1px)";
+            e.currentTarget.style.boxShadow = `0 4px 12px rgba(0, 0, 0, 0.4), 0 0 8px ${userColors.glow}`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = userColors.background;
+            e.currentTarget.style.borderColor = userColors.border;
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = `0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 0 ${userColors.glow}`;
+          }}
+        >
+          <div style={{
                 display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                flexWrap: "wrap",
-                gap: "8px"
+                alignItems: "center",
+                gap: "4px"
               }}>
-                <div style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "4px",
-                  flex: 1
+                <span 
+                  style={{
+                    color: userColors.username,
+                    fontSize: isMobileView ? "14px" : "12px",
+                    fontFamily: "Courier New, monospace",
+                    fontWeight: "bold",
+                    cursor: onSearch ? "pointer" : "default",
+                    transition: "all 0.2s ease"
+                  }}
+                  onClick={onSearch ? () => onSearch(addUserToSearch(searchText, username, pubkeyHash)) : undefined}
+                >
+                  &lt;@{username}
+                </span>
+                <span 
+                  style={{
+                    color: userColors.username,
+                    fontSize: isMobileView ? "12px" : "10px",
+                    fontFamily: "monospace",
+                    fontWeight: "normal",
+                    opacity: 0.8,
+                    cursor: onSearch ? "pointer" : "default",
+                    transition: "all 0.2s ease"
+                  }}
+                  onClick={onSearch ? () => onSearch(addUserToSearch(searchText, username, pubkeyHash)) : undefined}
+                >
+                  #{pubkeyHash}&gt;
+                </span>
+              </div>
+          <div style={{ 
+            color: userColors.message, 
+            fontSize: isMobileView ? "15px" : "12px", 
+            lineHeight: isMobileView ? "1.6" : "1.5",
+            wordWrap: "break-word",
+            whiteSpace: "pre-wrap",
+            fontFamily: "Courier New, monospace",
+            letterSpacing: "0.3px",
+            marginBottom: "8px"
+          }}>
+            {event.content || "[No content]"}
+          </div>
+          <div style={{ 
+            marginBottom: isMobileView ? "8px" : "4px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+            gap: "8px"
+          }}>
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "4px",
+              flex: 1
+            }}>
+              
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: isMobileView ? "11px" : "9px"
+              }}>
+                <span style={{ 
+                  color: userColors.message,
+                  background: "rgba(0, 0, 0, 0.5)",
+                  padding: "2px 6px",
+                  borderRadius: "3px",
+                  fontFamily: "monospace"
                 }}>
-                  
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    fontSize: isMobileView ? "11px" : "9px"
-                  }}>
-                    <span style={{ 
-                      color: userColors.message,
-                      background: "rgba(0, 0, 0, 0.5)",
+                  [{isToday ? time : `${date} ${time}`}]
+                </span>
+                  <span 
+                    style={{ 
+                      color: userColors.username,
+                      background: userColors.background,
+                      border: `1px solid ${userColors.border}`,
                       padding: "2px 6px",
                       borderRadius: "3px",
-                      fontFamily: "monospace"
-                    }}>
-                      [{isToday ? time : `${date} ${time}`}]
-                    </span>
-                      <span 
-                        style={{ 
-                          color: userColors.username,
-                          background: userColors.background,
-                          border: `1px solid ${userColors.border}`,
-                          padding: "2px 6px",
-                          borderRadius: "3px",
-                          fontFamily: "monospace",
-                          fontWeight: "bold",
-                          cursor: onSearch ? "pointer" : "default",
-                          transition: "all 0.2s ease"
-                        }}
-                        onClick={onSearch ? () => onSearch(addGeohashToSearch(searchText, rawGeohash.toLowerCase())) : undefined}
-                      >
-                        {
-                          eventGeohash ? `#${eventGeohash.toUpperCase()}` : `#${groupTagValue.toUpperCase()}`
-                        }
-                      </span>
-                  </div>
-                </div>
+                      fontFamily: "monospace",
+                      fontWeight: "bold",
+                      cursor: onSearch ? "pointer" : "default",
+                      transition: "all 0.2s ease"
+                    }}
+                    onClick={onSearch ? () => onSearch(addGeohashToSearch(searchText, rawGeohash.toLowerCase())) : undefined}
+                  >
+                    {
+                      eventGeohash ? `#${eventGeohash.toUpperCase()}` : `#${groupTagValue.toUpperCase()}`
+                    }
+                  </span>
               </div>
-              
             </div>
           </div>
-        )}
-      </CellMeasurer>
+          
+        </div>
+      </div>
     );
   }, [sortedEvents, isMobileView, onSearch, searchText, generateUserColors]);
 
-  // Handle scroll events with position preservation
-  const handleScroll = useCallback(({ scrollTop, clientHeight, scrollHeight }: any) => {
-    setPreviousScrollTop(scrollTop);
-    
-    // Check if user is at bottom
-    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50; // 50px threshold
-    setIsAtBottom(isNearBottom);
-    
-    // Mark as user scrolled if not programmatically triggered
-    if (!isAtBottom) {
-      setUserScrolled(true);
-    }
-  }, [isAtBottom]);
-  
-  // YouTube-style position preservation when new messages arrive
+  // Auto-scroll when new events arrive
   useEffect(() => {
-    if (listRef.current && sortedEvents.length > 0) {
-      const list = listRef.current;
-      
-      if (isAtBottom && !userScrolled) {
-        // Auto-scroll to bottom if user was at bottom
-        setTimeout(() => {
-          list.scrollToRow(sortedEvents.length - 1);
-        }, 0);
-      } else if (userScrolled) {
-        // Preserve reading position - this is the YouTube magic!
-        const currentScrollHeight = (list as any).Grid?.getTotalHeight?.() || 0;
-        const heightDifference = currentScrollHeight - previousListHeight;
-        
-        if (heightDifference > 0) {
-          // New content added, adjust scroll position to maintain view
-          const newScrollTop = previousScrollTop + heightDifference;
-          list.scrollToPosition(newScrollTop);
-        }
-        
-        setPreviousListHeight(currentScrollHeight);
-      }
+    if (sortedEvents.length === 0) return;
+    
+    // Auto-scroll to bottom if user was at bottom and hasn't manually scrolled
+    if (isAtBottom && !userScrolled) {
+      setTimeout(() => scrollToBottom('smooth'), 100);
     }
-  }, [sortedEvents.length, isAtBottom, userScrolled, previousScrollTop, previousListHeight]);
+  }, [sortedEvents.length, isAtBottom, userScrolled, scrollToBottom]);
   
   // Reset user scroll state when search changes
   useEffect(() => {
     setUserScrolled(false);
     setIsAtBottom(true);
-    cache.current.clearAll();
-  }, [searchText]);
+    
+    // Scroll to bottom after search change
+    if (virtuosoRef.current && sortedEvents.length > 0) {
+      setTimeout(() => scrollToBottom('auto'), 50);
+    }
+  }, [searchText, scrollToBottom]);
+
+  // Handle force scroll to bottom prop
+  useEffect(() => {
+    if (forceScrollToBottom && virtuosoRef.current && sortedEvents.length > 0) {
+      scrollToBottom('auto');
+    }
+  }, [forceScrollToBottom, scrollToBottom, sortedEvents.length]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Always render the component container, even if no events match
   if (sortedEvents.length === 0) {
@@ -456,37 +462,34 @@ export function RecentEvents({
         </div>
       )}
       
-      {/* Virtual scrolling list with AutoSizer */}
+      {/* Virtual scrolling list with Virtuoso */}
       <div style={{ flex: 1, position: "relative" }}>
-        {/* @ts-expect-error - react-virtualized types issue with React 18 */}
-        <AutoSizer>
-          {({ height, width }) => (
-            // @ts-expect-error - react-virtualized types issue with React 18
-            <List
-              ref={listRef}
-              height={height - (isMobileView ? 60 : 40)} // Account for bottom padding
-              width={width}
-              rowCount={sortedEvents.length}
-              rowHeight={cache.current.rowHeight}
-              rowRenderer={rowRenderer}
-              onScroll={handleScroll}
-              scrollToAlignment="end"
-              deferredMeasurementCache={cache.current}
-              overscanRowCount={5}
-            />
-          )}
-        </AutoSizer>
+        <Virtuoso
+          ref={virtuosoRef}
+          data={sortedEvents}
+          overscan={200}
+          increaseViewportBy={{ top: 1000, bottom: 1000 }}
+          alignToBottom
+          followOutput={(isAtBottom) => {
+            // Only follow output if user hasn't manually scrolled up
+            if (isAtBottom || !userScrolled) {
+              return 'smooth';
+            }
+            return false;
+          }}
+          atBottomStateChange={handleAtBottomStateChange}
+          rangeChanged={handleRangeChanged}
+          itemContent={(index) => <EventItem index={index} />}
+          style={{
+            height: '100%',
+          }}
+          computeItemKey={(index) => sortedEvents[index]?.id || index}
+        />
         
         {/* Scroll to bottom button */}
         {userScrolled && !isAtBottom && (
           <button
-            onClick={() => {
-              if (listRef.current) {
-                listRef.current.scrollToRow(sortedEvents.length - 1);
-                setIsAtBottom(true);
-                setUserScrolled(false);
-              }
-            }}
+            onClick={() => scrollToBottom('smooth')}
             style={{
               position: "absolute",
               bottom: isMobileView ? "70px" : "50px",

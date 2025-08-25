@@ -42,9 +42,11 @@ export function useNostr(
         onevent(event: NostrEventOriginal) {
           console.log("Received Nostr event:", event);
 
-          // Extract geohash from 'g' tag
+          // Extract geohash from 'g' tag and group from 'd' tag
           const geoTag = event.tags.find((tag: any) => tag[0] === "g");
+          const groupTag = event.tags.find((tag: any) => tag[0] === "d");
           const eventGeohash = geoTag ? (geoTag[1] || null) : null;
+          const eventGroup = groupTag ? (groupTag[1] || null) : null;
 
           const eventKind = (event as any).kind as number | undefined;
 
@@ -74,55 +76,85 @@ export function useNostr(
             return;
           }
 
-          if (eventGeohash) {
-            // Find which display geohash this event belongs to
-            const matchingGeohash = findMatchingGeohash(
-              eventGeohash,
-              searchGeohash,
-              currentGeohashes
-            );
-
-            // Store the event in our hierarchical tracking using the full geohash
-            setAllEventsByGeohash((prev) => {
-              const newMap = new Map(prev);
-              newMap.set(eventGeohash, (newMap.get(eventGeohash) || 0) + 1);
-              return newMap;
-            });
-
-            if (matchingGeohash) {
-              console.log(
-                `Nostr event in geohash ${matchingGeohash}:`,
-                event.content
+          // Handle both geohash events (kind 20000) and group events (kind 23333)
+          const locationIdentifier = eventGeohash || eventGroup;
+          
+          if (locationIdentifier) {
+            // For geohash events, try to find matching geohash
+            if (eventGeohash) {
+              const matchingGeohash = findMatchingGeohash(
+                eventGeohash,
+                searchGeohash,
+                currentGeohashes
               );
 
-              // Update activity tracking
-              setGeohashActivity((prev) => {
-                const newActivity = new Map(prev);
-                const current = newActivity.get(matchingGeohash) || {
-                  geohash: matchingGeohash,
-                  lastActivity: 0,
-                  eventCount: 0,
-                };
-
-                newActivity.set(matchingGeohash, {
-                  ...current,
-                  lastActivity: Date.now(),
-                  eventCount: current.eventCount + 1,
-                });
-
-                return newActivity;
+              // Store the event in our hierarchical tracking using the full geohash
+              setAllEventsByGeohash((prev) => {
+                const newMap = new Map(prev);
+                newMap.set(eventGeohash, (newMap.get(eventGeohash) || 0) + 1);
+                return newMap;
               });
 
-              // Trigger animation
-              onGeohashAnimate(matchingGeohash);
+              if (matchingGeohash) {
+                console.log(
+                  `Nostr event in geohash ${matchingGeohash}:`,
+                  event.content
+                );
+
+                // Update activity tracking
+                setGeohashActivity((prev) => {
+                  const newActivity = new Map(prev);
+                  const current = newActivity.get(matchingGeohash) || {
+                    geohash: matchingGeohash,
+                    lastActivity: 0,
+                    eventCount: 0,
+                  };
+
+                  newActivity.set(matchingGeohash, {
+                    ...current,
+                    lastActivity: Date.now(),
+                    eventCount: current.eventCount + 1,
+                  });
+
+                  return newActivity;
+                });
+
+                // Trigger animation
+                onGeohashAnimate(matchingGeohash);
+              }
+            } else if (eventGroup) {
+              // For group events (kind 23333), log and process them
+              console.log(
+                `Nostr event in group ${eventGroup}:`,
+                event.content
+              );
+              
+              // Store group events in hierarchical tracking as well
+              setAllEventsByGeohash((prev) => {
+                const newMap = new Map(prev);
+                newMap.set(eventGroup, (newMap.get(eventGroup) || 0) + 1);
+                return newMap;
+              });
             }
           }
 
           // Add to all stored events (no limit) - we'll filter dynamically
-          setAllStoredEvents((prev) => [event, ...prev]);
+          setAllStoredEvents((prev) => {
+            // Check for duplicates using event ID
+            if (prev.some(existingEvent => existingEvent.id === event.id)) {
+              return prev; // Event already exists, don't add duplicate
+            }
+            return [event, ...prev];
+          });
           
           // Always add to recent events for the live feed (no limit)
-          setRecentEvents((prev) => [event, ...prev]);
+          setRecentEvents((prev) => {
+            // Check for duplicates using event ID
+            if (prev.some(existingEvent => existingEvent.id === event.id)) {
+              return prev; // Event already exists, don't add duplicate
+            }
+            return [event, ...prev];
+          });
         },
         oneose() {
           console.log("End of stored events");

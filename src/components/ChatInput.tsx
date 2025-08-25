@@ -67,19 +67,26 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal }:
       // Determine event kind and tags based on channel
       const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
       
+      console.log(`🔍 Channel analysis:`, {
+        channel: currentChannel,
+        isGeohash: isGeohash,
+        regex: /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel)
+      });
+      
       const tags = [
         ["n", savedProfile.username], // username tag
         ["client", "bitchat.land"] // client tag
       ];
 
-
       let kind;
       if (isGeohash) {
         kind = 20000; // Geohash channels use kind 20000
         tags.push(["g", currentChannel.toLowerCase()]);
+        console.log(`📍 Using kind 20000 with geohash tag: g=${currentChannel.toLowerCase()}`);
       } else {
         kind = 23333; // Standard channels use kind 23333
         tags.push(["d", currentChannel.toLowerCase()]);
+        console.log(`💬 Using kind 23333 with group tag: d=${currentChannel.toLowerCase()}`);
       }
 
       // Create event template (don't include pubkey, finalizeEvent adds it)

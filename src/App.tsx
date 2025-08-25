@@ -157,7 +157,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   // const [showHeatmap] = useState(true); // Currently unused
   // const [geohashPrecision] = useState(4); // Currently unused
   const [showSingleCharGeohashes] = useState(true);
-  const [geohashDisplayPrecision, setGeohashDisplayPrecision] = useState(1);
+  const [geohashDisplayPrecision] = useState(1);
   const [showGeohashText] = useState(true);
 
   // Mobile view state
@@ -627,7 +627,18 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                         if (gv) channelSet.add(`#${gv}`);
                         if (dv) channelSet.add(`#${dv}`);
                       });
-                      const channels = Array.from(channelSet).sort();
+                      
+                      // Hardcoded pinned channels
+                      const pinnedChannels = ['#bitchat.land', '#21m'];
+                      const allChannels = Array.from(channelSet).sort();
+                      
+                      // Separate pinned and unpinned channels
+                      // Force show all pinned channels even if they have no messages
+                      const pinned = pinnedChannels; // Show all pinned channels regardless
+                      const unpinned = allChannels.filter(ch => !pinnedChannels.includes(ch));
+                      
+                      // Combine: pinned first, then unpinned
+                      const channels = [...pinned, ...unpinned];
                       if (channels.length === 0) {
                         return (
                           <div style={{ fontSize: '10px', opacity: 0.7 }}>no channels</div>
@@ -640,6 +651,8 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                         const lastReadTs = channelLastReadMap[ch] || 0;
                         const hasUnread = latestTs > lastReadTs;
                         const showUnreadDot = hasUnread && !isSelected;
+                        const isPinned = pinnedChannels.includes(ch);
+                        const hasMessages = channelSet.has(ch); // Check if channel actually has messages
 
                         const handleOpenChannel = () => {
                           // Update search
@@ -660,16 +673,24 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                             style={{
                               width: '100%',
                               textAlign: 'left',
-                              background: isSelected ? 'rgba(0, 255, 0, 0.08)' : 'transparent',
-                              color: isSelected ? '#00ff00' : '#00ff00',
-                              border: `1px solid ${isSelected ? '#00ff00' : '#003300'}`,
-                              boxShadow: isSelected ? '0 0 10px rgba(0,255,0,0.15) inset' : 'none',
+                              background: isSelected 
+                                ? 'rgba(0, 255, 0, 0.08)' 
+                                : isPinned 
+                                ? 'rgba(255, 255, 0, 0.05)' 
+                                : 'transparent',
+                              color: isSelected ? '#00ff00' : isPinned ? (hasMessages ? '#ffff00' : '#ffcc66') : '#00ff00',
+                              border: `1px solid ${isSelected ? '#00ff00' : isPinned ? '#ffcc00' : '#003300'}`,
+                              boxShadow: isSelected 
+                                ? '0 0 10px rgba(0,255,0,0.15) inset' 
+                                : isPinned 
+                                ? '0 0 8px rgba(255,255,0,0.1) inset' 
+                                : 'none',
                               borderRadius: '4px',
                               padding: '8px 8px',
                               fontSize: '13px',
                               cursor: 'pointer',
                               transition: 'all 0.2s ease',
-                              marginBottom: '8px',
+                              marginBottom: isPinned ? '12px' : '8px',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -680,11 +701,21 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                               e.currentTarget.style.borderColor = '#00ff00';
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.background = isSelected ? 'rgba(0, 255, 0, 0.08)' : 'transparent';
-                              e.currentTarget.style.borderColor = isSelected ? '#00ff00' : '#003300';
+                              e.currentTarget.style.background = isSelected 
+                                ? 'rgba(0, 255, 0, 0.08)' 
+                                : isPinned 
+                                ? 'rgba(255, 255, 0, 0.05)' 
+                                : 'transparent';
+                              e.currentTarget.style.borderColor = isSelected 
+                                ? '#00ff00' 
+                                : isPinned 
+                                ? '#ffcc00' 
+                                : '#003300';
                             }}
                           >
-                            <span style={{ fontWeight: isSelected ? 'bold' as const : 'normal' as const }}>{ch}</span>
+                            <span style={{ fontWeight: isSelected ? 'bold' as const : 'normal' as const }}>
+                              {isPinned && '📌 '}{ch}{isPinned && !hasMessages && ' (empty)'}
+                            </span>
                             {showUnreadDot && (
                               <span
                                 style={{
