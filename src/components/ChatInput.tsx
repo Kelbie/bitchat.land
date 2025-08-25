@@ -9,6 +9,7 @@ interface ChatInputProps {
   onMessageSent?: (message: string) => void;
   onOpenProfileModal?: () => void;
   prefillText?: string;
+  savedProfile?: any; // Profile data passed from parent
 }
 
 interface SavedProfile {
@@ -20,25 +21,11 @@ interface SavedProfile {
   createdAt: number;
 }
 
-export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, prefillText }: ChatInputProps) {
+export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, prefillText, savedProfile }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [savedProfile, setSavedProfile] = useState<SavedProfile | null>(null);
   const [error, setError] = useState("");
   const lastPrefillRef = useRef<string>("");
-
-  // Load saved profile on component mount
-  useEffect(() => {
-    try {
-      const profileData = localStorage.getItem("nostr_profile");
-      if (profileData) {
-        const profile = JSON.parse(profileData) as SavedProfile;
-        setSavedProfile(profile);
-      }
-    } catch (err) {
-      console.warn("Failed to load saved profile:", err);
-    }
-  }, []);
 
   // Handle prefillText changes - only apply when it's a new prefill
   useEffect(() => {
@@ -57,12 +44,18 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
   }, [prefillText]); // Only depend on prefillText
 
   const sendMessage = async () => {
-    if (!message.trim() || !currentChannel || !savedProfile) {
+    if (!message.trim() || !savedProfile) {
       setError(
         !savedProfile
           ? "No profile found. Please create a profile first."
           : "Please enter a message"
       );
+      return;
+    }
+
+    // Handle global channel case
+    if (!currentChannel || currentChannel === "global") {
+      setError("Please select a specific channel or location to send a message");
       return;
     }
 
@@ -255,7 +248,7 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
             border: "1px solid rgba(0, 255, 0, 0.3)",
           }}
         >
-          #{currentChannel}
+          {currentChannel === "global" ? "Select Channel" : `#${currentChannel}`}
         </span>
         <span>as</span>
         <span
@@ -296,7 +289,7 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`Message #${currentChannel}...`}
+            placeholder={currentChannel === "global" ? "Select a channel to start chatting..." : `Message #${currentChannel}...`}
             disabled={isSending}
             style={{
               width: "100%",
@@ -341,19 +334,19 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
 
         <button
           onClick={sendMessage}
-          disabled={isSending || !message.trim() || message.length > 280}
+          disabled={isSending || !message.trim() || message.length > 280 || currentChannel === "global"}
           style={{
             padding: "8px 16px",
             backgroundColor:
-              isSending || !message.trim() || message.length > 280
+              isSending || !message.trim() || message.length > 280 || currentChannel === "global"
                 ? "#333"
                 : "#003300",
             color:
-              isSending || !message.trim() || message.length > 280
+              isSending || !message.trim() || message.length > 280 || currentChannel === "global"
                 ? "#666"
                 : "#00ff00",
             border: `1px solid ${
-              isSending || !message.trim() || message.length > 280
+              isSending || !message.trim() || message.length > 280 || currentChannel === "global"
                 ? "#666"
                 : "#00ff00"
             }`,
@@ -361,7 +354,7 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
             fontSize: "12px",
             fontFamily: "Courier New, monospace",
             cursor:
-              isSending || !message.trim() || message.length > 280
+              isSending || !message.trim() || message.length > 280 || currentChannel === "global"
                 ? "not-allowed"
                 : "pointer",
             textTransform: "uppercase",
@@ -377,13 +370,13 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
             justifyContent: "center",
           }}
           onMouseEnter={(e) => {
-            if (!isSending && message.trim() && message.length <= 280) {
+            if (!isSending && message.trim() && message.length <= 280 && currentChannel !== "global") {
               e.currentTarget.style.backgroundColor = "#004400";
               e.currentTarget.style.boxShadow = "0 0 8px rgba(0, 255, 0, 0.3)";
             }
           }}
           onMouseLeave={(e) => {
-            if (!isSending && message.trim() && message.length <= 280) {
+            if (!isSending && message.trim() && message.length <= 280 && currentChannel !== "global") {
               e.currentTarget.style.backgroundColor = "#003300";
               e.currentTarget.style.boxShadow = "none";
             }

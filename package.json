@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.8.4",
-
     "@visx/geo": "latest",
     "@visx/responsive": "latest",
     "@visx/scale": "latest",
@@ -29,7 +28,8 @@
     "react-virtuoso": "^4.14.0",
     "react-window": "^1.8.11",
     "react-window-infinite-loader": "^1.0.10",
-    "topojson-client": "^3.1.0"
+    "topojson-client": "^3.1.0",
+    "usehooks-ts": "^3.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

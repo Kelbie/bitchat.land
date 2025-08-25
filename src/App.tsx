@@ -164,7 +164,8 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   const [isMobile, setIsMobile] = useState(true);
   const [activeView, setActiveView] = useState<'map' | 'chat' | 'panel'>('map');
   
-  // Profile generation modal state
+  // Profile state using React state with localStorage initialization
+  const [savedProfile, setSavedProfile] = useState<any>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Search and zoom state
@@ -301,6 +302,25 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   // Handle message sent - clear reply prefill
   const handleMessageSent = () => {
     setReplyPrefillText("");
+  };
+
+  // Load profile from localStorage on initial mount
+  useEffect(() => {
+    try {
+      const profileData = localStorage.getItem("nostr_profile");
+      if (profileData) {
+        const profile = JSON.parse(profileData);
+        setSavedProfile(profile);
+      }
+    } catch (err) {
+      console.warn("Failed to load saved profile:", err);
+    }
+  }, []);
+
+  // Handle profile saved - update state immediately
+  const handleProfileSaved = (profile: any) => {
+    // Directly update the profile state for immediate UI update
+    setSavedProfile(profile);
   };
 
   // Handle geohash clicks from map - add to text search
@@ -785,14 +805,13 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                   </div>
                   
                   {/* Chat input */}
-                  {selectedChannelKey && (
-                    <ChatInput 
-                      currentChannel={selectedChannelKey.slice(1)} // Remove the # prefix
-                      onMessageSent={handleMessageSent}
-                      onOpenProfileModal={() => setShowProfileModal(true)}
-                      prefillText={replyPrefillText}
-                    />
-                  )}
+                  <ChatInput 
+                    currentChannel={selectedChannelKey ? selectedChannelKey.slice(1) : "global"} // Use global if no specific channel
+                    onMessageSent={handleMessageSent}
+                    onOpenProfileModal={() => setShowProfileModal(true)}
+                    prefillText={replyPrefillText}
+                    savedProfile={savedProfile}
+                  />
                 </div>
               </div>
             )}
@@ -931,6 +950,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
       <ProfileGenerationModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
+        onProfileSaved={handleProfileSaved}
       />
     </div>
   );

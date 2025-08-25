@@ -4,6 +4,7 @@ import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
 interface ProfileGenerationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onProfileSaved?: (profile: any) => void;
 }
 
 interface GeneratedProfile {
@@ -14,7 +15,7 @@ interface GeneratedProfile {
   nsec: string;
 }
 
-export function ProfileGenerationModal({ isOpen, onClose }: ProfileGenerationModalProps) {
+export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: ProfileGenerationModalProps) {
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -133,6 +134,11 @@ export function ProfileGenerationModal({ isOpen, onClose }: ProfileGenerationMod
       };
       
       localStorage.setItem("nostr_profile", JSON.stringify(profileData));
+      
+      // Call the callback to immediately update parent state with the new profile
+      if (onProfileSaved) {
+        onProfileSaved(profileData);
+      }
       
       // Close modal after successful save
       onClose();
