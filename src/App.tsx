@@ -743,6 +743,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                         console.log('Message sent:', message);
                         // Could trigger a refresh or optimistic update here
                       }}
+                      onOpenProfileModal={() => setShowProfileModal(true)}
                     />
                   )}
                 </div>

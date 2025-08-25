@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { SimplePool } from "nostr-tools/pool";
-import { finalizeEvent, generateSecretKey, getPublicKey, validateEvent, verifyEvent } from "nostr-tools/pure";
+import { finalizeEvent, validateEvent, verifyEvent } from "nostr-tools/pure";
 import { NOSTR_RELAYS } from "../constants/projections";
 import { hexToBytes } from "nostr-tools/utils";
 
 interface ChatInputProps {
   currentChannel: string; // e.g., "nyc" from "in:nyc"
   onMessageSent?: (message: string) => void;
+  onOpenProfileModal?: () => void;
 }
 
 interface SavedProfile {
@@ -18,7 +19,7 @@ interface SavedProfile {
   createdAt: number;
 }
 
-export function ChatInput({ currentChannel, onMessageSent }: ChatInputProps) {
+export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [savedProfile, setSavedProfile] = useState<SavedProfile | null>(null);
@@ -198,15 +199,32 @@ export function ChatInput({ currentChannel, onMessageSent }: ChatInputProps) {
           justifyContent: "center",
         }}
       >
-        <div
+        <button
+          onClick={onOpenProfileModal}
           style={{
-            color: "#888",
+            color: "#00ff00",
             fontSize: "14px",
             fontFamily: "Courier New, monospace",
+            backgroundColor: "#001100",
+            border: "2px solid #00ff00",
+            borderRadius: "8px",
+            padding: "12px 20px",
+            cursor: "pointer",
+            textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
+            boxShadow: "0 0 15px rgba(0, 255, 0, 0.3)",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "#003300";
+            e.currentTarget.style.boxShadow = "0 0 20px rgba(0, 255, 0, 0.5)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "#001100";
+            e.currentTarget.style.boxShadow = "0 0 15px rgba(0, 255, 0, 0.3)";
           }}
         >
-          Create a profile to start chatting
-        </div>
+          🔐 Create Profile to Start Chatting
+        </button>
       </div>
     );
   }
