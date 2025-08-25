@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Virtuoso } from "react-virtuoso";
 import { NostrEvent } from "../types";
-import { parseSearchQuery, addGeohashToSearch, addUserToSearch } from "../utils/searchParser";
+import { parseSearchQuery, addGeohashToSearch, addUserToSearch, addClientToSearch } from "../utils/searchParser";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -37,7 +37,7 @@ export function RecentEvents({
 
   // Parse the search query
   const parsedSearch = parseSearchQuery(searchText);
-  const hasSearchTerms = parsedSearch.text || parsedSearch.geohashes.length > 0 || parsedSearch.users.length > 0;
+  const hasSearchTerms = parsedSearch.text || parsedSearch.geohashes.length > 0 || parsedSearch.users.length > 0 || parsedSearch.clients.length > 0;
   
   // Use all stored events when searching, recent events when not searching
   const eventsToShow = hasSearchTerms ? allStoredEvents : recentEvents;
@@ -54,6 +54,8 @@ export function RecentEvents({
     const eventGroup = (groupTag ? groupTag[1] : "").toLowerCase();
     const eventLocationTag = (eventGeohash || eventGroup);
     const pubkeyHash = event.pubkey.slice(-4).toLowerCase();
+    const clientTag = event.tags.find((tag: any) => tag[0] === "client");
+    const eventClient = (clientTag ? clientTag[1] : "").toLowerCase();
     
     // Check for invalid geohash and log it
     if (eventGeohash && !VALID_GEOHASH_CHARS.test(eventGeohash)) {
@@ -102,6 +104,19 @@ export function RecentEvents({
         }
       });
       if (!userMatch) matches = false;
+    }
+    
+    // Check client filters if specified
+    if (parsedSearch.clients.length > 0 && matches) {
+      if (!eventClient) {
+        // No client tag present → exclude under client: filter
+        matches = false;
+      } else {
+        const clientMatch = parsedSearch.clients.some(searchClient =>
+          eventClient.includes(searchClient.toLowerCase())
+        );
+        if (!clientMatch) matches = false;
+      }
     }
     
     return matches;

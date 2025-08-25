@@ -2,21 +2,23 @@ export interface ParsedSearch {
   text: string;
   geohashes: string[]; // Note: "geohashes" name kept for backward compatibility, but can contain any location strings
   users: string[];
+  clients: string[]; // New field for client filters
 }
 
 /**
  * Parses search query with syntax like:
- * "hello world in:21m from:@jack"
- * "test in:#nyc in:london from:@alice#1234"
+ * "hello world in:21m from:@jack client:bitchat.land"
+ * "test in:#nyc in:london from:@alice#1234 client:amethyst"
  * in: can accept any string, not just geohashes
  */
 export function parseSearchQuery(query: string): ParsedSearch {
   if (!query.trim()) {
-    return { text: "", geohashes: [], users: [] };
+    return { text: "", geohashes: [], users: [], clients: [] };
   }
 
   const geohashes: string[] = [];
   const users: string[] = [];
+  const clients: string[] = [];
   let text = query;
 
   // Extract "in:" terms (any string)
@@ -46,10 +48,21 @@ export function parseSearchQuery(query: string): ParsedSearch {
     text = text.replace(match[0], ' ');
   }
 
+  // Extract "client:" terms (clients)
+  const clientPattern = /\s*client:(\S+)\s*/gi;
+  while ((match = clientPattern.exec(query)) !== null) {
+    const clientFilter = match[1].toLowerCase();
+    if (!clients.includes(clientFilter)) {
+      clients.push(clientFilter);
+    }
+    // Remove the matched "client:" term from text
+    text = text.replace(match[0], ' ');
+  }
+
   // Clean up the remaining text
   text = text.replace(/\s+/g, ' ').trim();
 
-  return { text, geohashes, users };
+  return { text, geohashes, users, clients };
 }
 
 /**
@@ -66,6 +79,11 @@ export function buildSearchQuery(parsed: ParsedSearch): string {
   // Add user terms
   for (const user of parsed.users) {
     query += ` from:${user}`;
+  }
+  
+  // Add client terms
+  for (const client of parsed.clients) {
+    query += ` client:${client}`;
   }
   
   return query.trim();
@@ -152,5 +170,20 @@ export function addUserToSearch(currentQuery: string, username: string, pubkeyHa
   }
   
   parsed.users.push(userIdentifier);
+  return buildSearchQuery(parsed);
+}
+
+/**
+ * Adds a client to an existing search query
+ */
+export function addClientToSearch(currentQuery: string, clientName: string): string {
+  const parsed = parseSearchQuery(currentQuery);
+  
+  // Don't add if already present
+  if (parsed.clients.includes(clientName.toLowerCase())) {
+    return currentQuery;
+  }
+  
+  parsed.clients.push(clientName.toLowerCase());
   return buildSearchQuery(parsed);
 }
