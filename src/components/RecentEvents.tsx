@@ -294,8 +294,8 @@ export function RecentEvents({
           >
             <div
               style={{
-                margin: isMobileView ? "0 20px 0 20px" : "0 10px 0 10px",
-                padding: isMobileView ? "16px 20px" : "12px 16px",
+                // margin: isMobileView ? "0 20px 0 20px" : "0 10px 0 10px",
+                padding: isMobileView ? "0px 20px" : "0px 16px",
                 background: "rgba(0, 0, 0, 0.3)",
                 borderRadius: isMobileView ? "8px" : "4px",
                 opacity: 1,
@@ -325,80 +325,14 @@ export function RecentEvents({
                   "0 2px 8px rgba(0, 0, 0, 0.3)";
               }}
             >
-              {/* Top row: Username + Message with hanging indent */}
-              <div
+
+               {/* Bottom row: Hash, Via, Reply */}
+               <div
                 style={{
                   display: "flex",
-                  alignItems: "flex-start",
-                  gap: "8px",
-                  // marginBottom: "8px"
-                }}
-              >
-                {/* Combined Username + Message content with dynamic hanging indent */}
-                <div
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    lineHeight: isMobileView ? "1.6" : "1.5",
-                    wordWrap: "break-word",
-                    whiteSpace: "pre-wrap",
-                    fontFamily: "Courier New, monospace",
-                    letterSpacing: "0.3px",
-                  }}
-                >
-                  {/* Username */}
-                  <span
-                    style={{
-                      color: userColors.username,
-                      fontSize: isMobileView ? "14px" : "12px",
-                      fontWeight: "bold",
-                      cursor: onSearch ? "pointer" : "default",
-                      transition: "all 0.2s ease",
-                    }}
-                    onClick={
-                      onSearch
-                        ? () =>
-                            onSearch(
-                              addUserToSearch(searchText, username, pubkeyHash)
-                            )
-                        : undefined
-                    }
-                  >
-                    &lt;@{username}#{pubkeyHash}&gt;
-                  </span>
-
-                  {/* Message content */}
-                  <span
-                    style={{
-                      color: userColors.message,
-                      fontSize: isMobileView ? "15px" : "12px",
-                      paddingLeft: `${8}px`,
-                    }}
-                  >
-                    {event.content || "[No content]"}
-                  </span>
-
-                  {/* Date appended to message */}
-                  <span
-                    style={{
-                      color: "#666",
-                      fontSize: isMobileView ? "11px" : "9px",
-                      paddingLeft: "8px",
-                      fontFamily: "monospace",
-                    }}
-                  >
-                    [{isToday ? time : `${date} ${time}`}]
-                  </span>
-                </div>
-              </div>
-
-              {/* Bottom row: Hash, Via, Reply */}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "flex-end",
+                  justifyContent: "flex-start",
                   alignItems: "center",
-                  gap: "8px",
+                  height: "16px",
                 }}
               >
                 {/* Right side: Hash, Via, and Reply button */}
@@ -477,7 +411,6 @@ export function RecentEvents({
                         color: "#666",
                         border: "none",
                         borderRadius: "3px",
-                        padding: "2px 6px",
                         fontSize: isMobileView ? "10px" : "8px",
                         fontFamily: "monospace",
                         cursor: "pointer",
@@ -496,6 +429,74 @@ export function RecentEvents({
                       ↪ Reply
                     </button>
                   )}
+                </div>
+              </div>
+
+              {/* Top row: Username + Message with hanging indent */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "8px",
+
+                  // marginBottom: "8px"
+                }}
+              >
+                {/* Combined Username + Message content with dynamic hanging indent */}
+                <div
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    lineHeight: isMobileView ? "1.6" : "1.5",
+                    wordWrap: "break-word",
+                    whiteSpace: "pre-wrap",
+                    fontFamily: "Courier New, monospace",
+                    letterSpacing: "0.3px",
+                  }}
+                >
+                  {/* Username */}
+                  <span
+                    style={{
+                      color: userColors.username,
+                      fontSize: isMobileView ? "14px" : "12px",
+                      fontWeight: "bold",
+                      cursor: onSearch ? "pointer" : "default",
+                      transition: "all 0.2s ease",
+                    }}
+                    onClick={
+                      onSearch
+                        ? () =>
+                            onSearch(
+                              addUserToSearch(searchText, username, pubkeyHash)
+                            )
+                        : undefined
+                    }
+                  >
+                    &lt;@{username}#{pubkeyHash}&gt;
+                  </span>
+
+                  {/* Message content */}
+                  <span
+                    style={{
+                      color: userColors.message,
+                      fontSize: isMobileView ? "15px" : "12px",
+                      paddingLeft: `${8}px`,
+                    }}
+                  >
+                    {event.content || "[No content]"}
+                  </span>
+
+                  {/* Date appended to message */}
+                  <span
+                    style={{
+                      color: "#666",
+                      fontSize: isMobileView ? "11px" : "9px",
+                      paddingLeft: "8px",
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    [{isToday ? time : `${date} ${time}`}]
+                  </span>
                 </div>
               </div>
             </div>
