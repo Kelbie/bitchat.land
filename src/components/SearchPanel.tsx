@@ -1,13 +1,13 @@
-import React from "react";
+// import React from "react"; // Not needed for JSX in this file
 
 interface SearchPanelProps {
-  searchGeohash: string;
+  searchText: string;
   onSearch: (value: string) => void;
   zoomedGeohash: string | null;
   isMobileView?: boolean;
 }
 
-export function SearchPanel({ searchGeohash, onSearch, zoomedGeohash, isMobileView = false }: SearchPanelProps) {
+export function SearchPanel({ searchText, onSearch, zoomedGeohash, isMobileView = false }: SearchPanelProps) {
   const isMobile = isMobileView;
   
   return (
@@ -43,7 +43,7 @@ export function SearchPanel({ searchGeohash, onSearch, zoomedGeohash, isMobileVi
         }}
       >
         <div style={{ marginBottom: "5px" }}>
-          SEARCH:
+          SEARCH MESSAGES:
         </div>
         {zoomedGeohash && (
           <div style={{ fontSize: "10px", color: "#00ff00" }}>
@@ -56,32 +56,65 @@ export function SearchPanel({ searchGeohash, onSearch, zoomedGeohash, isMobileVi
           padding: "10px",
         }}
       >
-      <input
-        type="text"
-        value={searchGeohash}
-        onChange={(e) => onSearch(e.target.value)}
-        placeholder="e.g. 21m"
-        style={{
-          padding: isMobile ? "12px 16px" : "4px 8px",
-          background: "#000000",
-          color: "#00ff00",
-          border: "1px solid #00ff00",
-          borderRadius: isMobile ? "4px" : "0px",
-          fontSize: isMobile ? "16px" : "12px",
-          fontFamily: "Courier New, monospace",
-          width: "100%",
-          outline: "none",
-          minHeight: isMobile ? "44px" : "auto",
-        }}
-        onFocus={(e) => {
-          e.target.style.border = "1px solid #00ff00";
-          e.target.style.boxShadow = "0 0 5px rgba(0, 255, 0, 0.5)";
-        }}
-        onBlur={(e) => {
-          e.target.style.border = "1px solid #00ff00";
-          e.target.style.boxShadow = "none";
-        }}
-      />
+      <div style={{
+        position: "relative",
+        display: "flex",
+        alignItems: "center"
+      }}>
+        {/* Search Icon */}
+        <div style={{
+          position: "absolute",
+          left: isMobile ? "12px" : "8px",
+          top: "50%",
+          transform: "translateY(-50%)",
+          zIndex: 1,
+          pointerEvents: "none",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}>
+          <svg
+            width={isMobile ? "16" : "14"}
+            height={isMobile ? "16" : "14"}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#00aa00"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+        </div>
+        
+        <input
+          type="text"
+          value={searchText}
+          onChange={(e) => onSearch(e.target.value)}
+          placeholder="hello in:nyc from:@jack"
+          style={{
+            padding: isMobile ? "12px 16px 12px 40px" : "4px 8px 4px 28px", // Add left padding for icon
+            background: "#000000",
+            color: "#00ff00",
+            border: "1px solid #00ff00",
+            borderRadius: isMobile ? "4px" : "0px",
+            fontSize: isMobile ? "16px" : "12px",
+            fontFamily: "Courier New, monospace",
+            width: "100%",
+            outline: "none",
+            minHeight: isMobile ? "44px" : "auto",
+          }}
+          onFocus={(e) => {
+            e.target.style.border = "1px solid #00ff00";
+            e.target.style.boxShadow = "0 0 5px rgba(0, 255, 0, 0.5)";
+          }}
+          onBlur={(e) => {
+            e.target.style.border = "1px solid #00ff00";
+            e.target.style.boxShadow = "none";
+          }}
+        />
+      </div>
       <button
         onClick={() => onSearch("")}
         style={{

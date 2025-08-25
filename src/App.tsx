@@ -16,6 +16,11 @@ import { EventHierarchy } from "./components/EventHierarchy";
 import { RecentEvents } from "./components/RecentEvents";
 import { Map } from "./components/Map";
 import { MobileHeader } from "./components/MobileHeader";
+import { addGeohashToSearch, parseSearchQuery, buildSearchQuery } from "./utils/searchParser";
+import { PROJECTIONS } from "./constants/projections";
+
+// Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
+const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
 
 export const background = "#000000";
 
@@ -48,8 +53,10 @@ Array.prototype.min = function () {
   return Math.min.apply(null, this);
 };
 
+
+
 export default function App({ width, height, events = true }: GeoMercatorProps) {
-  const [projection] = useState("natural_earth");
+  const [projection] = useState(Object.keys(PROJECTIONS)[4]);
   // const [showHeatmap] = useState(true); // Currently unused
   // const [geohashPrecision] = useState(4); // Currently unused
   const [showSingleCharGeohashes] = useState(true);
@@ -61,6 +68,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   const [activeView, setActiveView] = useState<'map' | 'chat' | 'panel'>('map');
 
   // Search and zoom state
+  const [searchText, setSearchText] = useState("");
   const [searchGeohash, setSearchGeohash] = useState("");
   const [animatingGeohashes, setAnimatingGeohashes] = useState<Set<string>>(new Set());
 
@@ -99,18 +107,37 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
     }, 1000);
   };
 
-  // Determine if we should show localized precision
+  // Parse the search query to get geohash filters
+  const parsedSearch = parseSearchQuery(searchText);
+  
+  // Determine the primary geohash for map display (use the first one if multiple)
+  const primarySearchGeohash = parsedSearch.geohashes.length > 0 ? parsedSearch.geohashes[0] : "";
+  
+  // Synchronize searchGeohash state with parsed search and trigger zoom
+  useEffect(() => {
+    if (primarySearchGeohash !== searchGeohash) {
+      setSearchGeohash(primarySearchGeohash);
+      // Auto-zoom when geohash is in search
+      if (primarySearchGeohash && /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(primarySearchGeohash)) {
+        zoomToGeohash(primarySearchGeohash.toLowerCase());
+      } else if (!primarySearchGeohash) {
+        zoomToGeohash(""); // Reset zoom when no geohash
+      }
+    }
+  }, [primarySearchGeohash, searchGeohash, zoomToGeohash]);
+  
+  // Determine if we should show localized precision based on parsed search
   const shouldShowLocalizedPrecision =
-    searchGeohash &&
-    searchGeohash.length >= 1 &&
-    /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(searchGeohash);
+    primarySearchGeohash &&
+    primarySearchGeohash.length >= 1 &&
+    /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(primarySearchGeohash);
   const effectivePrecision = shouldShowLocalizedPrecision
-    ? searchGeohash.length + 1
+    ? primarySearchGeohash.length + 1
     : geohashDisplayPrecision;
 
   // Generate only localized geohashes when searching, otherwise use global precision
   const currentGeohashes = shouldShowLocalizedPrecision
-    ? generateLocalizedGeohashes(searchGeohash.toLowerCase())
+    ? generateLocalizedGeohashes(primarySearchGeohash.toLowerCase())
     : generateGeohashes(geohashDisplayPrecision, null);
 
   // Initialize Nostr with animation callback
@@ -125,29 +152,31 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   // Generate heatmap data (currently unused but may be needed for future features)
   // const heatmapData = generateSampleHeatmapData(geohashPrecision);
 
-  // Handle search input
-  const handleSearch = (value: string) => {
-    setSearchGeohash(value);
+  // Handle text search input
+  const handleTextSearch = (value: string) => {
+    setSearchText(value);
+  };
 
-    // Reset precision when search is cleared
-    if (!value) {
-      setGeohashDisplayPrecision(1);
-    }
-
-    // Auto-zoom when user types a valid geohash
-    if (value && /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(value)) {
-      zoomToGeohash(value.toLowerCase());
-    } else if (!value) {
-      zoomToGeohash(""); // Reset zoom
-    }
+  // Handle geohash clicks from map - add to text search
+  const handleGeohashClickForSearch = (geohash: string) => {
+    const newSearch = addGeohashToSearch(searchText, geohash);
+    setSearchText(newSearch);
   };
 
   // Function to handle clicks on the map background (zoom out one level)
   const handleMapClick = () => {
-    if (searchGeohash && searchGeohash.length > 0) {
-      // Zoom out one level by removing the last character
-      const parentGeohash = searchGeohash.slice(0, -1);
-      handleSearch(parentGeohash);
+    if (primarySearchGeohash && primarySearchGeohash.length > 0) {
+      // Zoom out one level by removing the last character from the primary geohash
+      const parentGeohash = primarySearchGeohash.slice(0, -1);
+      
+      // Update the search by replacing the current geohash with the parent
+      const parsed = parseSearchQuery(searchText);
+      parsed.geohashes = parsed.geohashes.map(g => 
+        g === primarySearchGeohash ? parentGeohash : g
+      ).filter(g => g.length > 0); // Remove empty geohashes
+      
+      const newSearchText = buildSearchQuery(parsed);
+      setSearchText(newSearchText);
     }
   };
 
@@ -179,17 +208,62 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
 
   if (width < 10) return null;
 
-  // Calculate data for mobile header
-  const eventsToShow = searchGeohash ? allStoredEvents : recentEvents;
+  // Calculate data for mobile header using parsed search (same logic as RecentEvents)
+  const hasSearchTerms = parsedSearch.text || parsedSearch.geohashes.length > 0 || parsedSearch.users.length > 0;
+  const eventsToShow = hasSearchTerms ? allStoredEvents : recentEvents;
   const filteredEvents = eventsToShow.filter((event) => {
-    if (!searchGeohash) return true;
+    if (!hasSearchTerms) return true;
+    
+    // Extract event data
+    const messageContent = (event.content || "").toLowerCase();
+    const nameTag = event.tags.find((tag: any) => tag[0] === "n");
+    const username = (nameTag ? nameTag[1] : "").toLowerCase();
     const geoTag = event.tags.find((tag: any) => tag[0] === "g");
-    const eventGeohash = geoTag ? geoTag[1] : "";
-    return eventGeohash.startsWith(searchGeohash.toLowerCase());
+    const eventGeohash = (geoTag ? geoTag[1] : "").toLowerCase();
+    const pubkeyHash = event.pubkey.slice(-4).toLowerCase();
+    
+    // Check for invalid geohash and log it
+    if (eventGeohash && !VALID_GEOHASH_CHARS.test(eventGeohash)) {
+      console.log(`Invalid geohash detected in message: "${eventGeohash}" from user ${username || 'anonymous'} (${pubkeyHash})`);
+      console.log(`Message content: "${event.content?.slice(0, 100)}${event.content && event.content.length > 100 ? '...' : ''}"`);
+    }
+    
+    let matches = true;
+    
+    // Check text content if specified (only search message content, not usernames)
+    if (parsedSearch.text) {
+      const textMatch = messageContent.includes(parsedSearch.text.toLowerCase());
+      if (!textMatch) matches = false;
+    }
+    
+    // Check geohash filters if specified
+    if (parsedSearch.geohashes.length > 0 && matches) {
+      const geohashMatch = parsedSearch.geohashes.some(searchGeohash => 
+        eventGeohash.startsWith(searchGeohash.toLowerCase())
+      );
+      if (!geohashMatch) matches = false;
+    }
+    
+    // Check user filters if specified
+    if (parsedSearch.users.length > 0 && matches) {
+      const userMatch = parsedSearch.users.some(searchUser => {
+        // Handle both "username" and "username#hash" formats
+        if (searchUser.includes('#')) {
+          const [searchUsername, searchHash] = searchUser.split('#');
+          return username === searchUsername.toLowerCase() && 
+                 pubkeyHash === searchHash.toLowerCase();
+        } else {
+          return username === searchUser.toLowerCase();
+        }
+      });
+      if (!userMatch) matches = false;
+    }
+    
+    return matches;
   });
   
   // Debug logging for header updates
-  console.log(`Header update: search="${searchGeohash}", filteredCount=${filteredEvents.length}, totalStored=${allStoredEvents.length}, recent=${recentEvents.length}`);
+  console.log(`Header update: search="${searchText}", filteredCount=${filteredEvents.length}, totalStored=${allStoredEvents.length}, recent=${recentEvents.length}`);
 
   const topLevelCounts: { [key: string]: number } = {};
   for (const [geohash, count] of allEventsByGeohash.entries()) {
@@ -221,8 +295,8 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
         <MobileHeader
           activeView={activeView}
           onViewChange={setActiveView}
-          searchGeohash={searchGeohash}
-          onSearch={handleSearch}
+          searchText={searchText}
+          onSearch={handleTextSearch}
           zoomedGeohash={zoomedGeohash}
           nostrEnabled={nostrEnabled}
           filteredEventsCount={filteredEvents.length}
@@ -270,8 +344,8 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
             showGeohashText={showGeohashText}
             effectivePrecision={effectivePrecision}
             shouldShowLocalizedPrecision={!!shouldShowLocalizedPrecision}
-            searchGeohash={searchGeohash}
-            onGeohashClick={handleSearch}
+            searchText={searchText}
+            onGeohashClick={handleGeohashClickForSearch}
           />
         </div>
 
@@ -279,23 +353,23 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
         {!isMobile && (
           <>
             <SearchPanel
-              searchGeohash={searchGeohash}
-              onSearch={handleSearch}
+              searchText={searchText}
+              onSearch={handleTextSearch}
               zoomedGeohash={zoomedGeohash}
             />
 
             <EventHierarchy
-              searchGeohash={searchGeohash}
+              searchText={searchText}
               allEventsByGeohash={allEventsByGeohash}
-              onSearch={handleSearch}
+              onSearch={handleTextSearch}
             />
 
             <RecentEvents
               nostrEnabled={nostrEnabled}
-              searchGeohash={searchGeohash}
+              searchText={searchText}
               allStoredEvents={allStoredEvents}
               recentEvents={recentEvents}
-              onSearch={handleSearch}
+              onSearch={handleTextSearch}
             />
           </>
         )}
@@ -320,11 +394,11 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
               >
                 <RecentEvents
                   nostrEnabled={nostrEnabled}
-                  searchGeohash={searchGeohash}
+                  searchText={searchText}
                   allStoredEvents={allStoredEvents}
                   recentEvents={recentEvents}
                   isMobileView={true}
-                  onSearch={handleSearch}
+                  onSearch={handleTextSearch}
                 />
               </div>
             )}
@@ -343,9 +417,9 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                 }}
               >
                 <EventHierarchy
-                  searchGeohash={searchGeohash}
+                  searchText={searchText}
                   allEventsByGeohash={allEventsByGeohash}
-                  onSearch={handleSearch}
+                  onSearch={handleTextSearch}
                   isMobileView={true}
                 />
               </div>

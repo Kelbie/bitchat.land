@@ -15,23 +15,6 @@ const world = topojson.feature(topology, topology.objects.units) as {
 
 world.features = [...world.features];
 
-const color = scaleQuantize({
-  domain: [
-    Math.min(...world.features.map((f) => f.geometry.coordinates.length)),
-    Math.max(...world.features.map((f) => f.geometry.coordinates.length)),
-  ],
-  range: [
-    "#003300",
-    "#004400",
-    "#005500",
-    "#006600",
-    "#007700",
-    "#00aa00",
-    "#00cc00",
-    "#00ff00",
-  ],
-});
-
 function filterCountries(countries: FeatureShape[]) {
   return countries;
 }
@@ -59,7 +42,7 @@ interface MapProps {
   showGeohashText: boolean;
   effectivePrecision: number;
   shouldShowLocalizedPrecision: boolean;
-  searchGeohash: string;
+  searchText: string;
   onGeohashClick: (geohash: string) => void;
 }
 
@@ -85,7 +68,7 @@ export function Map({
   showGeohashText,
   effectivePrecision,
   shouldShowLocalizedPrecision,
-  searchGeohash,
+  searchText,
   onGeohashClick,
 }: MapProps) {
   return (
@@ -210,7 +193,7 @@ export function Map({
               showGeohashText={showGeohashText}
               effectivePrecision={effectivePrecision}
               shouldShowLocalizedPrecision={shouldShowLocalizedPrecision}
-              searchGeohash={searchGeohash}
+              searchText={searchText}
               onGeohashClick={onGeohashClick}
             />
           </g>

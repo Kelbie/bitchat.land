@@ -3,7 +3,7 @@
 interface MobileHeaderProps {
   activeView: "map" | "chat" | "panel";
   onViewChange: (view: "map" | "chat" | "panel") => void;
-  searchGeohash: string;
+  searchText: string;
   onSearch: (value: string) => void;
   zoomedGeohash: string | null;
   // Content header props
@@ -16,7 +16,7 @@ interface MobileHeaderProps {
 export function MobileHeader({
   activeView,
   onViewChange,
-  searchGeohash,
+  searchText,
   onSearch,
   zoomedGeohash,
   nostrEnabled = false,
@@ -240,18 +240,51 @@ export function MobileHeader({
             alignItems: "center",
           }}
         >
-          <input
-            type="text"
-            value={searchGeohash}
-            onChange={(e) => onSearch(e.target.value)}
-            placeholder="Search geohash (e.g. 21m)"
-            style={{
-              flex: 1,
-              padding: "8px 12px",
-              background: "rgba(0, 0, 0, 0.8)",
-              color: "#00ff00",
-              border: "1px solid #00ff00",
-              borderRadius: "4px",
+          <div style={{
+            position: "relative",
+            flex: 1,
+            display: "flex",
+            alignItems: "center"
+          }}>
+            {/* Search Icon */}
+            <div style={{
+              position: "absolute",
+              left: "12px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 1,
+              pointerEvents: "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#00aa00"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+            </div>
+            
+            <input
+              type="text"
+              value={searchText}
+              onChange={(e) => onSearch(e.target.value)}
+              placeholder="hello in:nyc from:@jack"
+              style={{
+                flex: 1,
+                padding: "8px 12px 8px 36px", // Add left padding for icon
+                background: "rgba(0, 0, 0, 0.8)",
+                color: "#00ff00",
+                border: "1px solid #00ff00",
+                borderRadius: "4px",
               fontSize: "14px",
               fontFamily: "Courier New, monospace",
               outline: "none",
@@ -263,8 +296,9 @@ export function MobileHeader({
             onBlur={(e) => {
               e.target.style.boxShadow = "none";
             }}
-          />
-          {searchGeohash && (
+            />
+          </div>
+          {searchText && (
             <button
               onClick={() => onSearch("")}
               style={{
@@ -291,18 +325,6 @@ export function MobileHeader({
             </button>
           )}
         </div>
-        {zoomedGeohash && (
-          <div
-            style={{
-              fontSize: "10px",
-              color: "#00aa00",
-              marginTop: "4px",
-              textAlign: "center",
-            }}
-          >
-            CURRENT: "{zoomedGeohash.toUpperCase()}"
-          </div>
-        )}
       </div>
 
       {/* Separator Bar - Only show if there's sub header content */}
@@ -341,9 +363,9 @@ export function MobileHeader({
                   textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
                 }}
               >
-                RECENT NOSTR EVENTS {searchGeohash ? `IN "${searchGeohash.toUpperCase()}"` : ""}
+                RECENT NOSTR EVENTS {searchText ? `MATCHING "${searchText}"` : ""}
               </div>
-              {searchGeohash && (
+              {searchText && (
                 <div
                   style={{
                     fontSize: "11px",
@@ -373,8 +395,8 @@ export function MobileHeader({
                   textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
                 }}
               >
-                {searchGeohash
-                  ? `EVENTS IN "${searchGeohash.toUpperCase()}"`
+                {searchText
+                  ? `SEARCH RESULTS FOR "${searchText}"`
                   : "ALL GEOHASH REGIONS"}
               </div>
               <div
@@ -388,8 +410,8 @@ export function MobileHeader({
                   display: "inline-block",
                 }}
               >
-                {searchGeohash
-                  ? `DIRECT: ${hierarchicalCounts.direct} | TOTAL: ${hierarchicalCounts.total}`
+                {searchText
+                  ? `FOUND: ${filteredEventsCount} MATCHING EVENTS`
                   : `TOTAL: ${totalEventsCount} EVENTS`}
               </div>
             </>

@@ -4,6 +4,9 @@ import { NostrEvent, GeohashActivity } from "../types";
 import { NOSTR_RELAYS } from "../constants/projections";
 import { findMatchingGeohash } from "../utils/geohashUtils";
 
+// Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
+const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
+
 export function useNostr(
   searchGeohash: string,
   currentGeohashes: string[],
@@ -41,6 +44,15 @@ export function useNostr(
           // Extract geohash from 'g' tag
           const geoTag = event.tags.find((tag) => tag[0] === "g");
           const eventGeohash = geoTag ? geoTag[1] : null;
+
+          // Check for invalid geohash and log it
+          if (eventGeohash && !VALID_GEOHASH_CHARS.test(eventGeohash)) {
+            const nameTag = event.tags.find((tag) => tag[0] === "n");
+            const username = nameTag ? nameTag[1] : "anonymous";
+            const pubkeyHash = event.pubkey.slice(-4);
+            console.log(`Invalid geohash detected in incoming message: "${eventGeohash}" from user ${username} (${pubkeyHash})`);
+            console.log(`Message content: "${event.content?.slice(0, 100)}${event.content && event.content.length > 100 ? '...' : ''}"`);
+          }
 
           if (eventGeohash) {
             // Find which display geohash this event belongs to

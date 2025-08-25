@@ -1,17 +1,18 @@
 import { useState, useEffect } from "react";
 import { getHierarchicalCounts } from "../utils/geohashUtils";
 import { getCachedLocationFromGeohash, LocationInfo } from "../utils/geocoder";
+import { parseSearchQuery, addGeohashToSearch } from "../utils/searchParser";
 
 interface EventHierarchyProps {
-  searchGeohash: string;
+  searchText: string;
   allEventsByGeohash: Map<string, number>;
-  onSearch: (geohash: string) => void;
+  onSearch: (searchText: string) => void;
   isMobileView?: boolean;
 
 }
 
 export function EventHierarchy({ 
-  searchGeohash, 
+  searchText, 
   allEventsByGeohash, 
   onSearch,
   isMobileView = false,
@@ -19,15 +20,19 @@ export function EventHierarchy({
 }: EventHierarchyProps) {
   const [locationNames, setLocationNames] = useState<Map<string, LocationInfo>>(new Map());
 
-  const hierarchicalCounts = searchGeohash 
-    ? getHierarchicalCounts(searchGeohash.toLowerCase(), allEventsByGeohash)
+  // Parse the search to get geohash filters
+  const parsedSearch = parseSearchQuery(searchText);
+  const primarySearchGeohash = parsedSearch.geohashes.length > 0 ? parsedSearch.geohashes[0] : "";
+
+  const hierarchicalCounts = primarySearchGeohash 
+    ? getHierarchicalCounts(primarySearchGeohash.toLowerCase(), allEventsByGeohash)
     : { direct: 0, total: 0 };
 
   // Load location names for geohashes
   useEffect(() => {
     const loadLocationNames = async () => {
-      const geohashesToLookup = searchGeohash 
-        ? [searchGeohash.toLowerCase()]
+      const geohashesToLookup = primarySearchGeohash 
+        ? [primarySearchGeohash.toLowerCase()]
         : Array.from(allEventsByGeohash.keys()).map(hash => hash.charAt(0)).filter((char, index, arr) => arr.indexOf(char) === index);
 
       for (const geohash of geohashesToLookup) {
@@ -41,10 +46,10 @@ export function EventHierarchy({
     };
 
     loadLocationNames();
-  }, [searchGeohash, allEventsByGeohash, locationNames]);
+  }, [primarySearchGeohash, allEventsByGeohash, locationNames]);
 
   // When no search is active, show all top-level geohashes
-  if (!searchGeohash) {
+  if (!primarySearchGeohash) {
     const topLevelCounts = new Map<string, number>();
     
     // Aggregate all events by first character
@@ -145,7 +150,7 @@ export function EventHierarchy({
                     transition: "all 0.2s ease",
                     boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
                   }}
-                  onClick={() => onSearch(geohash)}
+                  onClick={() => onSearch(addGeohashToSearch(searchText, geohash))}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = "linear-gradient(135deg, rgba(0, 80, 0, 0.5), rgba(0, 50, 0, 0.3))";
                     e.currentTarget.style.borderColor = "rgba(0, 204, 0, 0.6)";
@@ -300,7 +305,7 @@ export function EventHierarchy({
             transition: "all 0.2s ease",
             boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
           }}
-          onClick={() => onSearch(fullPath)}
+          onClick={() => onSearch(addGeohashToSearch(searchText, fullPath))}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = depth % 2 === 0
               ? "linear-gradient(135deg, rgba(0, 70, 0, 0.5), rgba(0, 45, 0, 0.3))"
@@ -381,7 +386,7 @@ export function EventHierarchy({
     return total;
   };
 
-  const hierarchy = buildHierarchy(searchGeohash.toLowerCase());
+  const hierarchy = buildHierarchy(primarySearchGeohash.toLowerCase());
 
   return (
     <div
@@ -429,7 +434,7 @@ export function EventHierarchy({
             letterSpacing: "1px",
             textShadow: "0 0 10px rgba(0, 255, 0, 0.5)"
           }}>
-            EVENTS IN "{searchGeohash.toUpperCase()}"
+            EVENTS IN "{primarySearchGeohash.toUpperCase()}"
           </div>
           <div style={{ 
             fontSize: "10px", 
@@ -467,7 +472,7 @@ export function EventHierarchy({
               transition: "all 0.2s ease",
               boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
             }}
-            onClick={() => onSearch(searchGeohash)}
+            onClick={() => onSearch(addGeohashToSearch(searchText, primarySearchGeohash))}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = "linear-gradient(135deg, rgba(0, 120, 0, 0.6), rgba(0, 80, 0, 0.4))";
               e.currentTarget.style.borderColor = "rgba(0, 255, 0, 0.7)";
@@ -503,7 +508,7 @@ export function EventHierarchy({
                   borderRadius: "4px",
                   fontFamily: "monospace"
                 }}>
-                  #{searchGeohash.toUpperCase()}
+                  #{primarySearchGeohash.toUpperCase()}
                 </span>
                 <span style={{
                   fontSize: isMobileView ? "12px" : "10px",
@@ -528,7 +533,7 @@ export function EventHierarchy({
                 [{hierarchicalCounts.direct} events]
               </span>
             </div>
-            {locationNames.get(searchGeohash.toLowerCase()) && (
+            {locationNames.get(primarySearchGeohash.toLowerCase()) && (
               <div style={{ 
                 fontSize: isMobileView ? "14px" : "11px", 
                 color: "#00dd00",
@@ -536,7 +541,7 @@ export function EventHierarchy({
                 lineHeight: "1.4",
                 letterSpacing: "0.3px"
               }}>
-                {locationNames.get(searchGeohash.toLowerCase())?.formatted}
+                {locationNames.get(primarySearchGeohash.toLowerCase())?.formatted}
               </div>
             )}
           </div>
@@ -557,7 +562,7 @@ export function EventHierarchy({
               SUBREGIONS ({hierarchicalCounts.total - hierarchicalCounts.direct} events):
             </div>
             <div style={{ marginTop: "6px" }}>
-              {renderHierarchy(hierarchy, searchGeohash.toLowerCase())}
+              {renderHierarchy(hierarchy, primarySearchGeohash.toLowerCase())}
             </div>
           </div>
         )}

@@ -1,5 +1,6 @@
-import React from "react";
+// import React from "react"; // Not needed for JSX in this file
 import { decodeGeohash, createGeohashPath } from "../utils/geohashUtils";
+import { parseSearchQuery } from "../utils/searchParser";
 import { GeohashActivity } from "../types";
 
 interface GeohashLayerProps {
@@ -15,7 +16,7 @@ interface GeohashLayerProps {
   showGeohashText: boolean;
   effectivePrecision: number;
   shouldShowLocalizedPrecision: boolean;
-  searchGeohash: string;
+  searchText: string;
   onGeohashClick: (geohash: string) => void;
 }
 
@@ -32,10 +33,14 @@ export function GeohashLayer({
   showGeohashText,
   effectivePrecision,
   shouldShowLocalizedPrecision,
-  searchGeohash,
+  searchText,
   onGeohashClick,
 }: GeohashLayerProps) {
   if (!showSingleCharGeohashes) return null;
+
+  // Parse search to get geohash info for display logic
+  const parsedSearch = parseSearchQuery(searchText);
+  const primarySearchGeohash = parsedSearch.geohashes.length > 0 ? parsedSearch.geohashes[0] : "";
 
   return (
     <>
@@ -91,7 +96,7 @@ export function GeohashLayer({
         const showLabel =
           effectivePrecision <= 8 &&
           (!shouldShowLocalizedPrecision ||
-            (shouldShowLocalizedPrecision && searchGeohash.length <= 6));
+            (shouldShowLocalizedPrecision && primarySearchGeohash.length <= 6));
 
         return (
           <g key={`geohash-${geohash}`}>
