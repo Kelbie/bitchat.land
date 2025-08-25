@@ -11,7 +11,7 @@ import {
 import { geoImago } from "d3-geo-polygon";
 
 export const PROJECTIONS: { [key: string]: any } = {
-  authagraph: geoImago,
+  // authagraph: geoImago,
   mercator: geoMercator,
   albers: geoAlbers,
   // albers_usa: geoAlbersUsa,
