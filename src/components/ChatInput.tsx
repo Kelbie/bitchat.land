@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { SimplePool } from "nostr-tools/pool";
 import { finalizeEvent, validateEvent, verifyEvent } from "nostr-tools/pure";
 import { NOSTR_RELAYS } from "../constants/projections";
@@ -8,6 +8,7 @@ interface ChatInputProps {
   currentChannel: string; // e.g., "nyc" from "in:nyc"
   onMessageSent?: (message: string) => void;
   onOpenProfileModal?: () => void;
+  prefillText?: string;
 }
 
 interface SavedProfile {
@@ -19,11 +20,12 @@ interface SavedProfile {
   createdAt: number;
 }
 
-export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal }: ChatInputProps) {
+export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, prefillText }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [savedProfile, setSavedProfile] = useState<SavedProfile | null>(null);
   const [error, setError] = useState("");
+  const lastPrefillRef = useRef<string>("");
 
   // Load saved profile on component mount
   useEffect(() => {
@@ -37,6 +39,22 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal }:
       console.warn("Failed to load saved profile:", err);
     }
   }, []);
+
+  // Handle prefillText changes - only apply when it's a new prefill
+  useEffect(() => {
+    if (prefillText && prefillText !== lastPrefillRef.current) {
+      setMessage(prefillText);
+      lastPrefillRef.current = prefillText;
+      // Focus the textarea after setting the prefill
+      const textarea = document.querySelector('textarea');
+      if (textarea) {
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(prefillText.length, prefillText.length);
+        }, 100);
+      }
+    }
+  }, [prefillText]); // Only depend on prefillText
 
   const sendMessage = async () => {
     if (!message.trim() || !currentChannel || !savedProfile) {
@@ -86,6 +104,7 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal }:
       } else {
         kind = 23333; // Standard channels use kind 23333
         tags.push(["d", currentChannel.toLowerCase()]);
+        tags.push(["relay", NOSTR_RELAYS[0]]);
         console.log(`💬 Using kind 23333 with group tag: d=${currentChannel.toLowerCase()}`);
       }
 
@@ -122,56 +141,24 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal }:
       try {
         console.log("Attempting to publish event to relays:", NOSTR_RELAYS);
         
-        // Method 1: Use Promise.any (as recommended in docs)
+        // Publish to relays - pool.publish returns an array of promises
+        const publishPromises = pool.publish(NOSTR_RELAYS, signedEvent);
+        
+        console.log("Publish promises created:", publishPromises.length);
+        
+        // Wait for at least one relay to succeed
         try {
-          await Promise.any(pool.publish(NOSTR_RELAYS, signedEvent));
-          console.log("✅ Message published successfully using Promise.any");
+          // Use Promise.race instead of Promise.any for better compatibility
+          await Promise.race(publishPromises);
+          console.log("✅ Message published successfully to at least one relay");
           
           // Clear input and notify parent
           setMessage("");
           onMessageSent?.(message.trim());
           
-        } catch (aggregateError) {
-          console.warn("Promise.any failed, trying alternative method...");
-          
-          // Method 2: Handle individual publications
-          const publishResults = pool.publish(NOSTR_RELAYS, signedEvent);
-          let successCount = 0;
-          let errorCount = 0;
-          
-          const publishPromises = publishResults.map(pub => {
-            return new Promise<void>((resolve, reject) => {
-              pub.on('ok', (relay: string, eventId: string) => {
-                console.log(`✅ Successfully published to ${relay}`, eventId);
-                successCount++;
-                resolve();
-              });
-              
-              pub.on('failed', (relay: string, reason: string) => {
-                console.error(`❌ Failed to publish to ${relay}:`, reason);
-                errorCount++;
-                reject(new Error(`Failed to publish to ${relay}: ${reason}`));
-              });
-              
-              // Timeout after 10 seconds
-              setTimeout(() => {
-                reject(new Error(`Timeout publishing to relay`));
-              }, 10000);
-            });
-          });
-          
-          // Wait for at least one success or all failures
-          try {
-            await Promise.any(publishPromises);
-            console.log(`✅ Message sent successfully to ${successCount} relays`);
-            
-            // Clear input and notify parent
-            setMessage("");
-            onMessageSent?.(message.trim());
-            
-          } catch (error) {
-            throw new Error("Failed to publish to any relay using fallback method");
-          }
+        } catch (error) {
+          console.error("❌ Failed to publish to any relay:", error);
+          throw new Error("Failed to publish message to any relay");
         }
         
       } finally {

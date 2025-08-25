@@ -14,6 +14,7 @@ interface RecentEventsProps {
   isMobileView?: boolean;
   onSearch?: (text: string) => void;
   forceScrollToBottom?: boolean;
+  onReply?: (username: string, pubkeyHash: string) => void;
 }
 
 export function RecentEvents({ 
@@ -24,6 +25,7 @@ export function RecentEvents({
   isMobileView = false,
   onSearch,
   forceScrollToBottom = false,
+  onReply,
 }: RecentEventsProps) {
   const virtuosoRef = useRef<any>(null);
   const scrollTimeoutRef = useRef<number | null>(null);
@@ -177,9 +179,11 @@ export function RecentEvents({
     const geoTag = event.tags.find((tag: any) => tag[0] === "g");
     const groupTag = event.tags.find((tag: any) => tag[0] === "d"); // group tag is kind 23333 only
     const nameTag = event.tags.find((tag: any) => tag[0] === "n");
+    const clientTag = event.tags.find((tag: any) => tag[0] === "client");
     const rawGeohash = geoTag && typeof geoTag[1] === "string" ? geoTag[1] : "";
     const groupTagValue = groupTag && typeof groupTag[1] === "string" ? groupTag[1] : "";
     const username = nameTag ? nameTag[1] : "Anonymous";
+    const clientName = clientTag ? clientTag[1] : null;
     const pubkeyHash = event.pubkey.slice(-4);
     const time = new Date(event.created_at * 1000).toLocaleTimeString();
     const date = new Date(event.created_at * 1000).toLocaleDateString();
@@ -213,6 +217,15 @@ export function RecentEvents({
             cursor: "pointer",
             boxShadow: `0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 0 ${userColors.glow}`,
           }}
+          // onClick={(e) => {
+          //   // Only trigger message click if not clicking on interactive elements
+          //   if (!(e.target as HTMLElement).closest('button')) {
+          //     // Handle message click for search functionality
+          //     if (onSearch) {
+          //       onSearch(addUserToSearch(searchText, username, pubkeyHash));
+          //     }
+          //   }
+          // }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = userColors.backgroundHover;
             e.currentTarget.style.borderColor = userColors.borderHover;
@@ -226,6 +239,9 @@ export function RecentEvents({
             e.currentTarget.style.boxShadow = `0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 0 ${userColors.glow}`;
           }}
         >
+          {/* <code>
+            {JSON.stringify(event)}
+          </code> */}
           <div style={{
                 display: "flex",
                 alignItems: "center",
@@ -290,7 +306,8 @@ export function RecentEvents({
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
-                fontSize: isMobileView ? "11px" : "9px"
+                fontSize: isMobileView ? "11px" : "9px",
+                flexWrap: "wrap"
               }}>
                 <span style={{ 
                   color: userColors.message,
@@ -319,6 +336,54 @@ export function RecentEvents({
                       eventGeohash ? `#${eventGeohash.toUpperCase()}` : `#${groupTagValue.toUpperCase()}`
                     }
                   </span>
+                  {clientName && (
+                    <span style={{
+                      color: "#888",
+                      background: "rgba(0, 0, 0, 0.3)",
+                      padding: "2px 6px",
+                      borderRadius: "3px",
+                      fontFamily: "monospace",
+                      fontSize: isMobileView ? "10px" : "8px",
+                      border: "1px solid #333"
+                    }}>
+                      via {clientName}
+                    </span>
+                  )}
+                  {onReply && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Add a small delay to ensure the click event is fully processed
+                        setTimeout(() => {
+                          onReply(username, pubkeyHash);
+                        }, 10);
+                      }}
+                      style={{
+                        background: "rgba(0, 100, 0, 0.6)",
+                        color: "#00ff00",
+                        border: "1px solid #00aa00",
+                        borderRadius: "3px",
+                        padding: "2px 6px",
+                        fontSize: isMobileView ? "10px" : "8px",
+                        fontFamily: "monospace",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        userSelect: "none"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(0, 150, 0, 0.8)";
+                        e.currentTarget.style.transform = "scale(1.05)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(0, 100, 0, 0.6)";
+                        e.currentTarget.style.transform = "scale(1)";
+                      }}
+                    >
+                      ↪ Reply
+                    </button>
+                  )}
               </div>
             </div>
           </div>
@@ -326,7 +391,7 @@ export function RecentEvents({
         </div>
       </div>
     );
-  }, [sortedEvents, isMobileView, onSearch, searchText, generateUserColors]);
+  }, [sortedEvents, isMobileView, onSearch, searchText, generateUserColors, onReply]);
 
   // Auto-scroll when new events arrive
   useEffect(() => {

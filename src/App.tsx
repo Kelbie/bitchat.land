@@ -172,6 +172,9 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   const [searchGeohash, setSearchGeohash] = useState("");
   const [animatingGeohashes, setAnimatingGeohashes] = useState<Set<string>>(new Set());
   const [channelLastReadMap, setChannelLastReadMap] = useState<Record<string, number>>({});
+  
+  // Reply state
+  const [replyPrefillText, setReplyPrefillText] = useState("");
 
   // Header height constant - measured exact value
   const headerHeight = 182.2;
@@ -285,6 +288,24 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   // Handle text search input
   const handleTextSearch = (value: string) => {
     setSearchText(value);
+  };
+
+  // Handle reply to message
+  const handleReply = (username: string, pubkeyHash: string) => {
+    const replyText = `@${username}#${pubkeyHash} `;
+    setReplyPrefillText(replyText);
+    
+    // Switch to chat view on mobile with a small delay to ensure state updates
+    if (isMobile) {
+      setTimeout(() => {
+        setActiveView('chat');
+      }, 50);
+    }
+  };
+
+  // Handle message sent - clear reply prefill
+  const handleMessageSent = () => {
+    setReplyPrefillText("");
   };
 
   // Handle geohash clicks from map - add to text search
@@ -563,6 +584,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
               allStoredEvents={allStoredEvents}
               recentEvents={recentEvents}
               onSearch={handleTextSearch}
+              onReply={handleReply}
             />
           </>
         )}
@@ -763,6 +785,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                       recentEvents={recentEvents}
                       isMobileView={true}
                       onSearch={handleTextSearch}
+                      onReply={handleReply}
                     />
                   </div>
                   
@@ -770,11 +793,9 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                   {selectedChannelKey && (
                     <ChatInput 
                       currentChannel={selectedChannelKey.slice(1)} // Remove the # prefix
-                      onMessageSent={(message) => {
-                        console.log('Message sent:', message);
-                        // Could trigger a refresh or optimistic update here
-                      }}
+                      onMessageSent={handleMessageSent}
                       onOpenProfileModal={() => setShowProfileModal(true)}
+                      prefillText={replyPrefillText}
                     />
                   )}
                 </div>
