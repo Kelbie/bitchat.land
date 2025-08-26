@@ -43,6 +43,11 @@ const styles = {
     error:
       "bg-[#330000] border border-[#ff0000] text-[#ff6666] p-2 rounded mb-5 text-sm",
     progressText: "text-center text-xs text-[#888]",
+    profileOption: "border-[#00ff00]",
+    previewCard:
+      "bg-[#001100] border-2 border-[#00ff00] rounded-[15px] p-6 mb-5 shadow-[0_0_20px_rgba(0,255,0,0.2)]",
+    previewUsername: "text-[#00ff00] text-[20px] font-bold",
+    previewHighlight: "bg-yellow-300 text-black px-1 rounded",
   },
   material: {
     overlay:
@@ -54,6 +59,11 @@ const styles = {
     error:
       "bg-red-50 border border-red-400 text-red-600 p-2 rounded mb-5 text-sm",
     progressText: "text-center text-xs text-gray-500",
+    profileOption: "border-blue-600",
+    previewCard:
+      "bg-white border-2 border-blue-600 rounded-[15px] p-6 mb-5 shadow-md",
+    previewUsername: "text-blue-600 text-[20px] font-bold",
+    previewHighlight: "bg-yellow-200 text-black px-1 rounded",
   },
 } as const;
 
@@ -360,7 +370,7 @@ export function ProfileGenerationModal({
                     <button
                       key={idx}
                       onClick={() => setGeneratedProfile(profile)}
-                      className="w-10 h-10 border border-[#00ff00] rounded-full"
+                      className={`w-10 h-10 rounded-full border ${t.profileOption}`}
                       style={{ backgroundColor: profile.color }}
                       title={profile.publicKeyHex.slice(-4)}
                     />
@@ -382,65 +392,24 @@ export function ProfileGenerationModal({
         ) : (
           <>
             {/* Profile Card Preview */}
-            <div
-              style={{
-                backgroundColor: "#001100",
-                border: "2px solid #00ff00",
-                borderRadius: "15px",
-                padding: "25px",
-                marginBottom: "20px",
-                boxShadow: "0 0 20px rgba(0, 255, 0, 0.2)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "15px",
-                  marginBottom: "20px",
-                }}
-              >
+            <div className={t.previewCard}>
+              <div className="flex items-center gap-4 mb-5">
                 {/* Avatar */}
                 <div
+                  className="w-[60px] h-[60px] rounded-full flex items-center justify-center text-2xl font-bold text-black"
                   style={{
-                    width: "60px",
-                    height: "60px",
-                    borderRadius: "50%",
                     backgroundColor: generatedProfile.color,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "24px",
-                    fontWeight: "bold",
-                    color: "#000",
-                    textShadow: "none",
                     border: `2px solid ${generatedProfile.color}`,
-                    boxShadow: "0 0 15px rgba(0, 255, 0, 0.3)",
                   }}
                 >
                   {generatedProfile.username.charAt(0).toUpperCase()}
                 </div>
 
                 {/* Profile Info */}
-                <div style={{ flex: 1 }}>
-                  <h3
-                    style={{
-                      margin: "0",
-                      color: "#00ff00",
-                      fontSize: "20px",
-                      textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-                    }}
-                  >
+                <div className="flex-1">
+                  <h3 className={t.previewUsername}>
                     @{generatedProfile.username}#
-                    <span
-                      style={{
-                        backgroundColor: "#ffff00",
-                        color: "#000",
-                        padding: "2px 4px",
-                        borderRadius: "3px",
-                        fontWeight: "bold",
-                      }}
-                    >
+                    <span className={t.previewHighlight}>
                       {generatedProfile.publicKeyHex.slice(-4)}
                     </span>
                   </h3>

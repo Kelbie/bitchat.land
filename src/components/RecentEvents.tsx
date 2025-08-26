@@ -32,6 +32,11 @@ const styles = {
     noEventsMessage: "mb-2",
     scrollButton:
       "absolute bottom-[70px] right-[30px] bg-green-500 text-black rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,255,0,0.3)] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110",
+    messageCard:
+      "px-5 py-2 bg-black/30 rounded-lg transition-all cursor-pointer hover:bg-black/50 hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(0,255,0,0.3)]",
+    hashTag: "text-gray-500 text-[10px] font-mono",
+    replyButton:
+      "bg-transparent text-gray-500 rounded text-[10px] font-mono cursor-pointer transition-colors hover:bg-black/20 hover:text-gray-300",
   },
   material: {
     container:
@@ -41,6 +46,11 @@ const styles = {
     noEventsMessage: "mb-2",
     scrollButton:
       "absolute bottom-[70px] right-[30px] bg-blue-500 text-white rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all duration-200 z-[1000] hover:bg-blue-600 hover:scale-110",
+    messageCard:
+      "px-5 py-2 bg-gray-100 rounded-lg transition-all cursor-pointer hover:bg-gray-200 hover:shadow-sm",
+    hashTag: "text-gray-500 text-[10px] font-mono",
+    replyButton:
+      "bg-transparent text-gray-500 rounded text-[10px] font-mono cursor-pointer transition-colors hover:bg-gray-200 hover:text-gray-700",
   },
 } as const;
 
@@ -59,6 +69,7 @@ export function RecentEvents({
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [userScrolled, setUserScrolled] = useState(false);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
+  const t = styles[theme];
 
   if (!nostrEnabled) return null;
 
@@ -268,75 +279,17 @@ export function RecentEvents({
         context.font = `${fontWeight} ${fontSize} ${fontFamily}`;
         const usernameWidth = context.measureText(usernameText).width;
 
-        // Add some padding for better spacing
-        const hangingIndentWidth = Math.ceil(usernameWidth) + 16;
-
         return (
-          <div
-            style={{
-              paddingBottom: "16px", // Consistent spacing
-            }}
-          >
-            <div
-              style={{
-                // margin: "0 20px 0 20px",
-                padding: "0px 20px",
-                background: "rgba(0, 0, 0, 0.3)",
-                borderRadius: "8px",
-                opacity: 1,
-                transition: "all 0.2s ease",
-                cursor: "pointer",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
-              }}
-              // onClick={(e) => {
-              //   // Only trigger message click if not clicking on interactive elements
-              //   if (!(e.target as HTMLElement).closest('button')) {
-              //     // Handle message click for search functionality
-              //     if (onSearch) {
-              //       onSearch(addUserToSearch(searchText, username, pubkeyHash));
-              //     }
-              //   }
-              // }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(0, 0, 0, 0.5)";
-                e.currentTarget.style.transform = "translateY(-1px)";
-                e.currentTarget.style.boxShadow =
-                  "0 4px 12px rgba(0, 0, 0, 0.4)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "rgba(0, 0, 0, 0.3)";
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow =
-                  "0 2px 8px rgba(0, 0, 0, 0.3)";
-              }}
-            >
+          <div className="pb-4">
+            <div className={t.messageCard}>
 
-               {/* Bottom row: Hash, Via, Reply */}
-               <div
-                style={{
-                  display: "flex",
-                  justifyContent: "flex-start",
-                  alignItems: "center",
-                  height: "16px",
-                }}
-              >
+              {/* Bottom row: Hash, Via, Reply */}
+              <div className="flex justify-start items-center h-4">
                 {/* Right side: Hash, Via, and Reply button */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
+                <div className="flex items-center gap-2">
                   {/* Hash tag */}
                   <span
-                    style={{
-                      color: "#666",
-                      fontSize: "10px",
-                      fontFamily: "monospace",
-                      cursor: onSearch ? "pointer" : "default",
-                      transition: "all 0.2s ease",
-                    }}
+                    className={`${t.hashTag} ${onSearch ? "cursor-pointer" : ""}`}
                     onClick={
                       onSearch
                         ? () =>
@@ -354,29 +307,11 @@ export function RecentEvents({
                       : `#${groupTagValue.toUpperCase()}`}
                   </span>
 
-                  {clientName && (
-                    <span
-                      style={{
-                        color: "#666",
-                        fontSize: "10px",
-                        fontFamily: "monospace",
-                      }}
-                    >
-                      •
-                    </span>
-                  )}
+                  {clientName && <span className={t.hashTag}>•</span>}
 
                   {/* Via info */}
                   {clientName && (
-                    <span
-                      style={{
-                        color: "#666",
-                        fontSize: "10px",
-                        fontFamily: "monospace",
-                      }}
-                    >
-                      via {clientName}
-                    </span>
+                    <span className={t.hashTag}>via {clientName}</span>
                   )}
 
                   {/* Reply button */}
@@ -386,30 +321,11 @@ export function RecentEvents({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        // Add a small delay to ensure the click event is fully processed
                         setTimeout(() => {
                           onReply(username, pubkeyHash);
                         }, 10);
                       }}
-                      style={{
-                        background: "transparent",
-                        color: "#666",
-                        border: "none",
-                        borderRadius: "3px",
-                        fontSize: "10px",
-                        fontFamily: "monospace",
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                        userSelect: "none",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "rgba(0, 0, 0, 0.2)";
-                        e.currentTarget.style.color = "#888";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "#888";
-                      }}
+                      className={t.replyButton}
                     >
                       ↪ Reply
                     </button>
@@ -418,36 +334,13 @@ export function RecentEvents({
               </div>
 
               {/* Top row: Username + Message with hanging indent */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "8px",
-
-                  // marginBottom: "8px"
-                }}
-              >
+              <div className="flex items-start gap-2">
                 {/* Combined Username + Message content with dynamic hanging indent */}
-                <div
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    lineHeight: "1.6",
-                    wordWrap: "break-word",
-                    whiteSpace: "pre-wrap",
-                    fontFamily: "Courier New, monospace",
-                    letterSpacing: "0.3px",
-                  }}
-                >
+                <div className="flex-1 min-w-0 leading-relaxed break-words whitespace-pre-wrap font-mono tracking-wide">
                   {/* Username */}
                   <span
-                    style={{
-                      color: userColors.hex,
-                      fontSize: "14px",
-                      fontWeight: "bold",
-                      cursor: onSearch ? "pointer" : "default",
-                      transition: "all 0.2s ease",
-                    }}
+                    className={`text-sm font-bold ${onSearch ? "cursor-pointer" : ""}`}
+                    style={{ color: userColors.hex }}
                     onClick={
                       onSearch
                         ? () =>
@@ -462,11 +355,8 @@ export function RecentEvents({
 
                   {/* Message content */}
                   <span
-                    style={{
-                      color: userColors.hex,
-                      fontSize: "15px",
-                      paddingLeft: `${8}px`,
-                    }}
+                    className="pl-2 text-[15px]"
+                    style={{ color: userColors.hex }}
                   >
                     {event.content
                       ? renderTextWithLinks(event.content, theme)
@@ -474,14 +364,7 @@ export function RecentEvents({
                   </span>
 
                   {/* Date appended to message */}
-                  <span
-                    style={{
-                      color: "#666",
-                      fontSize: "11px",
-                      paddingLeft: "8px",
-                      fontFamily: "monospace",
-                    }}
-                  >
+                  <span className="pl-2 text-[11px] font-mono text-gray-500">
                     [{isToday ? time : `${date} ${time}`}]
                   </span>
                 </div>

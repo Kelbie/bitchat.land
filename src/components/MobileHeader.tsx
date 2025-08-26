@@ -133,9 +133,9 @@ export function MobileHeader({
         </ThemedButton>
       </div>
 
-      <div className="w-full max-w-md mt-2 mb-4">
+      <div className="w-full mt-2 mb-4 px-4">
         <div className="flex gap-2 items-center">
-          <div className="relative flex-1">
+          <div className="relative w-full">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
               <svg
                 width="16"
@@ -156,7 +156,7 @@ export function MobileHeader({
               onChange={(e) => onSearch((e.target as HTMLInputElement).value)}
               placeholder="hello in:nyc from:@jack"
               theme={theme}
-              className={`flex-1 pl-9 pr-3 py-2 ${
+              className={`w-full pl-9 pr-3 py-2 ${
                 theme === "matrix"
                   ? "focus:shadow-[0_0_5px_rgba(0,255,0,0.5)]"
                   : "focus:ring-2 focus:ring-blue-600"
