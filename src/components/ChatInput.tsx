@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { SimplePool } from "nostr-tools/pool";
 import { finalizeEvent, validateEvent, verifyEvent } from "nostr-tools/pure";
 import { NOSTR_RELAYS } from "../constants/projections";
-import { hexToBytes } from "nostr-tools/utils";
+import { hexToBytes, bytesToHex } from "nostr-tools/utils";
+import { generateSecretKey, getPublicKey } from "nostr-tools";
 
 interface ChatInputProps {
   currentChannel: string; // e.g., "nyc" from "in:nyc"
@@ -72,8 +73,41 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
         privateKeyLength: savedProfile.privateKey.length
       });
 
-      // Convert hex private key to Uint8Array
-      const privateKeyHex = savedProfile.privateKey;
+      let msg = message.trim();
+      let privateKeyHex = savedProfile.privateKey;
+
+      if (msg.toLowerCase().startsWith("!roll")) {
+        const args = msg.slice(5).trim();
+        let min = 1;
+        let max = 10;
+
+        if (args) {
+          if (args.includes("-")) {
+            const [start, end] = args.split("-").map((n) => parseInt(n, 10));
+            if (!Number.isNaN(start) && !Number.isNaN(end) && end >= start) {
+              min = start;
+              max = end;
+            }
+          } else {
+            const num = parseInt(args, 10);
+            if (!Number.isNaN(num)) {
+              min = 0;
+              max = num;
+            }
+          }
+        }
+
+        const tempSk = generateSecretKey();
+        const tempPk = getPublicKey(tempSk);
+        const pubkeyHex = typeof tempPk === "string" ? tempPk : bytesToHex(tempPk);
+
+        const range = BigInt(max) - BigInt(min) + BigInt(1);
+        const pkNum = BigInt("0x" + pubkeyHex);
+        const roll = Number(pkNum % range) + min;
+
+        msg = `@${savedProfile.username} rolled ${roll} point(s)`;
+        privateKeyHex = typeof tempSk === "string" ? tempSk : bytesToHex(tempSk);
+      }
 
       // Determine event kind and tags based on channel
       const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
@@ -105,7 +139,7 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
       const eventTemplate = {
         kind: kind,
         created_at: Math.floor(Date.now() / 1000),
-        content: message.trim(),
+        content: msg,
         tags: tags,
       };
 
@@ -147,7 +181,7 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
           
           // Clear input and notify parent
           setMessage("");
-          onMessageSent?.(message.trim());
+          onMessageSent?.(msg);
           
         } catch (error) {
           console.error("❌ Failed to publish to any relay:", error);
