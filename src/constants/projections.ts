@@ -27,7 +27,7 @@ export const NOSTR_RELAYS = [
   "wss://nos.lol",
   "wss://relay.primal.net",
   "wss://offchain.pub",
-  "wss://nostr21.com",
+  // "wss://nostr21.com",
 ];
 
 export const BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
