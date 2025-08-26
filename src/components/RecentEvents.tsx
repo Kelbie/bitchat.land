@@ -8,6 +8,7 @@ import {
   addClientToSearch,
 } from "../utils/searchParser";
 import { renderTextWithLinks } from "../utils/linkRenderer";
+import { parseRollCommand, sendRollResult } from "../utils/roll";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -38,6 +39,8 @@ export function RecentEvents({
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [userScrolled, setUserScrolled] = useState(false);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
+  const [respondToRolls, setRespondToRolls] = useState(false);
+  const processedRollIdsRef = useRef<Set<string>>(new Set());
 
   if (!nostrEnabled) return null;
 
@@ -546,6 +549,38 @@ export function RecentEvents({
     }
   }, [forceScrollToBottom, scrollToBottom, sortedEvents.length]);
 
+  // Track currently loaded events when enabling roll responses
+  useEffect(() => {
+    if (respondToRolls) {
+      recentEvents.forEach((ev) => processedRollIdsRef.current.add(ev.id));
+    }
+  }, [respondToRolls, recentEvents]);
+
+  // Respond to !roll commands from other clients
+  useEffect(() => {
+    if (!respondToRolls) return;
+
+    recentEvents.forEach((event) => {
+      if (processedRollIdsRef.current.has(event.id)) return;
+      processedRollIdsRef.current.add(event.id);
+
+      const range = parseRollCommand(event.content.trim());
+      if (!range) return;
+
+      const clientTag = event.tags.find((t: any) => t[0] === "client");
+      if (clientTag && clientTag[1] === "bitchat.land") return;
+
+      const nameTag = event.tags.find((t: any) => t[0] === "n");
+      const username = nameTag ? nameTag[1] : "anonymous";
+      const geoTag = event.tags.find((t: any) => t[0] === "g");
+      const groupTag = event.tags.find((t: any) => t[0] === "d");
+      const channel = geoTag ? geoTag[1] : groupTag ? groupTag[1] : null;
+      if (!channel) return;
+
+      sendRollResult(channel, username, event.pubkey, range).catch(console.error);
+    });
+  }, [recentEvents, respondToRolls]);
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -657,6 +692,18 @@ export function RecentEvents({
           )}
         </div>
       )}
+
+      <div style={{ padding: "4px 8px" }}>
+        <label style={{ fontSize: "10px", color: "#00aa00" }}>
+          <input
+            type="checkbox"
+            checked={respondToRolls}
+            onChange={(e) => setRespondToRolls(e.target.checked)}
+            style={{ marginRight: "4px" }}
+          />
+          Respond to !roll commands
+        </label>
+      </div>
 
       {/* Virtual scrolling list with Virtuoso */}
       <div style={{ flex: 1, position: "relative" }}>
