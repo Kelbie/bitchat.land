@@ -8,7 +8,13 @@ import React from 'react';
 // - https://www.youtube.com/user/username
 // - https://example.com/path-with-hyphens
 // - https://sub-domain.example.com/path/to/page
+// eslint-disable-next-line no-useless-escape
 const URL_REGEX = /https?:\/\/(?:[-\w.])+(?:[:\d]+)?(?:\/(?:[\w\/_.-])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?/gi;
+// Combined regex to detect URLs, hashtags and mentions
+const TOKEN_REGEX = new RegExp(
+  `${URL_REGEX.source}|#[0-9A-Za-z]+|@[A-Za-z0-9_]+#[0-9a-fA-F]{4}`,
+  'gi'
+);
 
 /**
  * Validates if a string is a safe URL
@@ -69,77 +75,110 @@ function sanitizeUrlText(url: string): string {
  * @param text - The text content to process
  * @returns Array of text and link elements
  */
-export function renderTextWithLinks(text: string): (string | JSX.Element)[] {
+export function renderTextWithLinks(
+  text: string,
+  onSearch?: (value: string) => void
+): (string | JSX.Element)[] {
   if (!text || typeof text !== 'string') return [];
-  
+
   const parts: (string | JSX.Element)[] = [];
   let lastIndex = 0;
   let match;
-  
-  // Reset regex state
-  URL_REGEX.lastIndex = 0;
-  
-  while ((match = URL_REGEX.exec(text)) !== null) {
-    const url = match[0];
+
+  TOKEN_REGEX.lastIndex = 0;
+  while ((match = TOKEN_REGEX.exec(text)) !== null) {
+    const token = match[0];
     const matchIndex = match.index;
-    
-    // Add text before the URL
+
     if (matchIndex > lastIndex) {
       parts.push(text.slice(lastIndex, matchIndex));
     }
-    
-    // Only render as link if URL is valid and safe
-    if (isValidUrl(url)) {
-      const sanitizedUrl = sanitizeUrlText(url);
-      
+
+    if (token.startsWith('http')) {
+      if (isValidUrl(token)) {
+        const sanitizedUrl = sanitizeUrlText(token);
+        parts.push(
+          <a
+            key={`link-${matchIndex}`}
+            href={token}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: '#00ff00',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              wordBreak: 'break-all',
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+
+              if (isValidUrl(token)) {
+                try {
+                  window.open(token, '_blank', 'noopener,noreferrer');
+                } catch (error) {
+                  console.warn('Failed to open URL:', error);
+                }
+              }
+            }}
+            onMouseEnter={(e) => {
+              if (token.length > 100) {
+                e.currentTarget.title = token;
+              }
+            }}
+          >
+            {sanitizedUrl}
+          </a>
+        );
+      } else {
+        parts.push(token);
+      }
+    } else if (token.startsWith('#')) {
+      const tag = token.slice(1);
       parts.push(
-        <a
-          key={`link-${matchIndex}`}
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: '#00ff00',
-            textDecoration: 'underline',
-            cursor: 'pointer',
-            wordBreak: 'break-all',
-          }}
+        <button
+          key={`hash-${matchIndex}`}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            
-            // Additional security check before opening
-            if (isValidUrl(url)) {
-              try {
-                window.open(url, '_blank', 'noopener,noreferrer');
-              } catch (error) {
-                console.warn('Failed to open URL:', error);
-              }
-            }
+            onSearch?.(`in:${tag.toLowerCase()}`);
           }}
-          onMouseEnter={(e) => {
-            // Show full URL in tooltip for truncated URLs
-            if (url.length > 100) {
-              e.currentTarget.title = url;
-            }
+          style={{
+            background: 'transparent',
+            border: '1px solid #00ff00',
+            borderRadius: '4px',
+            color: '#00ff00',
+            padding: '0 2px',
+            cursor: 'pointer',
           }}
         >
-          {sanitizedUrl}
-        </a>
+          {token}
+        </button>
       );
-    } else {
-      // If URL is not safe, just render as plain text
-      parts.push(url);
+    } else if (token.startsWith('@')) {
+      parts.push(
+        <span
+          key={`mention-${matchIndex}`}
+          style={{
+            backgroundColor: '#333',
+            color: '#fff',
+            borderRadius: '4px',
+            padding: '0 2px',
+            display: 'inline-block',
+          }}
+        >
+          {token}
+        </span>
+      );
     }
-    
-    lastIndex = matchIndex + url.length;
+
+    lastIndex = matchIndex + token.length;
   }
-  
-  // Add remaining text after the last URL
+
   if (lastIndex < text.length) {
     parts.push(text.slice(lastIndex));
   }
-  
+
   return parts;
 }
 
