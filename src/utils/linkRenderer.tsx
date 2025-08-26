@@ -10,9 +10,17 @@ import React from 'react';
 // - https://sub-domain.example.com/path/to/page
 // eslint-disable-next-line no-useless-escape
 const URL_REGEX = /https?:\/\/(?:[-\w.])+(?:[:\d]+)?(?:\/(?:[\w\/_.-])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?/gi;
+// Separate regex patterns for hashtags and mentions
+const HASHTAG_PATTERN = '#[0-9A-Za-z]+';
+const MENTION_PATTERN = '@[A-Za-z0-9_]+#[0-9a-f]{4}';
+
+// Regexes used for classification
+const HASHTAG_REGEX = new RegExp(`^${HASHTAG_PATTERN}$`);
+const MENTION_REGEX = new RegExp(`^${MENTION_PATTERN}$`);
+
 // Combined regex to detect URLs, hashtags and mentions
 const TOKEN_REGEX = new RegExp(
-  `${URL_REGEX.source}|#[0-9A-Za-z]+|@[A-Za-z0-9_]+#[0-9a-fA-F]{4}`,
+  `${URL_REGEX.source}|${MENTION_PATTERN}|${HASHTAG_PATTERN}`,
   'gi'
 );
 
@@ -133,7 +141,7 @@ export function renderTextWithLinks(
       } else {
         parts.push(token);
       }
-    } else if (token.startsWith('#')) {
+    } else if (HASHTAG_REGEX.test(token)) {
       const tag = token.slice(1);
       parts.push(
         <button
@@ -155,7 +163,7 @@ export function renderTextWithLinks(
           {token}
         </button>
       );
-    } else if (token.startsWith('@')) {
+    } else if (MENTION_REGEX.test(token)) {
       parts.push(
         <span
           key={`mention-${matchIndex}`}
@@ -170,6 +178,8 @@ export function renderTextWithLinks(
           {token}
         </span>
       );
+    } else {
+      parts.push(token);
     }
 
     lastIndex = matchIndex + token.length;
