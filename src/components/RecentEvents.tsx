@@ -7,7 +7,7 @@ import {
   addUserToSearch,
 } from "../utils/searchParser";
 import { renderTextWithLinks } from "../utils/linkRenderer";
-import { colorForNostrPubkey, parseRgb, parseHexColor, colorDistance } from "../utils/userColor";
+import { colorForPeerSeed } from "../utils/userColor";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -129,16 +129,6 @@ export function RecentEvents({
       if (!userMatch) matches = false;
     }
 
-    // Check color filters if specified
-    if (parsedSearch.colors.length > 0 && matches) {
-      const userRgb = parseRgb(colorForNostrPubkey(event.pubkey, true));
-      const colorMatch = parsedSearch.colors.some((searchColor) => {
-        const targetRgb = parseHexColor(searchColor);
-        return colorDistance(userRgb, targetRgb) <= 0.03;
-      });
-      if (!colorMatch) matches = false;
-    }
-
     // Check client filters if specified
     if (parsedSearch.clients.length > 0 && matches) {
       if (!eventClient) {
@@ -159,16 +149,6 @@ export function RecentEvents({
   const sortedEvents = filteredEvents.sort(
     (a, b) => a.created_at - b.created_at
   );
-
-  // Derive user colors from the Nostr pubkey using our hashing utility
-  const getUserColors = useCallback((pubkey: string) => {
-    const base = colorForNostrPubkey(pubkey, true);
-    const [r, g, b] = parseRgb(base);
-    const lighten = (value: number) =>
-      Math.min(255, Math.round(value + (255 - value) * 0.2));
-    const message = `rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`;
-    return { username: base, message };
-  }, []);
 
   // Handle scroll state changes for Virtuoso
   const handleAtBottomStateChange = useCallback((atBottom: boolean) => {
@@ -252,7 +232,7 @@ export function RecentEvents({
         );
       }
 
-      const userColors = getUserColors(event.pubkey);
+      const userColors = colorForPeerSeed('nostr:' + event.pubkey, true);
 
       // Calculate username width for hanging indent
       const usernameText = `<@${username}#${pubkeyHash}>`;
@@ -441,7 +421,7 @@ export function RecentEvents({
                   {/* Username */}
                   <span
                     style={{
-                      color: userColors.username,
+                      color: userColors.hex,
                       fontSize: isMobileView ? "14px" : "12px",
                       fontWeight: "bold",
                       cursor: onSearch ? "pointer" : "default",
@@ -462,7 +442,7 @@ export function RecentEvents({
                   {/* Message content */}
                   <span
                     style={{
-                      color: userColors.message,
+                      color: userColors.hex,
                       fontSize: isMobileView ? "15px" : "12px",
                       paddingLeft: `${8}px`,
                     }}
@@ -496,7 +476,6 @@ export function RecentEvents({
       isMobileView,
       onSearch,
       searchText,
-      getUserColors,
       onReply,
     ]
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
-import { colorForNostrPubkey, hueFromColor } from "../utils/userColor";
+import { colorForPeerSeed } from "../utils/userColor";
 
 interface SavedProfile {
   username: string;
@@ -112,8 +112,8 @@ export function ProfileGenerationModal({
         const publicKey = getPublicKey(privateKey);
         if (!targetSuffix || publicKey.endsWith(targetSuffix)) {
           if (!profiles.some((p) => p.publicKeyHex === publicKey)) {
-            const color = colorForNostrPubkey(publicKey, true);
-            const hue = hueFromColor(color);
+            const color = colorForPeerSeed('nostr' + publicKey, true);
+            const hue = color.hsv.h;
             const npub = nip19.npubEncode(publicKey);
             const nsec = nip19.nsecEncode(privateKey);
             profiles.push({
@@ -124,7 +124,7 @@ export function ProfileGenerationModal({
               publicKeyHex: publicKey,
               npub,
               nsec,
-              color,
+              color: color.hex,
               hue,
             });
             const sorted = [...profiles].sort((a, b) => a.hue - b.hue);

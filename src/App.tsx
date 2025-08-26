@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 // import { scaleQuantize } from "@visx/scale"; // Currently unused
 // import { generateSampleHeatmapData } from "./utils/geohash"; // Currently unused
-import { 
-  generateGeohashes, 
+import {
+  generateGeohashes,
   generateLocalizedGeohashes,
-  getHierarchicalCounts 
+  getHierarchicalCounts,
 } from "./utils/geohashUtils";
 
 import { GeoMercatorProps } from "./types";
@@ -18,8 +18,12 @@ import { Map } from "./components/Map";
 import { MobileHeader } from "./components/MobileHeader";
 import { ProfileGenerationModal } from "./components/ProfileGenerationModal";
 import { ChatInput } from "./components/ChatInput";
-import { addGeohashToSearch, parseSearchQuery, buildSearchQuery } from "./utils/searchParser";
-import { colorForNostrPubkey, parseRgb, parseHexColor, colorDistance } from "./utils/userColor";
+import {
+  addGeohashToSearch,
+  parseSearchQuery,
+  buildSearchQuery,
+} from "./utils/searchParser";
+import { colorForPeerSeed } from "./utils/userColor";
 import { PROJECTIONS } from "./constants/projections";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
@@ -38,9 +42,9 @@ function MarqueeBanner() {
       if (lastTimeRef.current !== 0) {
         const deltaTime = currentTime - lastTimeRef.current;
         const speed = 0.002; // Much slower speed for comfortable reading
-        
-        setPosition(prev => {
-          const newPos = prev - (speed * deltaTime);
+
+        setPosition((prev) => {
+          const newPos = prev - speed * deltaTime;
           // Reset position when content moves completely off screen
           // Reset to 100vw to start from right edge again
           return newPos <= -100 ? 100 : newPos;
@@ -60,7 +64,7 @@ function MarqueeBanner() {
   }, []);
 
   const handleMarqueeClick = () => {
-    window.open('https://sovran.money/esims', '_blank', 'noopener,noreferrer');
+    window.open("https://sovran.money/esims", "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -102,19 +106,28 @@ function MarqueeBanner() {
         }}
       >
         {/* Repeat content multiple times for seamless loop */}
-        {Array(4).fill(null).map((_, index) => (
-          <span key={index} style={{ paddingRight: "50px", minWidth: "max-content" }}>
-            🌍 GET GLOBAL eSIMS FOR BITCOIN • PRIVACY • NO KYC • INSTANT ACTIVATION •{" "}
-            <span style={{ 
-              color: "#ffaa00", 
-              fontWeight: "bold",
-              textShadow: "0 0 5px rgba(255, 170, 0, 0.5)"
-            }}>
-              SOVRAN.MONEY/ESIMS
+        {Array(4)
+          .fill(null)
+          .map((_, index) => (
+            <span
+              key={index}
+              style={{ paddingRight: "50px", minWidth: "max-content" }}
+            >
+              🌍 GET GLOBAL eSIMS FOR BITCOIN • PRIVACY • NO KYC • INSTANT
+              ACTIVATION •{" "}
+              <span
+                style={{
+                  color: "#ffaa00",
+                  fontWeight: "bold",
+                  textShadow: "0 0 5px rgba(255, 170, 0, 0.5)",
+                }}
+              >
+                SOVRAN.MONEY/ESIMS
+              </span>{" "}
+              • STAY CONNECTED WORLDWIDE • PAY WITH BITCOIN ₿ • TRAVEL WITHOUT
+              LIMITS • ANONYMOUS CONNECTIVITY •{" "}
             </span>
-            {" "}• STAY CONNECTED WORLDWIDE • PAY WITH BITCOIN ₿ • TRAVEL WITHOUT LIMITS • ANONYMOUS CONNECTIVITY •{" "}
-          </span>
-        ))}
+          ))}
       </div>
     </div>
   );
@@ -151,10 +164,12 @@ Array.prototype.min = function () {
   return Math.min.apply(null, this);
 };
 
-
-
-export default function App({ width, height, events = true }: GeoMercatorProps) {
-  const [projection, setProjection] = useState('natural_earth');
+export default function App({
+  width,
+  height,
+  events = true,
+}: GeoMercatorProps) {
+  const [projection, setProjection] = useState("natural_earth");
   // const [showHeatmap] = useState(true); // Currently unused
   // const [geohashPrecision] = useState(4); // Currently unused
   const [showSingleCharGeohashes] = useState(true);
@@ -163,8 +178,8 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
 
   // Mobile view state
   const [isMobile, setIsMobile] = useState(true);
-  const [activeView, setActiveView] = useState<'map' | 'chat' | 'panel'>('map');
-  
+  const [activeView, setActiveView] = useState<"map" | "chat" | "panel">("map");
+
   // Profile state using React state with localStorage initialization
   const [savedProfile, setSavedProfile] = useState<any>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -172,9 +187,13 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   // Search and zoom state
   const [searchText, setSearchText] = useState("");
   const [searchGeohash, setSearchGeohash] = useState("");
-  const [animatingGeohashes, setAnimatingGeohashes] = useState<Set<string>>(new Set());
-  const [channelLastReadMap, setChannelLastReadMap] = useState<Record<string, number>>({});
-  
+  const [animatingGeohashes, setAnimatingGeohashes] = useState<Set<string>>(
+    new Set()
+  );
+  const [channelLastReadMap, setChannelLastReadMap] = useState<
+    Record<string, number>
+  >({});
+
   // Reply state
   const [replyPrefillText, setReplyPrefillText] = useState("");
 
@@ -183,14 +202,26 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
 
   // Calculate available map dimensions accounting for header
   const availableHeight = isMobile ? height - headerHeight : height;
-  
+
   // Map positioning constants
   const mapWidth = width;
   const mapHeight = availableHeight;
 
   // Custom hooks
-  const { isDragging, hasDragged, handleMouseDown, handleMouseMove, handleMouseUp } = useDrag();
-  const { zoomedGeohash, zoomScale, zoomTranslate, zoomToGeohash, updateTranslate } = useZoom(mapWidth, mapHeight, projection);
+  const {
+    isDragging,
+    hasDragged,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+  } = useDrag();
+  const {
+    zoomedGeohash,
+    zoomScale,
+    zoomTranslate,
+    zoomToGeohash,
+    updateTranslate,
+  } = useZoom(mapWidth, mapHeight, projection);
 
   // Load last-read map from localStorage
   useEffect(() => {
@@ -215,8 +246,6 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
     }
   };
 
-
-
   // Function to trigger geohash animation
   const animateGeohash = (geohash: string) => {
     setAnimatingGeohashes((prev) => new Set([...prev, geohash]));
@@ -236,26 +265,30 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   // Derive the currently selected channel key (e.g., "#nyc") from the first in: term
   const selectedChannelKey = useMemo(() => {
     const first = parsedSearch.geohashes[0];
-    return first ? `#${first.toLowerCase()}` : '';
+    return first ? `#${first.toLowerCase()}` : "";
   }, [parsedSearch.geohashes]);
-  const previousSelectedChannelRef = useRef<string>('');
-  
+  const previousSelectedChannelRef = useRef<string>("");
+
   // Determine the primary geohash for map display (use the first one if multiple)
-  const primarySearchGeohash = parsedSearch.geohashes.length > 0 ? parsedSearch.geohashes[0] : "";
-  
+  const primarySearchGeohash =
+    parsedSearch.geohashes.length > 0 ? parsedSearch.geohashes[0] : "";
+
   // Synchronize searchGeohash state with parsed search and trigger zoom
   useEffect(() => {
     if (primarySearchGeohash !== searchGeohash) {
       setSearchGeohash(primarySearchGeohash);
       // Auto-zoom when geohash is in search
-      if (primarySearchGeohash && /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(primarySearchGeohash)) {
+      if (
+        primarySearchGeohash &&
+        /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(primarySearchGeohash)
+      ) {
         zoomToGeohash(primarySearchGeohash.toLowerCase());
       } else if (!primarySearchGeohash) {
         zoomToGeohash(""); // Reset zoom when no geohash
       }
     }
   }, [primarySearchGeohash, searchGeohash, zoomToGeohash]);
-  
+
   // Determine if we should show localized precision based on parsed search
   const shouldShowLocalizedPrecision =
     primarySearchGeohash &&
@@ -291,11 +324,11 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   const handleReply = (username: string, pubkeyHash: string) => {
     const replyText = `@${username}#${pubkeyHash} `;
     setReplyPrefillText(replyText);
-    
+
     // Switch to chat view on mobile with a small delay to ensure state updates
     if (isMobile) {
       setTimeout(() => {
-        setActiveView('chat');
+        setActiveView("chat");
       }, 50);
     }
   };
@@ -367,7 +400,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
 
   // If leaving chat view, consider the currently open channel as read
   useEffect(() => {
-    if (activeView !== 'chat') {
+    if (activeView !== "chat") {
       const current = previousSelectedChannelRef.current;
       if (current) {
         const nowSec = Math.floor(Date.now() / 1000);
@@ -385,34 +418,32 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
     if (primarySearchGeohash && primarySearchGeohash.length > 0) {
       // Zoom out one level by removing the last character from the primary geohash
       const parentGeohash = primarySearchGeohash.slice(0, -1);
-      
+
       // Update the search by replacing the current geohash with the parent
       const parsed = parseSearchQuery(searchText);
-      parsed.geohashes = parsed.geohashes.map(g => 
-        g === primarySearchGeohash ? parentGeohash : g
-      ).filter(g => g.length > 0); // Remove empty geohashes
-      
+      parsed.geohashes = parsed.geohashes
+        .map((g) => (g === primarySearchGeohash ? parentGeohash : g))
+        .filter((g) => g.length > 0); // Remove empty geohashes
+
       const newSearchText = buildSearchQuery(parsed);
       setSearchText(newSearchText);
     }
   };
 
-
-
   // Simple, proper projection setup without complex calculations
   const getMapProjection = () => {
     // Default scale that fits world nicely in most viewports
     const baseScale = Math.min(mapWidth, mapHeight) / 4;
-    
+
     // Current effective scale and center
     const effectiveScale = zoomedGeohash ? zoomScale : baseScale;
     const centerX = mapWidth / 2 + zoomTranslate[0];
     const centerY = mapHeight / 2 + zoomTranslate[1];
-    
+
     return {
       scale: effectiveScale,
       centerX,
-      centerY
+      centerY,
     };
   };
 
@@ -434,7 +465,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   const eventsToShow = hasSearchTerms ? allStoredEvents : recentEvents;
   const filteredEvents = eventsToShow.filter((event) => {
     if (!hasSearchTerms) return true;
-    
+
     // Extract event data
     const messageContent = (event.content || "").toLowerCase();
     const nameTag = event.tags.find((tag: any) => tag[0] === "n");
@@ -442,21 +473,31 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
     const geoTag = event.tags.find((tag: any) => tag[0] === "g");
     const eventGeohash = (geoTag ? geoTag[1] : "").toLowerCase();
     const pubkeyHash = event.pubkey.slice(-4).toLowerCase();
-    
+
     // Check for invalid geohash and log it
     if (eventGeohash && !VALID_GEOHASH_CHARS.test(eventGeohash)) {
-      console.log(`Invalid geohash detected in message: "${eventGeohash}" from user ${username || 'anonymous'} (${pubkeyHash})`);
-      console.log(`Message content: "${event.content?.slice(0, 100)}${event.content && event.content.length > 100 ? '...' : ''}"`);
+      console.log(
+        `Invalid geohash detected in message: "${eventGeohash}" from user ${
+          username || "anonymous"
+        } (${pubkeyHash})`
+      );
+      console.log(
+        `Message content: "${event.content?.slice(0, 100)}${
+          event.content && event.content.length > 100 ? "..." : ""
+        }"`
+      );
     }
-    
+
     let matches = true;
-    
+
     // Check text content if specified (only search message content, not usernames)
     if (parsedSearch.text) {
-      const textMatch = messageContent.includes(parsedSearch.text.toLowerCase());
+      const textMatch = messageContent.includes(
+        parsedSearch.text.toLowerCase()
+      );
       if (!textMatch) matches = false;
     }
-    
+
     // Check geohash filters if specified
     if (parsedSearch.geohashes.length > 0 && matches) {
       // Include events that have ANY geohash value (even invalid),
@@ -473,15 +514,17 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
         matches = true;
       }
     }
-    
+
     // Check user filters if specified
     if (parsedSearch.users.length > 0 && matches) {
-      const userMatch = parsedSearch.users.some(searchUser => {
+      const userMatch = parsedSearch.users.some((searchUser) => {
         // Handle both "username" and "username#hash" formats
-        if (searchUser.includes('#')) {
-          const [searchUsername, searchHash] = searchUser.split('#');
-          return username === searchUsername.toLowerCase() &&
-                 pubkeyHash === searchHash.toLowerCase();
+        if (searchUser.includes("#")) {
+          const [searchUsername, searchHash] = searchUser.split("#");
+          return (
+            username === searchUsername.toLowerCase() &&
+            pubkeyHash === searchHash.toLowerCase()
+          );
         } else {
           return username === searchUser.toLowerCase();
         }
@@ -489,31 +532,26 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
       if (!userMatch) matches = false;
     }
 
-    // Check color filters if specified
-    if (parsedSearch.colors.length > 0 && matches) {
-      const userRgb = parseRgb(colorForNostrPubkey(event.pubkey, true));
-      const colorMatch = parsedSearch.colors.some(searchColor => {
-        const targetRgb = parseHexColor(searchColor);
-        return colorDistance(userRgb, targetRgb) <= 0.03;
-      });
-      if (!colorMatch) matches = false;
-    }
-
     return matches;
   });
-  
+
   // Debug logging for header updates
-  console.log(`Header update: search="${searchText}", filteredCount=${filteredEvents.length}, totalStored=${allStoredEvents.length}, recent=${recentEvents.length}`);
+  console.log(
+    `Header update: search="${searchText}", filteredCount=${filteredEvents.length}, totalStored=${allStoredEvents.length}, recent=${recentEvents.length}`
+  );
 
   const topLevelCounts: { [key: string]: number } = {};
   for (const [geohash, count] of allEventsByGeohash.entries()) {
     const firstChar = geohash.charAt(0);
     topLevelCounts[firstChar] = (topLevelCounts[firstChar] || 0) + count;
   }
-  const totalEventsCount = Object.values(topLevelCounts).reduce((sum, count) => sum + count, 0);
+  const totalEventsCount = Object.values(topLevelCounts).reduce(
+    (sum, count) => sum + count,
+    0
+  );
 
   // Get hierarchical counts for current search
-  const hierarchicalCounts = searchGeohash 
+  const hierarchicalCounts = searchGeohash
     ? getHierarchicalCounts(searchGeohash.toLowerCase(), allEventsByGeohash)
     : { direct: 0, total: 0 };
 
@@ -563,7 +601,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
           style={{
             width: "100%",
             height: "100%",
-            display: isMobile && activeView !== 'map' ? 'none' : 'block',
+            display: isMobile && activeView !== "map" ? "none" : "block",
           }}
         >
           <Map
@@ -623,7 +661,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
         {isMobile && (
           <>
             {/* Chat View */}
-            {activeView === 'chat' && (
+            {activeView === "chat" && (
               <div
                 style={{
                   position: "absolute",
@@ -640,65 +678,83 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                 {/* Left rail channels (persistent beside sub header and content) */}
                 <div
                   style={{
-                    width: '160px',
-                    minWidth: '160px',
-                    borderRight: '1px solid #003300',
-                    background: 'rgba(0, 0, 0, 0.9)',
-                    color: '#00ff00',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow: 'hidden',
+                    width: "160px",
+                    minWidth: "160px",
+                    borderRight: "1px solid #003300",
+                    background: "rgba(0, 0, 0, 0.9)",
+                    color: "#00ff00",
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden",
                   }}
                 >
-                  <div style={{
-                    backgroundColor: 'rgba(0, 0, 0, 0.98)',
-                    color: '#00aa00',
-                    padding: '12px',
-                    borderBottom: '1px solid #003300',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 2,
-                  }}>
-                    <div style={{
-                      fontSize: '16px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '1px',
-                      textShadow: '0 0 10px rgba(0, 255, 0, 0.5)'
-                    }}>
+                  <div
+                    style={{
+                      backgroundColor: "rgba(0, 0, 0, 0.98)",
+                      color: "#00aa00",
+                      padding: "12px",
+                      borderBottom: "1px solid #003300",
+                      position: "sticky",
+                      top: 0,
+                      zIndex: 2,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "16px",
+                        textTransform: "uppercase",
+                        letterSpacing: "1px",
+                        textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
+                      }}
+                    >
                       CHANNELS
                     </div>
                   </div>
-                  <div style={{ overflowY: 'auto', padding: '10px 8px', flex: 1 }}>
+                  <div
+                    style={{ overflowY: "auto", padding: "10px 8px", flex: 1 }}
+                  >
                     {(() => {
                       const channelSet = new Set<string>();
                       allStoredEvents.forEach((ev) => {
-                        const g = ev.tags.find((t: any) => t[0] === 'g');
-                        const d = ev.tags.find((t: any) => t[0] === 'd');
-                        const gv = g && typeof g[1] === 'string' ? g[1].toLowerCase() : '';
-                        const dv = d && typeof d[1] === 'string' ? d[1].toLowerCase() : '';
+                        const g = ev.tags.find((t: any) => t[0] === "g");
+                        const d = ev.tags.find((t: any) => t[0] === "d");
+                        const gv =
+                          g && typeof g[1] === "string"
+                            ? g[1].toLowerCase()
+                            : "";
+                        const dv =
+                          d && typeof d[1] === "string"
+                            ? d[1].toLowerCase()
+                            : "";
                         if (gv) channelSet.add(`#${gv}`);
                         if (dv) channelSet.add(`#${dv}`);
                       });
-                      
+
                       // Hardcoded pinned channels
-                      const pinnedChannels = ['#bitchat.land', '#21m'];
+                      const pinnedChannels = ["#bitchat.land", "#21m"];
                       const allChannels = Array.from(channelSet).sort();
-                      
+
                       // Separate pinned and unpinned channels
                       // Force show all pinned channels even if they have no messages
                       const pinned = pinnedChannels; // Show all pinned channels regardless
-                      const unpinned = allChannels.filter(ch => !pinnedChannels.includes(ch));
-                      
+                      const unpinned = allChannels.filter(
+                        (ch) => !pinnedChannels.includes(ch)
+                      );
+
                       // Combine: pinned first, then unpinned
                       const channels = [...pinned, ...unpinned];
                       if (channels.length === 0) {
                         return (
-                          <div style={{ fontSize: '10px', opacity: 0.7 }}>no channels</div>
+                          <div style={{ fontSize: "10px", opacity: 0.7 }}>
+                            no channels
+                          </div>
                         );
                       }
                       return channels.map((ch) => {
                         const channelValue = ch.slice(1).toLowerCase();
-                        const isSelected = parsedSearch.geohashes.some((gh) => gh.toLowerCase() === channelValue);
+                        const isSelected = parsedSearch.geohashes.some(
+                          (gh) => gh.toLowerCase() === channelValue
+                        );
                         const latestTs = latestEventTimestampByChannel[ch] || 0;
                         const lastReadTs = channelLastReadMap[ch] || 0;
                         const hasUnread = latestTs > lastReadTs;
@@ -723,59 +779,80 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                             key={ch}
                             onClick={handleOpenChannel}
                             style={{
-                              width: '100%',
-                              textAlign: 'left',
-                              background: isSelected 
-                                ? 'rgba(0, 255, 0, 0.08)' 
-                                : isPinned 
-                                ? 'rgba(255, 255, 0, 0.05)' 
-                                : 'transparent',
-                              color: isSelected ? '#00ff00' : isPinned ? (hasMessages ? '#ffff00' : '#ffcc66') : '#00ff00',
-                              border: `1px solid ${isSelected ? '#00ff00' : isPinned ? '#ffcc00' : '#003300'}`,
-                              boxShadow: isSelected 
-                                ? '0 0 10px rgba(0,255,0,0.15) inset' 
-                                : isPinned 
-                                ? '0 0 8px rgba(255,255,0,0.1) inset' 
-                                : 'none',
-                              borderRadius: '4px',
-                              padding: '8px 8px',
-                              fontSize: '13px',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                              marginBottom: isPinned ? '12px' : '8px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              gap: '8px',
+                              width: "100%",
+                              textAlign: "left",
+                              background: isSelected
+                                ? "rgba(0, 255, 0, 0.08)"
+                                : isPinned
+                                ? "rgba(255, 255, 0, 0.05)"
+                                : "transparent",
+                              color: isSelected
+                                ? "#00ff00"
+                                : isPinned
+                                ? hasMessages
+                                  ? "#ffff00"
+                                  : "#ffcc66"
+                                : "#00ff00",
+                              border: `1px solid ${
+                                isSelected
+                                  ? "#00ff00"
+                                  : isPinned
+                                  ? "#ffcc00"
+                                  : "#003300"
+                              }`,
+                              boxShadow: isSelected
+                                ? "0 0 10px rgba(0,255,0,0.15) inset"
+                                : isPinned
+                                ? "0 0 8px rgba(255,255,0,0.1) inset"
+                                : "none",
+                              borderRadius: "4px",
+                              padding: "8px 8px",
+                              fontSize: "13px",
+                              cursor: "pointer",
+                              transition: "all 0.2s ease",
+                              marginBottom: isPinned ? "12px" : "8px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "8px",
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.background = 'rgba(0, 255, 0, 0.10)';
-                              e.currentTarget.style.borderColor = '#00ff00';
+                              e.currentTarget.style.background =
+                                "rgba(0, 255, 0, 0.10)";
+                              e.currentTarget.style.borderColor = "#00ff00";
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.background = isSelected 
-                                ? 'rgba(0, 255, 0, 0.08)' 
-                                : isPinned 
-                                ? 'rgba(255, 255, 0, 0.05)' 
-                                : 'transparent';
-                              e.currentTarget.style.borderColor = isSelected 
-                                ? '#00ff00' 
-                                : isPinned 
-                                ? '#ffcc00' 
-                                : '#003300';
+                              e.currentTarget.style.background = isSelected
+                                ? "rgba(0, 255, 0, 0.08)"
+                                : isPinned
+                                ? "rgba(255, 255, 0, 0.05)"
+                                : "transparent";
+                              e.currentTarget.style.borderColor = isSelected
+                                ? "#00ff00"
+                                : isPinned
+                                ? "#ffcc00"
+                                : "#003300";
                             }}
                           >
-                            <span style={{ fontWeight: isSelected ? 'bold' as const : 'normal' as const }}>
-                              {isPinned && '📌 '}{ch}{isPinned && !hasMessages && ' (empty)'}
+                            <span
+                              style={{
+                                fontWeight: isSelected
+                                  ? ("bold" as const)
+                                  : ("normal" as const),
+                              }}
+                            >
+                              {isPinned && "📌 "}
+                              {ch}
+                              {isPinned && !hasMessages && " (empty)"}
                             </span>
                             {showUnreadDot && (
                               <span
                                 style={{
-                                  width: '8px',
-                                  height: '8px',
-                                  backgroundColor: '#ff0033',
-                                  borderRadius: '50%',
-                                  boxShadow: '0 0 6px rgba(255,0,51,0.6)'
+                                  width: "8px",
+                                  height: "8px",
+                                  backgroundColor: "#ff0033",
+                                  borderRadius: "50%",
+                                  boxShadow: "0 0 6px rgba(255,0,51,0.6)",
                                 }}
                                 title="Unread messages"
                               />
@@ -788,26 +865,33 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                 </div>
 
                 {/* Chat column */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div
+                  style={{ flex: 1, display: "flex", flexDirection: "column" }}
+                >
                   {/* Sub header (chat) to align next to channels */}
-                  <div style={{
-                    backgroundColor: 'rgba(0, 0, 0, 0.98)',
-                    color: '#00aa00',
-                    padding: '12px 16px',
-                    borderBottom: '1px solid #003300',
-                  }}>
-                    <div style={{
-                      fontSize: '16px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '1px',
-                      textShadow: '0 0 10px rgba(0, 255, 0, 0.5)'
-                    }}>
-                      RECENT NOSTR EVENTS {searchText ? `MATCHING "${searchText}"` : ''}
+                  <div
+                    style={{
+                      backgroundColor: "rgba(0, 0, 0, 0.98)",
+                      color: "#00aa00",
+                      padding: "12px 16px",
+                      borderBottom: "1px solid #003300",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "16px",
+                        textTransform: "uppercase",
+                        letterSpacing: "1px",
+                        textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
+                      }}
+                    >
+                      RECENT NOSTR EVENTS{" "}
+                      {searchText ? `MATCHING "${searchText}"` : ""}
                     </div>
                   </div>
-                  
+
                   {/* Messages area */}
-                  <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <div style={{ flex: 1, overflow: "hidden" }}>
                     <RecentEvents
                       nostrEnabled={nostrEnabled}
                       searchText={searchText}
@@ -818,10 +902,14 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                       onReply={handleReply}
                     />
                   </div>
-                  
+
                   {/* Chat input */}
-                  <ChatInput 
-                    currentChannel={selectedChannelKey ? selectedChannelKey.slice(1) : "global"} // Use global if no specific channel
+                  <ChatInput
+                    currentChannel={
+                      selectedChannelKey
+                        ? selectedChannelKey.slice(1)
+                        : "global"
+                    } // Use global if no specific channel
                     onMessageSent={handleMessageSent}
                     onOpenProfileModal={() => setShowProfileModal(true)}
                     prefillText={replyPrefillText}
@@ -832,7 +920,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
             )}
 
             {/* Panel View */}
-            {activeView === 'panel' && (
+            {activeView === "panel" && (
               <div
                 style={{
                   position: "absolute",
@@ -855,7 +943,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
           </>
         )}
       </div>
-      
+
       {/* Nostr Watermark */}
       <div
         style={{
@@ -891,9 +979,9 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
           Follow me on Nostr
         </a>
       </div>
-      
+
       {/* Projection Selector - Only show on map view */}
-      {activeView === 'map' && (
+      {activeView === "map" && (
         <div
           style={{
             position: "fixed",
@@ -915,49 +1003,54 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
             e.currentTarget.style.opacity = "0.7";
           }}
         >
-        <div style={{
-          color: "#00aa00",
-          fontSize: "12px",
-          marginBottom: "2px",
-          textShadow: "0 0 3px rgba(0, 255, 0, 0.3)",
-        }}>
-          PROJECTION:
-        </div>
-        {Object.keys(PROJECTIONS).map((projName) => (
-          <button
-            key={projName}
-            onClick={() => setProjection(projName)}
+          <div
             style={{
-              background: projection === projName ? "#003300" : "rgba(0, 0, 0, 0.8)",
-              color: projection === projName ? "#00ff00" : "#00aa00",
-              border: `1px solid ${projection === projName ? "#00ff00" : "#00aa00"}`,
-              borderRadius: "2px",
-              padding: "2px 6px",
-              fontSize: "10px",
-              fontFamily: "Courier New, monospace",
-              cursor: "pointer",
-              textTransform: "uppercase",
+              color: "#00aa00",
+              fontSize: "12px",
+              marginBottom: "2px",
               textShadow: "0 0 3px rgba(0, 255, 0, 0.3)",
-              transition: "all 0.2s ease",
-              minWidth: "80px",
-              textAlign: "left"
-            }}
-            onMouseEnter={(e) => {
-              if (projection !== projName) {
-                e.currentTarget.style.background = "rgba(0, 51, 0, 0.6)";
-                e.currentTarget.style.borderColor = "#00ff00";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (projection !== projName) {
-                e.currentTarget.style.background = "rgba(0, 0, 0, 0.8)";
-                e.currentTarget.style.borderColor = "#00aa00";
-              }
             }}
           >
-            {projName.replace(/_/g, ' ')}
-          </button>
-        ))}
+            PROJECTION:
+          </div>
+          {Object.keys(PROJECTIONS).map((projName) => (
+            <button
+              key={projName}
+              onClick={() => setProjection(projName)}
+              style={{
+                background:
+                  projection === projName ? "#003300" : "rgba(0, 0, 0, 0.8)",
+                color: projection === projName ? "#00ff00" : "#00aa00",
+                border: `1px solid ${
+                  projection === projName ? "#00ff00" : "#00aa00"
+                }`,
+                borderRadius: "2px",
+                padding: "2px 6px",
+                fontSize: "10px",
+                fontFamily: "Courier New, monospace",
+                cursor: "pointer",
+                textTransform: "uppercase",
+                textShadow: "0 0 3px rgba(0, 255, 0, 0.3)",
+                transition: "all 0.2s ease",
+                minWidth: "80px",
+                textAlign: "left",
+              }}
+              onMouseEnter={(e) => {
+                if (projection !== projName) {
+                  e.currentTarget.style.background = "rgba(0, 51, 0, 0.6)";
+                  e.currentTarget.style.borderColor = "#00ff00";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (projection !== projName) {
+                  e.currentTarget.style.background = "rgba(0, 0, 0, 0.8)";
+                  e.currentTarget.style.borderColor = "#00aa00";
+                }
+              }}
+            >
+              {projName.replace(/_/g, " ")}
+            </button>
+          ))}
         </div>
       )}
 
