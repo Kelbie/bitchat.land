@@ -2,7 +2,35 @@ import React, { useState, useEffect, useRef } from "react";
 import { SimplePool } from "nostr-tools/pool";
 import { finalizeEvent, validateEvent, verifyEvent } from "nostr-tools/pure";
 import { NOSTR_RELAYS } from "../constants/projections";
-import { hexToBytes } from "nostr-tools/utils";
+import { hexToBytes, bytesToHex } from "nostr-tools/utils";
+import { generateSecretKey, getPublicKey } from "nostr-tools";
+import { sha256 } from "@noble/hashes/sha256";
+
+interface RollRange {
+  min: number;
+  max: number;
+}
+
+function parseRollCommand(input: string): RollRange | null {
+  const match = input.trim().match(/^!roll(?:\s+(\d+)(?:-(\d+))?)?$/i);
+  if (!match) return null;
+
+  let min = 1;
+  let max = 10;
+  if (match[1]) {
+    if (match[2]) {
+      min = parseInt(match[1], 10);
+      max = parseInt(match[2], 10);
+    } else {
+      min = 0;
+      max = parseInt(match[1], 10);
+    }
+  }
+  if (min > max) {
+    [min, max] = [max, min];
+  }
+  return { min, max };
+}
 
 interface ChatInputProps {
   currentChannel: string; // e.g., "nyc" from "in:nyc"
@@ -43,6 +71,58 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
     }
   }, [prefillText]); // Only depend on prefillText
 
+  const handleRoll = async ({ min, max }: RollRange) => {
+    console.log("🎲 Roll command detected", { min, max });
+
+    const tempPriv = generateSecretKey();
+    const tempPub = getPublicKey(tempPriv);
+    const hash = sha256(hexToBytes(tempPub));
+    const hashHex = bytesToHex(hash);
+    const rand = parseInt(hashHex.slice(0, 8), 16);
+    const result = (rand % (max - min + 1)) + min;
+
+    const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
+
+    const tags = [
+      ["n", savedProfile.username],
+      ["client", "bitchat.land"],
+    ];
+
+    let kind;
+    if (isGeohash) {
+      kind = 20000;
+      tags.push(["g", currentChannel.toLowerCase()]);
+    } else {
+      kind = 23333;
+      tags.push(["d", currentChannel.toLowerCase()]);
+      tags.push(["relay", NOSTR_RELAYS[0]]);
+    }
+
+    const eventTemplate = {
+      kind,
+      created_at: Math.floor(Date.now() / 1000),
+      content: `@${savedProfile.username}#${savedProfile.publicKey.slice(-4)} rolled ${result} point(s)`,
+      tags,
+    };
+
+    const signedEvent = finalizeEvent(eventTemplate, tempPriv);
+    const valid = validateEvent(signedEvent);
+    const verified = verifyEvent(signedEvent);
+
+    if (!valid) throw new Error("Event validation failed");
+    if (!verified) throw new Error("Event signature verification failed");
+
+    const pool = new SimplePool();
+    try {
+      const publishPromises = pool.publish(NOSTR_RELAYS, signedEvent);
+      await Promise.race(publishPromises);
+      setMessage("");
+      onMessageSent?.(eventTemplate.content);
+    } finally {
+      pool.close(NOSTR_RELAYS);
+    }
+  };
+
   const sendMessage = async () => {
     if (!message.trim() || !savedProfile) {
       setError(
@@ -72,18 +152,24 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
         privateKeyLength: savedProfile.privateKey.length
       });
 
+      const rollRange = parseRollCommand(message.trim());
+      if (rollRange) {
+        await handleRoll(rollRange);
+        return;
+      }
+
       // Convert hex private key to Uint8Array
       const privateKeyHex = savedProfile.privateKey;
 
       // Determine event kind and tags based on channel
       const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
-      
+
       console.log(`🔍 Channel analysis:`, {
         channel: currentChannel,
         isGeohash: isGeohash,
         regex: /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel)
       });
-      
+
       const tags = [
         ["n", savedProfile.username], // username tag
         ["client", "bitchat.land"] // client tag
@@ -118,7 +204,7 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
       // Validate the event before publishing
       const valid = validateEvent(signedEvent);
       const verified = verifyEvent(signedEvent);
-      
+
       if (!valid) {
         throw new Error("Event validation failed");
       }
@@ -133,27 +219,27 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
 
       try {
         console.log("Attempting to publish event to relays:", NOSTR_RELAYS);
-        
+
         // Publish to relays - pool.publish returns an array of promises
         const publishPromises = pool.publish(NOSTR_RELAYS, signedEvent);
-        
+
         console.log("Publish promises created:", publishPromises.length);
-        
+
         // Wait for at least one relay to succeed
         try {
           // Use Promise.race instead of Promise.any for better compatibility
           await Promise.race(publishPromises);
           console.log("✅ Message published successfully to at least one relay");
-          
+
           // Clear input and notify parent
           setMessage("");
           onMessageSent?.(message.trim());
-          
+
         } catch (error) {
           console.error("❌ Failed to publish to any relay:", error);
           throw new Error("Failed to publish message to any relay");
         }
-        
+
       } finally {
         // Always close the pool
         pool.close(NOSTR_RELAYS);
