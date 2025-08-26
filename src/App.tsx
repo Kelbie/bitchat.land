@@ -868,7 +868,6 @@ export default function App({
                       searchText={searchText}
                       allStoredEvents={allStoredEvents}
                       recentEvents={recentEvents}
-                      isMobileView={true}
                       onSearch={handleTextSearch}
                       onReply={handleReply}
                     />
@@ -885,6 +884,7 @@ export default function App({
                     onOpenProfileModal={() => setShowProfileModal(true)}
                     prefillText={replyPrefillText}
                     savedProfile={savedProfile}
+                    theme={theme}
                   />
                 </div>
               </div>
@@ -907,7 +907,6 @@ export default function App({
                   searchText={searchText}
                   allEventsByGeohash={allEventsByGeohash}
                   onSearch={handleTextSearch}
-                  isMobileView={true}
                 />
               </div>
             )}

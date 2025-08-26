@@ -29,7 +29,7 @@ const styles = {
       "bg-black/70 text-[#00ff00] border-[#00ff00] hover:bg-[#00ff00]/10 hover:shadow-[0_0_5px_rgba(0,255,0,0.3)]",
     searchIcon: "stroke-[#00aa00]",
     searchInput:
-      "flex-1 pl-9 pr-3 py-2 bg-black/80 text-[#00ff00] border border-[#00ff00] rounded outline-none focus:shadow-[0_0_5px_rgba(0,255,0,0.5)]",
+      "flex-1 pl-9 pr-3 py-2 bg-black/80 text-[#00ff00] placeholder-[#00ff00]/50 border border-[#00ff00] rounded outline-none focus:shadow-[0_0_5px_rgba(0,255,0,0.5)]",
     clearButton:
       "px-3 py-2 bg-green-900/80 text-[#00ff00] border border-[#00ff00] rounded text-xs font-mono uppercase hover:bg-green-900",
     separator:
@@ -51,7 +51,7 @@ const styles = {
     navButtonInactive: "bg-white text-blue-600 border-blue-600 hover:bg-blue-50",
     searchIcon: "stroke-blue-600",
     searchInput:
-      "flex-1 pl-9 pr-3 py-2 bg-white text-gray-800 border border-blue-600 rounded outline-none focus:ring-2 focus:ring-blue-600",
+      "flex-1 pl-9 pr-3 py-2 bg-white text-gray-800 placeholder-gray-400 border border-blue-600 rounded outline-none focus:ring-2 focus:ring-blue-600",
     clearButton:
       "px-3 py-2 bg-blue-100 text-blue-600 border border-blue-600 rounded text-xs uppercase hover:bg-blue-200",
     separator: "w-full h-0.5 bg-blue-600",

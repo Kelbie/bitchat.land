@@ -17,7 +17,6 @@ interface RecentEventsProps {
   searchText: string;
   allStoredEvents: NostrEvent[];
   recentEvents: NostrEvent[];
-  isMobileView?: boolean;
   onSearch?: (text: string) => void;
   forceScrollToBottom?: boolean;
   onReply?: (username: string, pubkeyHash: string) => void;
@@ -28,7 +27,6 @@ export function RecentEvents({
   searchText,
   allStoredEvents,
   recentEvents,
-  isMobileView = false,
   onSearch,
   forceScrollToBottom = false,
   onReply,
@@ -236,7 +234,7 @@ export function RecentEvents({
 
       // Calculate username width for hanging indent
       const usernameText = `<@${username}#${pubkeyHash}>`;
-      const fontSize = isMobileView ? "14px" : "12px";
+      const fontSize = "14px";
       const fontFamily = "Courier New, monospace";
       const fontWeight = "bold";
 
@@ -253,15 +251,15 @@ export function RecentEvents({
         return (
           <div
             style={{
-              paddingBottom: isMobileView ? "16px" : "12px", // Consistent spacing
+              paddingBottom: "16px", // Consistent spacing
             }}
           >
             <div
               style={{
-                // margin: isMobileView ? "0 20px 0 20px" : "0 10px 0 10px",
-                padding: isMobileView ? "0px 20px" : "0px 16px",
+                // margin: "0 20px 0 20px",
+                padding: "0px 20px",
                 background: "rgba(0, 0, 0, 0.3)",
-                borderRadius: isMobileView ? "8px" : "4px",
+                borderRadius: "8px",
                 opacity: 1,
                 transition: "all 0.2s ease",
                 cursor: "pointer",
@@ -311,7 +309,7 @@ export function RecentEvents({
                   <span
                     style={{
                       color: "#666",
-                      fontSize: isMobileView ? "10px" : "8px",
+                      fontSize: "10px",
                       fontFamily: "monospace",
                       cursor: onSearch ? "pointer" : "default",
                       transition: "all 0.2s ease",
@@ -337,7 +335,7 @@ export function RecentEvents({
                     <span
                       style={{
                         color: "#666",
-                        fontSize: isMobileView ? "10px" : "8px",
+                        fontSize: "10px",
                         fontFamily: "monospace",
                       }}
                     >
@@ -350,7 +348,7 @@ export function RecentEvents({
                     <span
                       style={{
                         color: "#666",
-                        fontSize: isMobileView ? "10px" : "8px",
+                        fontSize: "10px",
                         fontFamily: "monospace",
                       }}
                     >
@@ -375,7 +373,7 @@ export function RecentEvents({
                         color: "#666",
                         border: "none",
                         borderRadius: "3px",
-                        fontSize: isMobileView ? "10px" : "8px",
+                        fontSize: "10px",
                         fontFamily: "monospace",
                         cursor: "pointer",
                         transition: "all 0.2s ease",
@@ -411,7 +409,7 @@ export function RecentEvents({
                   style={{
                     flex: 1,
                     minWidth: 0,
-                    lineHeight: isMobileView ? "1.6" : "1.5",
+                    lineHeight: "1.6",
                     wordWrap: "break-word",
                     whiteSpace: "pre-wrap",
                     fontFamily: "Courier New, monospace",
@@ -422,7 +420,7 @@ export function RecentEvents({
                   <span
                     style={{
                       color: userColors.hex,
-                      fontSize: isMobileView ? "14px" : "12px",
+                      fontSize: "14px",
                       fontWeight: "bold",
                       cursor: onSearch ? "pointer" : "default",
                       transition: "all 0.2s ease",
@@ -443,7 +441,7 @@ export function RecentEvents({
                   <span
                     style={{
                       color: userColors.hex,
-                      fontSize: isMobileView ? "15px" : "12px",
+                      fontSize: "15px",
                       paddingLeft: `${8}px`,
                     }}
                   >
@@ -454,7 +452,7 @@ export function RecentEvents({
                   <span
                     style={{
                       color: "#666",
-                      fontSize: isMobileView ? "11px" : "9px",
+                      fontSize: "11px",
                       paddingLeft: "8px",
                       fontFamily: "monospace",
                     }}
@@ -473,7 +471,6 @@ export function RecentEvents({
     },
     [
       sortedEvents,
-      isMobileView,
       onSearch,
       searchText,
       onReply,
@@ -548,77 +545,24 @@ export function RecentEvents({
   return (
     <div
       style={{
-        position: isMobileView ? "relative" : "absolute",
-        bottom: isMobileView ? "auto" : "10px",
-        right: isMobileView ? "auto" : "10px",
-        width: isMobileView ? "100%" : "auto",
-        height: isMobileView ? "100%" : "auto",
+        position: "relative",
+        bottom: "auto",
+        right: "auto",
+        width: "100%",
+        height: "100%",
         zIndex: 1000,
-        background: isMobileView ? "#000000" : "rgba(0, 0, 0, 0.8)",
-        border: isMobileView ? "none" : "1px solid #003300",
+        background: "#000000",
+        border: "none",
         borderRadius: "0px",
-        maxWidth: isMobileView ? "100%" : "400px",
-        maxHeight: isMobileView ? "100%" : "400px",
-        fontSize: isMobileView ? "14px" : "10px",
+        maxWidth: "100%",
+        maxHeight: "100%",
+        fontSize: "14px",
         display: "flex",
         flexDirection: "column",
-        margin: isMobileView ? "0" : "auto",
+        margin: "0",
       }}
     >
-      {!isMobileView && (
-        <div
-          style={{
-            position: "sticky",
-            top: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.95)",
-            border: "1px solid #003300",
-            borderBottom: "2px solid #00ff00",
-            padding: "10px",
-            margin: "-1px -1px 0 -1px",
-            color: "#00aa00",
-            fontWeight: "bold",
-            zIndex: 10,
-          }}
-        >
-          <div
-            style={{
-              marginBottom: "5px",
-              fontSize: "12px",
-              textTransform: "uppercase",
-              letterSpacing: "1px",
-              textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-            }}
-          >
-            RECENT NOSTR EVENTS
-          </div>
-          {searchText && (
-            <div
-              style={{
-                fontSize: "10px",
-                color: "#00ff00",
-                background: "rgba(0, 255, 0, 0.1)",
-                padding: "2px 4px",
-                borderRadius: "4px",
-                border: "1px solid rgba(0, 255, 0, 0.3)",
-              }}
-            >
-              SEARCH: "{searchText}"
-            </div>
-          )}
-          {!searchText && (
-            <div
-              style={{
-                fontSize: "9px",
-                color: "#00aa00",
-                fontStyle: "italic",
-                opacity: 0.8,
-              }}
-            >
-              Showing latest {sortedEvents.length} events from the network
-            </div>
-          )}
-        </div>
-      )}
+
 
       {/* Virtual scrolling list with Virtuoso */}
       <div style={{ flex: 1, position: "relative" }}>
@@ -650,16 +594,16 @@ export function RecentEvents({
             onClick={() => scrollToBottom("smooth")}
             style={{
               position: "absolute",
-              bottom: isMobileView ? "70px" : "50px",
-              right: isMobileView ? "30px" : "20px",
+              bottom: "70px",
+              right: "30px",
               backgroundColor: "rgba(0, 255, 0, 0.9)",
               color: "#000000",
               border: "none",
               borderRadius: "50%",
-              width: isMobileView ? "50px" : "40px",
-              height: isMobileView ? "50px" : "40px",
+              width: "50px",
+              height: "50px",
               cursor: "pointer",
-              fontSize: isMobileView ? "20px" : "16px",
+              fontSize: "20px",
               fontWeight: "bold",
               boxShadow: "0 4px 12px rgba(0, 255, 0, 0.3)",
               transition: "all 0.2s ease",
