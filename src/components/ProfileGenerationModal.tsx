@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
 import { colorForNostrPubkey, hueFromColor } from "../utils/userColor";
 
@@ -36,10 +36,12 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
   const [generatedProfile, setGeneratedProfile] = useState<GeneratedProfile | null>(null);
   const [error, setError] = useState("");
   const [showPrivateKeys, setShowPrivateKeys] = useState(false);
+  const cancelRef = useRef(false);
 
   // Reset state when modal opens/closes
   useEffect(() => {
     if (!isOpen) {
+      cancelRef.current = true;
       setInput("");
       setIsGenerating(false);
       setProgress(0);
@@ -72,35 +74,53 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
         return;
       }
 
-      setIsGenerating(true);
       setProgress(0);
       setGeneratedProfiles([]);
       setGeneratedProfile(null);
 
       const targetSuffix = suffix;
-      const profiles: GeneratedProfile[] = [];
+      const cacheKey = `generated_profiles:${username}:${targetSuffix}`;
+      const cached = localStorage.getItem(cacheKey);
+      const profiles: GeneratedProfile[] = cached ? (JSON.parse(cached) as GeneratedProfile[]) : [];
+
+      if (profiles.length) {
+        const sorted = [...profiles].sort((a, b) => a.hue - b.hue);
+        setGeneratedProfiles(sorted);
+        setProgress((sorted.length / 64) * 100);
+        if (profiles.length >= 64) {
+          setIsGenerating(false);
+          return;
+        }
+      }
+
+      setIsGenerating(true);
+      cancelRef.current = false;
+
       let attempts = 0;
 
-      while (profiles.length < 64) {
+      while (profiles.length < 64 && !cancelRef.current) {
         const privateKey = generateSecretKey();
         const publicKey = getPublicKey(privateKey);
         if (!targetSuffix || publicKey.endsWith(targetSuffix)) {
-          const color = colorForNostrPubkey(publicKey, true);
-          const hue = hueFromColor(color);
-          const npub = nip19.npubEncode(publicKey);
-          const nsec = nip19.nsecEncode(privateKey);
-          profiles.push({
-            username,
-            privateKeyHex: Array.from(privateKey, (byte) => byte.toString(16).padStart(2, "0")).join(""),
-            publicKeyHex: publicKey,
-            npub,
-            nsec,
-            color,
-            hue,
-          });
-          const sorted = [...profiles].sort((a, b) => a.hue - b.hue);
-          setGeneratedProfiles(sorted);
-          setProgress((sorted.length / 64) * 100);
+          if (!profiles.some((p) => p.publicKeyHex === publicKey)) {
+            const color = colorForNostrPubkey(publicKey, true);
+            const hue = hueFromColor(color);
+            const npub = nip19.npubEncode(publicKey);
+            const nsec = nip19.nsecEncode(privateKey);
+            profiles.push({
+              username,
+              privateKeyHex: Array.from(privateKey, (byte) => byte.toString(16).padStart(2, "0")).join(""),
+              publicKeyHex: publicKey,
+              npub,
+              nsec,
+              color,
+              hue,
+            });
+            const sorted = [...profiles].sort((a, b) => a.hue - b.hue);
+            setGeneratedProfiles(sorted);
+            setProgress((sorted.length / 64) * 100);
+            localStorage.setItem(cacheKey, JSON.stringify(sorted));
+          }
         }
 
         attempts++;
@@ -119,6 +139,8 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
 
   const saveProfile = () => {
     if (!generatedProfile) return;
+    cancelRef.current = true;
+    setIsGenerating(false);
     
     try {
       const profileData: SavedProfile = {
