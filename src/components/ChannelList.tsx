@@ -39,8 +39,8 @@ const styles = {
     rail:
       "w-40 min-w-[160px] border-r border-gray-300 bg-white text-gray-800 flex flex-col overflow-hidden",
     header:
-      "bg-gray-100 text-gray-700 px-3 py-3 border-b border-gray-300 sticky top-0 z-20",
-    headerText: "text-sm font-medium uppercase tracking-wider",
+      "bg-white text-blue-600 px-4 py-3 border-b border-blue-200",
+    headerText: "text-base uppercase tracking-wider",
     list: "overflow-y-auto px-2 py-2 flex-1",
     empty: "text-xs text-gray-500",
     buttonBase:

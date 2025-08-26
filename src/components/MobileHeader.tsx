@@ -134,7 +134,7 @@ export function MobileHeader({
       </div>
 
       <div className="w-full mt-2 mb-4 px-4">
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center mx-auto max-w-md">
           <div className="relative w-full">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
               <svg
@@ -156,7 +156,7 @@ export function MobileHeader({
               onChange={(e) => onSearch((e.target as HTMLInputElement).value)}
               placeholder="hello in:nyc from:@jack"
               theme={theme}
-              className={`w-full pl-9 pr-3 py-2 ${
+              className={`my-2 w-full pl-9 pr-3 py-2 ${
                 theme === "matrix"
                   ? "focus:shadow-[0_0_5px_rgba(0,255,0,0.5)]"
                   : "focus:ring-2 focus:ring-blue-600"

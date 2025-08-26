@@ -33,7 +33,7 @@ const styles = {
     scrollButton:
       "absolute bottom-[70px] right-[30px] bg-green-500 text-black rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,255,0,0.3)] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110",
     messageCard:
-      "px-5 py-2 bg-black/30 rounded-lg transition-all cursor-pointer hover:bg-black/50 hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(0,255,0,0.3)]",
+      "mx-3 px-3 py-2 bg-black/30 rounded-lg transition-all cursor-pointer hover:bg-black/50 hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(0,255,0,0.3)]",
     hashTag: "text-gray-500 text-[10px] font-mono",
     replyButton:
       "bg-transparent text-gray-500 rounded text-[10px] font-mono cursor-pointer transition-colors hover:bg-black/20 hover:text-gray-300",
@@ -47,7 +47,7 @@ const styles = {
     scrollButton:
       "absolute bottom-[70px] right-[30px] bg-blue-500 text-white rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all duration-200 z-[1000] hover:bg-blue-600 hover:scale-110",
     messageCard:
-      "px-5 py-2 bg-gray-100 rounded-lg transition-all cursor-pointer hover:bg-gray-200 hover:shadow-sm",
+      "mx-3 px-3 py-2 rounded-lg transition-all cursor-pointer hover:bg-gray-200 hover:shadow-sm",
     hashTag: "text-gray-500 text-[10px] font-mono",
     replyButton:
       "bg-transparent text-gray-500 rounded text-[10px] font-mono cursor-pointer transition-colors hover:bg-gray-200 hover:text-gray-700",
@@ -267,7 +267,6 @@ export function RecentEvents({
       const userColors = colorForPeerSeed('nostr:' + event.pubkey, true);
 
       // Calculate username width for hanging indent
-      const usernameText = `<@${username}#${pubkeyHash}>`;
       const fontSize = "14px";
       const fontFamily = "Courier New, monospace";
       const fontWeight = "bold";
@@ -277,7 +276,6 @@ export function RecentEvents({
       const context = canvas.getContext("2d");
       if (context) {
         context.font = `${fontWeight} ${fontSize} ${fontFamily}`;
-        const usernameWidth = context.measureText(usernameText).width;
 
         return (
           <div className="pb-4">
