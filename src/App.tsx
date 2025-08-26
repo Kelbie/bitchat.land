@@ -20,9 +20,27 @@ import { ProfileGenerationModal } from "./components/ProfileGenerationModal";
 import { ChatInput } from "./components/ChatInput";
 import { addGeohashToSearch, parseSearchQuery, buildSearchQuery } from "./utils/searchParser";
 import { PROJECTIONS } from "./constants/projections";
+import { getCachedLocationFromGeohash } from "./utils/geocoder";
+import ngeohash from "ngeohash";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
+
+// Approximate diagonal size of a geohash cell in kilometers
+function geohashDiameterKm(geohash: string): number {
+  const [minLng, minLat, maxLng, maxLat] = ngeohash.decode_bbox(geohash);
+  const R = 6371; // Earth radius in km
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const lat1 = toRad(minLat);
+  const lat2 = toRad(maxLat);
+  const dLat = lat2 - lat1;
+  const dLon = toRad(maxLng - minLng);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 // Marquee Banner Component
 function MarqueeBanner() {
@@ -173,9 +191,26 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   const [searchGeohash, setSearchGeohash] = useState("");
   const [animatingGeohashes, setAnimatingGeohashes] = useState<Set<string>>(new Set());
   const [channelLastReadMap, setChannelLastReadMap] = useState<Record<string, number>>({});
-  
+
   // Reply state
   const [replyPrefillText, setReplyPrefillText] = useState("");
+
+  // Pinned channels and location state
+  const [pinnedChannels, setPinnedChannels] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("pinnedChannels");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return ['#bitchat.land', '#21m'];
+  });
+  const [showMeshModal, setShowMeshModal] = useState(false);
+  const [locationChannels, setLocationChannels] = useState<
+    { label: string; hash: string; name: string; sizeKm: number }[]
+  >([]);
+  const [teleportInput, setTeleportInput] = useState("");
 
   // Header height constant - measured exact value
   const headerHeight = 182.2;
@@ -213,6 +248,45 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
       console.warn("Failed to persist channelLastReadMap to localStorage", e);
     }
   };
+
+  // Persist pinned channels
+  useEffect(() => {
+    try {
+      localStorage.setItem("pinnedChannels", JSON.stringify(pinnedChannels));
+    } catch (e) {
+      console.warn("Failed to persist pinnedChannels", e);
+    }
+  }, [pinnedChannels]);
+
+  // Determine user location and build location-based channels
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const base = ngeohash.encode(latitude, longitude, 7);
+        const levels = [
+          { label: 'neighbourhood', precision: 7 },
+          { label: 'city', precision: 5 },
+          { label: 'region', precision: 4 },
+          { label: 'country', precision: 2 },
+          { label: 'continent', precision: 1 },
+        ];
+        const arr: { label: string; hash: string; name: string; sizeKm: number }[] = [];
+        for (const lvl of levels) {
+          const hash = base.slice(0, lvl.precision);
+          const info = await getCachedLocationFromGeohash(hash);
+          const sizeKm = Math.round(geohashDiameterKm(hash));
+          arr.push({
+            label: lvl.label,
+            hash,
+            name: info?.country || info?.name || info?.formatted || 'Unknown',
+            sizeKm,
+          });
+        }
+        setLocationChannels(arr);
+      });
+    }
+  }, []);
 
 
 
@@ -284,6 +358,24 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   // Handle text search input
   const handleTextSearch = (value: string) => {
     setSearchText(value);
+  };
+
+  const handleTogglePin = (ch: string) => {
+    setPinnedChannels((prev) => {
+      if (prev.includes(ch)) {
+        if (!window.confirm(`Unpin ${ch}?`)) return prev;
+        return prev.filter((p) => p !== ch);
+      }
+      return [...prev, ch];
+    });
+  };
+
+  const handleTeleport = () => {
+    const trimmed = teleportInput.trim();
+    if (trimmed) {
+      handleTextSearch(`in:${trimmed}`);
+      setTeleportInput("");
+    }
   };
 
   // Handle reply to message
@@ -653,6 +745,41 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                       CHANNELS
                     </div>
                   </div>
+                  <div style={{ padding: '8px', borderBottom: '1px solid #003300' }}>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <input
+                        type="text"
+                        value={teleportInput}
+                        onChange={(e) => setTeleportInput(e.target.value)}
+                        placeholder="#channel or geohash"
+                        style={{
+                          flex: 1,
+                          background: '#000000',
+                          color: '#00ff00',
+                          border: '1px solid #00ff00',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontFamily: 'Courier New, monospace',
+                          padding: '4px 6px'
+                        }}
+                      />
+                      <button
+                        onClick={handleTeleport}
+                        style={{
+                          padding: '4px 6px',
+                          background: '#003300',
+                          color: '#00ff00',
+                          border: '1px solid #00ff00',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          cursor: 'pointer',
+                          textTransform: 'uppercase'
+                        }}
+                      >
+                        Teleport
+                      </button>
+                    </div>
+                  </div>
                   <div style={{ overflowY: 'auto', padding: '10px 8px', flex: 1 }}>
                     {(() => {
                       const channelSet = new Set<string>();
@@ -664,37 +791,27 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                         if (gv) channelSet.add(`#${gv}`);
                         if (dv) channelSet.add(`#${dv}`);
                       });
-                      
-                      // Hardcoded pinned channels
-                      const pinnedChannels = ['#bitchat.land', '#21m'];
+
                       const allChannels = Array.from(channelSet).sort();
-                      
-                      // Separate pinned and unpinned channels
-                      // Force show all pinned channels even if they have no messages
-                      const pinned = pinnedChannels; // Show all pinned channels regardless
-                      const unpinned = allChannels.filter(ch => !pinnedChannels.includes(ch));
-                      
-                      // Combine: pinned first, then unpinned
-                      const channels = [...pinned, ...unpinned];
-                      if (channels.length === 0) {
-                        return (
-                          <div style={{ fontSize: '10px', opacity: 0.7 }}>no channels</div>
-                        );
-                      }
-                      return channels.map((ch) => {
+                      const locationHashes = locationChannels.map((l) => `#${l.hash}`);
+                      const otherChannels = allChannels.filter(
+                        (ch) => !pinnedChannels.includes(ch) && !locationHashes.includes(ch)
+                      );
+
+                      const renderChannelButton = (ch: string, displayText?: string) => {
                         const channelValue = ch.slice(1).toLowerCase();
-                        const isSelected = parsedSearch.geohashes.some((gh) => gh.toLowerCase() === channelValue);
+                        const isSelected = parsedSearch.geohashes.some(
+                          (gh) => gh.toLowerCase() === channelValue
+                        );
                         const latestTs = latestEventTimestampByChannel[ch] || 0;
                         const lastReadTs = channelLastReadMap[ch] || 0;
                         const hasUnread = latestTs > lastReadTs;
                         const showUnreadDot = hasUnread && !isSelected;
                         const isPinned = pinnedChannels.includes(ch);
-                        const hasMessages = channelSet.has(ch); // Check if channel actually has messages
+                        const hasMessages = channelSet.has(ch);
 
                         const handleOpenChannel = () => {
-                          // Update search
                           handleTextSearch(`in:${channelValue}`);
-                          // Mark channel as read now
                           const nowSec = Math.floor(Date.now() / 1000);
                           setChannelLastReadMap((prev) => {
                             const next = { ...prev, [ch]: nowSec };
@@ -710,24 +827,32 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                             style={{
                               width: '100%',
                               textAlign: 'left',
-                              background: isSelected 
-                                ? 'rgba(0, 255, 0, 0.08)' 
-                                : isPinned 
-                                ? 'rgba(255, 255, 0, 0.05)' 
+                              background: isSelected
+                                ? 'rgba(0, 255, 0, 0.08)'
+                                : isPinned
+                                ? 'rgba(255, 255, 0, 0.05)'
                                 : 'transparent',
-                              color: isSelected ? '#00ff00' : isPinned ? (hasMessages ? '#ffff00' : '#ffcc66') : '#00ff00',
-                              border: `1px solid ${isSelected ? '#00ff00' : isPinned ? '#ffcc00' : '#003300'}`,
-                              boxShadow: isSelected 
-                                ? '0 0 10px rgba(0,255,0,0.15) inset' 
-                                : isPinned 
-                                ? '0 0 8px rgba(255,255,0,0.1) inset' 
+                              color: isSelected
+                                ? '#00ff00'
+                                : isPinned
+                                ? hasMessages
+                                  ? '#ffff00'
+                                  : '#ffcc66'
+                                : '#00ff00',
+                              border: `1px solid ${
+                                isSelected ? '#00ff00' : isPinned ? '#ffcc00' : '#003300'
+                              }`,
+                              boxShadow: isSelected
+                                ? '0 0 10px rgba(0,255,0,0.15) inset'
+                                : isPinned
+                                ? '0 0 8px rgba(255,255,0,0.1) inset'
                                 : 'none',
                               borderRadius: '4px',
                               padding: '8px 8px',
                               fontSize: '13px',
                               cursor: 'pointer',
                               transition: 'all 0.2s ease',
-                              marginBottom: isPinned ? '12px' : '8px',
+                              marginBottom: '8px',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -738,36 +863,148 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                               e.currentTarget.style.borderColor = '#00ff00';
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.background = isSelected 
-                                ? 'rgba(0, 255, 0, 0.08)' 
-                                : isPinned 
-                                ? 'rgba(255, 255, 0, 0.05)' 
+                              e.currentTarget.style.background = isSelected
+                                ? 'rgba(0, 255, 0, 0.08)'
+                                : isPinned
+                                ? 'rgba(255, 255, 0, 0.05)'
                                 : 'transparent';
-                              e.currentTarget.style.borderColor = isSelected 
-                                ? '#00ff00' 
-                                : isPinned 
-                                ? '#ffcc00' 
+                              e.currentTarget.style.borderColor = isSelected
+                                ? '#00ff00'
+                                : isPinned
+                                ? '#ffcc00'
                                 : '#003300';
                             }}
                           >
-                            <span style={{ fontWeight: isSelected ? 'bold' as const : 'normal' as const }}>
-                              {isPinned && '📌 '}{ch}{isPinned && !hasMessages && ' (empty)'}
+                            <span style={{ fontWeight: isSelected ? 'bold' : 'normal' }}>
+                              {displayText || ch}{isPinned && !hasMessages && ' (empty)'}
                             </span>
-                            {showUnreadDot && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {showUnreadDot && (
+                                <span
+                                  style={{
+                                    width: '8px',
+                                    height: '8px',
+                                    backgroundColor: '#ff0033',
+                                    borderRadius: '50%',
+                                    boxShadow: '0 0 6px rgba(255,0,51,0.6)'
+                                  }}
+                                  title="Unread messages"
+                                />
+                              )}
                               <span
-                                style={{
-                                  width: '8px',
-                                  height: '8px',
-                                  backgroundColor: '#ff0033',
-                                  borderRadius: '50%',
-                                  boxShadow: '0 0 6px rgba(255,0,51,0.6)'
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleTogglePin(ch);
                                 }}
-                                title="Unread messages"
-                              />
-                            )}
+                                style={{ cursor: 'pointer' }}
+                                title={isPinned ? 'Unpin' : 'Pin'}
+                              >
+                                {isPinned ? '📌' : '📍'}
+                              </span>
+                            </span>
                           </button>
                         );
-                      });
+                      };
+
+                      return (
+                        <>
+                          <div style={{ marginBottom: '16px' }}>
+                            <div
+                              style={{
+                                fontSize: '11px',
+                                color: '#00aa00',
+                                margin: '0 0 4px 0',
+                                textTransform: 'uppercase'
+                              }}
+                            >
+                              Mesh
+                            </div>
+                            <button
+                              onClick={() => setShowMeshModal(true)}
+                              style={{
+                                width: '100%',
+                                textAlign: 'left',
+                                background: 'rgba(0, 0, 50, 0.4)',
+                                color: '#00aaff',
+                                border: '1px solid #0055aa',
+                                borderRadius: '4px',
+                                padding: '8px',
+                                fontSize: '13px',
+                                cursor: 'pointer',
+                                marginBottom: '8px'
+                              }}
+                            >
+                              Mesh
+                            </button>
+                          </div>
+
+                          {pinnedChannels.length > 0 && (
+                            <div style={{ marginBottom: '16px' }}>
+                              <div
+                                style={{
+                                  fontSize: '11px',
+                                  color: '#00aa00',
+                                  margin: '0 0 4px 0',
+                                  textTransform: 'uppercase'
+                                }}
+                              >
+                                Pinned
+                              </div>
+                              {pinnedChannels.map((ch) => renderChannelButton(ch))}
+                            </div>
+                          )}
+
+                          {locationChannels.length > 0 && (
+                            <div style={{ marginBottom: '16px' }}>
+                              <div
+                                style={{
+                                  fontSize: '11px',
+                                  color: '#00aa00',
+                                  margin: '0 0 4px 0',
+                                  textTransform: 'uppercase'
+                                }}
+                              >
+                                Location
+                              </div>
+                              {locationChannels.map((loc) => (
+                                <div key={loc.label} style={{ marginBottom: '12px' }}>
+                                  <div
+                                    style={{
+                                      fontSize: '10px',
+                                      opacity: 0.8,
+                                      marginBottom: '2px',
+                                      textTransform: 'capitalize'
+                                    }}
+                                  >
+                                    {`${loc.label} [0 people]`}
+                                  </div>
+                                  {renderChannelButton(
+                                    `#${loc.hash}`,
+                                    `#${loc.hash} • ≈${loc.sizeKm} km • ${loc.name}`
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <div style={{ marginBottom: '16px' }}>
+                            <div
+                              style={{
+                                fontSize: '11px',
+                                color: '#00aa00',
+                                margin: '0 0 4px 0',
+                                textTransform: 'uppercase'
+                              }}
+                            >
+                              Other
+                            </div>
+                            {otherChannels.length === 0 && (
+                              <div style={{ fontSize: '10px', opacity: 0.7 }}>no channels</div>
+                            )}
+                            {otherChannels.map((ch) => renderChannelButton(ch))}
+                          </div>
+                        </>
+                      );
                     })()}
                   </div>
                 </div>
@@ -876,7 +1113,51 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
           Follow me on Nostr
         </a>
       </div>
-      
+
+      {showMeshModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0,0,0,0.8)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            style={{
+              background: '#000000',
+              border: '1px solid #0055aa',
+              padding: '20px',
+              color: '#00aaff',
+              textAlign: 'center',
+              maxWidth: '300px',
+            }}
+          >
+            <div style={{ marginBottom: '12px' }}>
+              Download the mobile app to access Mesh.
+            </div>
+            <button
+              onClick={() => setShowMeshModal(false)}
+              style={{
+                padding: '6px 12px',
+                background: '#0055aa',
+                color: '#00aaff',
+                border: '1px solid #00aaff',
+                cursor: 'pointer',
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Projection Selector - Only show on map view */}
       {activeView === 'map' && (
         <div
