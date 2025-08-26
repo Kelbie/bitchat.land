@@ -73,21 +73,21 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
 
   const handleRoll = async ({ min, max }: RollRange) => {
     console.log("🎲 Roll command detected", { min, max });
-
+  
     const tempPriv = generateSecretKey();
     const tempPub = getPublicKey(tempPriv);
     const hash = sha256(hexToBytes(tempPub));
     const hashHex = bytesToHex(hash);
     const rand = parseInt(hashHex.slice(0, 8), 16);
     const result = (rand % (max - min + 1)) + min;
-
+  
     const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
-
+  
     const tags = [
       ["n", "!roll"],
       ["client", "bitchat.land"],
     ];
-
+  
     let kind;
     if (isGeohash) {
       kind = 20000;
@@ -97,31 +97,43 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
       tags.push(["d", currentChannel.toLowerCase()]);
       tags.push(["relay", NOSTR_RELAYS[0]]);
     }
-
+  
     const eventTemplate = {
       kind,
       created_at: Math.floor(Date.now() / 1000),
       content: `@${savedProfile.username}#${savedProfile.publicKey.slice(-4)} rolled ${result} point(s) via bitchat.land`,
       tags,
     };
-
+  
     const signedEvent = finalizeEvent(eventTemplate, tempPriv);
     const valid = validateEvent(signedEvent);
     const verified = verifyEvent(signedEvent);
-
+  
     if (!valid) throw new Error("Event validation failed");
     if (!verified) throw new Error("Event signature verification failed");
-
+  
     const pool = new SimplePool();
     try {
       const publishPromises = pool.publish(NOSTR_RELAYS, signedEvent);
-      await Promise.all(publishPromises);
+      
+      // Use Promise.allSettled to wait for all attempts, then check if at least one succeeded
+      const results = await Promise.allSettled(publishPromises);
+      const successful = results.filter(result => result.status === 'fulfilled');
+      
+      if (successful.length === 0) {
+        const errors = results
+          .filter(result => result.status === 'rejected')
+          .map(result => result.reason?.message || 'Unknown error');
+        throw new Error(`Failed to publish to any relay: ${errors.join(', ')}`);
+      }
+      
+      console.log(`✅ Roll published successfully to ${successful.length}/${results.length} relays`);
       onMessageSent?.(eventTemplate.content);
     } finally {
       pool.close(NOSTR_RELAYS);
     }
   };
-
+  
   const sendMessage = async () => {
     if (!message.trim() || !savedProfile) {
       setError(
@@ -131,16 +143,16 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
       );
       return;
     }
-
+  
     // Handle global channel case
     if (!currentChannel || currentChannel === "global") {
       setError("Please select a specific channel or location to send a message");
       return;
     }
-
+  
     setIsSending(true);
     setError("");
-
+  
     try {
       console.log("🚀 Starting message send...");
       console.log("📝 Message:", message.trim());
@@ -150,26 +162,26 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
         publicKey: savedProfile.publicKey.slice(0, 8) + "...",
         privateKeyLength: savedProfile.privateKey.length
       });
-
+  
       const rollRange = parseRollCommand(message.trim());
-
+  
       // Convert hex private key to Uint8Array
       const privateKeyHex = savedProfile.privateKey;
-
+  
       // Determine event kind and tags based on channel
       const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
-
+  
       console.log(`🔍 Channel analysis:`, {
         channel: currentChannel,
         isGeohash: isGeohash,
         regex: /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel)
       });
-
+  
       const tags = [
         ["n", savedProfile.username], // username tag
         ["client", "bitchat.land"] // client tag
       ];
-
+  
       let kind;
       if (isGeohash) {
         kind = 20000; // Geohash channels use kind 20000
@@ -181,7 +193,7 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
         tags.push(["relay", NOSTR_RELAYS[0]]);
         console.log(`💬 Using kind 23333 with group tag: d=${currentChannel.toLowerCase()}`);
       }
-
+  
       // Create event template (don't include pubkey, finalizeEvent adds it)
       const eventTemplate = {
         kind: kind,
@@ -189,58 +201,71 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
         content: message.trim(),
         tags: tags,
       };
-
+  
       console.log("📄 Event template:", eventTemplate);
-
+  
       // Sign the event
       const signedEvent = finalizeEvent(eventTemplate, hexToBytes(privateKeyHex));
       console.log("✍️ Signed event:", signedEvent);
-
+  
       // Validate the event before publishing
       const valid = validateEvent(signedEvent);
       const verified = verifyEvent(signedEvent);
-
+  
       if (!valid) {
         throw new Error("Event validation failed");
       }
       if (!verified) {
         throw new Error("Event signature verification failed");
       }
-
+  
       console.log("✅ Event validated successfully");
-
+  
       // Create pool and publish
       const pool = new SimplePool();
-
+  
       try {
         console.log("Attempting to publish event to relays:", NOSTR_RELAYS);
-
+  
         // Publish to relays - pool.publish returns an array of promises
         const publishPromises = pool.publish(NOSTR_RELAYS, signedEvent);
-
+  
         console.log("Publish promises created:", publishPromises.length);
-
-        // Wait for at least one relay to succeed
-        try {
-          // Use Promise.race instead of Promise.any for better compatibility
-          await Promise.all(publishPromises);
-          console.log("✅ Message published successfully to at least one relay");
-
-          // // Clear input and notify parent
-          setMessage("");
-          onMessageSent?.(message.trim());
-
-          if (rollRange) {
-            setTimeout(() => {
-              handleRoll(rollRange).catch(console.error);
-            }, 1000);
-          }
-
-        } catch (error) {
-          console.error("❌ Failed to publish to any relay:", error);
-          throw new Error("Failed to publish message to any relay");
+  
+        // Use Promise.allSettled to wait for all attempts, then check if at least one succeeded
+        const results = await Promise.allSettled(publishPromises);
+        const successful = results.filter(result => result.status === 'fulfilled');
+        
+        if (successful.length === 0) {
+          // All relays failed - collect error messages for debugging
+          const errors = results
+            .filter(result => result.status === 'rejected')
+            .map(result => result.reason?.message || 'Unknown error');
+          
+          console.error("❌ Failed to publish to any relay. Errors:", errors);
+          throw new Error(`Failed to publish message to any relay: ${errors.join(', ')}`);
         }
-
+  
+        // At least one relay succeeded
+        console.log(`✅ Message published successfully to ${successful.length}/${results.length} relays`);
+        
+        // Log any failed relays for debugging (but don't throw)
+        const failed = results.filter(result => result.status === 'rejected');
+        if (failed.length > 0) {
+          console.warn(`⚠️ Some relays failed (${failed.length}/${results.length}):`, 
+            failed.map(result => result.reason?.message || 'Unknown error'));
+        }
+  
+        // Clear input and notify parent
+        setMessage("");
+        onMessageSent?.(message.trim());
+  
+        if (rollRange) {
+          setTimeout(() => {
+            handleRoll(rollRange).catch(console.error);
+          }, 1000);
+        }
+  
       } finally {
         // Always close the pool
         pool.close(NOSTR_RELAYS);

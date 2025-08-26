@@ -24,10 +24,10 @@ export const PROJECTIONS: { [key: string]: any } = {
 
 export const NOSTR_RELAYS = [
   "wss://relay.damus.io",
-  // "wss://nos.lol",
-  // "wss://relay.primal.net",
-  // "wss://offchain.pub",
-  // "wss://nostr21.com",
+  "wss://nos.lol",
+  "wss://relay.primal.net",
+  "wss://offchain.pub",
+  "wss://nostr21.com",
 ];
 
 export const BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
