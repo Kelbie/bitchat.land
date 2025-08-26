@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 // import { scaleQuantize } from "@visx/scale"; // Currently unused
 // import { generateSampleHeatmapData } from "./utils/geohash"; // Currently unused
 import {
@@ -20,6 +20,7 @@ import { ChatInput } from "./components/ChatInput";
 import { ProjectionSelector } from "./components/ProjectionSelector";
 import { MarqueeBanner } from "./components/MarqueeBanner";
 import { CornerOverlay } from "./components/CornerOverlay";
+import { ChannelList, ChannelMeta } from "./components/ChannelList";
 import {
   addGeohashToSearch,
   parseSearchQuery,
@@ -280,6 +281,64 @@ export default function App({
     }
     return latest;
   }, [allStoredEvents]);
+
+  const unreadCountByChannel = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const ev of allStoredEvents) {
+      const g = ev.tags.find((t: any) => t[0] === "g");
+      const d = ev.tags.find((t: any) => t[0] === "d");
+      const gv = g && typeof g[1] === "string" ? g[1].toLowerCase() : "";
+      const dv = d && typeof d[1] === "string" ? d[1].toLowerCase() : "";
+      const createdAt = ev.created_at || 0;
+      if (gv) {
+        const key = `#${gv}`;
+        if (createdAt > (channelLastReadMap[key] || 0)) {
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      }
+      if (dv) {
+        const key = `#${dv}`;
+        if (createdAt > (channelLastReadMap[key] || 0)) {
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      }
+    }
+    return counts;
+  }, [allStoredEvents, channelLastReadMap]);
+
+  const channelSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const key of Object.keys(latestEventTimestampByChannel)) {
+      set.add(key);
+    }
+    return set;
+  }, [latestEventTimestampByChannel]);
+
+  const channels = useMemo<ChannelMeta[]>(() => {
+    const pinnedChannels = ["#bitchat.land", "#21m"];
+    const allChannels = Array.from(channelSet).sort();
+    const pinned = pinnedChannels;
+    const unpinned = allChannels.filter((ch) => !pinnedChannels.includes(ch));
+    return [...pinned, ...unpinned].map((ch) => ({
+      key: ch,
+      isPinned: pinnedChannels.includes(ch),
+      hasMessages: channelSet.has(ch),
+    }));
+  }, [channelSet]);
+
+  const handleOpenChannel = useCallback(
+    (ch: string) => {
+      const channelValue = ch.slice(1).toLowerCase();
+      handleTextSearch(`in:${channelValue}`);
+      const nowSec = Math.floor(Date.now() / 1000);
+      setChannelLastReadMap((prev) => {
+        const next = { ...prev, [ch]: nowSec };
+        persistChannelLastRead(next);
+        return next;
+      });
+    },
+    [handleTextSearch, persistChannelLastRead]
+  );
 
   // When selected channel changes, mark the previous channel as read at switch-away time
   useEffect(() => {
@@ -546,194 +605,13 @@ export default function App({
                   overflow: "hidden",
                 }}
               >
-                {/* Left rail channels (persistent beside sub header and content) */}
-                <div
-                  style={{
-                    width: "160px",
-                    minWidth: "160px",
-                    borderRight: "1px solid #003300",
-                    background: "rgba(0, 0, 0, 0.9)",
-                    color: "#00ff00",
-                    display: "flex",
-                    flexDirection: "column",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      backgroundColor: "rgba(0, 0, 0, 0.98)",
-                      color: "#00aa00",
-                      padding: "12px",
-                      borderBottom: "1px solid #003300",
-                      position: "sticky",
-                      top: 0,
-                      zIndex: 2,
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: "16px",
-                        textTransform: "uppercase",
-                        letterSpacing: "1px",
-                        textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-                      }}
-                    >
-                      CHANNELS
-                    </div>
-                  </div>
-                  <div
-                    style={{ overflowY: "auto", padding: "10px 8px", flex: 1 }}
-                  >
-                    {(() => {
-                      const channelSet = new Set<string>();
-                      allStoredEvents.forEach((ev) => {
-                        const g = ev.tags.find((t: any) => t[0] === "g");
-                        const d = ev.tags.find((t: any) => t[0] === "d");
-                        const gv =
-                          g && typeof g[1] === "string"
-                            ? g[1].toLowerCase()
-                            : "";
-                        const dv =
-                          d && typeof d[1] === "string"
-                            ? d[1].toLowerCase()
-                            : "";
-                        if (gv) channelSet.add(`#${gv}`);
-                        if (dv) channelSet.add(`#${dv}`);
-                      });
-
-                      // Hardcoded pinned channels
-                      const pinnedChannels = ["#bitchat.land", "#21m"];
-                      const allChannels = Array.from(channelSet).sort();
-
-                      // Separate pinned and unpinned channels
-                      // Force show all pinned channels even if they have no messages
-                      const pinned = pinnedChannels; // Show all pinned channels regardless
-                      const unpinned = allChannels.filter(
-                        (ch) => !pinnedChannels.includes(ch)
-                      );
-
-                      // Combine: pinned first, then unpinned
-                      const channels = [...pinned, ...unpinned];
-                      if (channels.length === 0) {
-                        return (
-                          <div style={{ fontSize: "10px", opacity: 0.7 }}>
-                            no channels
-                          </div>
-                        );
-                      }
-                      return channels.map((ch) => {
-                        const channelValue = ch.slice(1).toLowerCase();
-                        const isSelected = parsedSearch.geohashes.some(
-                          (gh) => gh.toLowerCase() === channelValue
-                        );
-                        const latestTs = latestEventTimestampByChannel[ch] || 0;
-                        const lastReadTs = channelLastReadMap[ch] || 0;
-                        const hasUnread = latestTs > lastReadTs;
-                        const showUnreadDot = hasUnread && !isSelected;
-                        const isPinned = pinnedChannels.includes(ch);
-                        const hasMessages = channelSet.has(ch); // Check if channel actually has messages
-
-                        const handleOpenChannel = () => {
-                          // Update search
-                          handleTextSearch(`in:${channelValue}`);
-                          // Mark channel as read now
-                          const nowSec = Math.floor(Date.now() / 1000);
-                          setChannelLastReadMap((prev) => {
-                            const next = { ...prev, [ch]: nowSec };
-                            persistChannelLastRead(next);
-                            return next;
-                          });
-                        };
-
-                        return (
-                          <button
-                            key={ch}
-                            onClick={handleOpenChannel}
-                            style={{
-                              width: "100%",
-                              textAlign: "left",
-                              background: isSelected
-                                ? "rgba(0, 255, 0, 0.08)"
-                                : isPinned
-                                ? "rgba(255, 255, 0, 0.05)"
-                                : "transparent",
-                              color: isSelected
-                                ? "#00ff00"
-                                : isPinned
-                                ? hasMessages
-                                  ? "#ffff00"
-                                  : "#ffcc66"
-                                : "#00ff00",
-                              border: `1px solid ${
-                                isSelected
-                                  ? "#00ff00"
-                                  : isPinned
-                                  ? "#ffcc00"
-                                  : "#003300"
-                              }`,
-                              boxShadow: isSelected
-                                ? "0 0 10px rgba(0,255,0,0.15) inset"
-                                : isPinned
-                                ? "0 0 8px rgba(255,255,0,0.1) inset"
-                                : "none",
-                              borderRadius: "4px",
-                              padding: "8px 8px",
-                              fontSize: "13px",
-                              cursor: "pointer",
-                              transition: "all 0.2s ease",
-                              marginBottom: isPinned ? "12px" : "8px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              gap: "8px",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background =
-                                "rgba(0, 255, 0, 0.10)";
-                              e.currentTarget.style.borderColor = "#00ff00";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = isSelected
-                                ? "rgba(0, 255, 0, 0.08)"
-                                : isPinned
-                                ? "rgba(255, 255, 0, 0.05)"
-                                : "transparent";
-                              e.currentTarget.style.borderColor = isSelected
-                                ? "#00ff00"
-                                : isPinned
-                                ? "#ffcc00"
-                                : "#003300";
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontWeight: isSelected
-                                  ? ("bold" as const)
-                                  : ("normal" as const),
-                              }}
-                            >
-                              {isPinned && "📌 "}
-                              {ch}
-                              {isPinned && !hasMessages && " (empty)"}
-                            </span>
-                            {showUnreadDot && (
-                              <span
-                                style={{
-                                  width: "8px",
-                                  height: "8px",
-                                  backgroundColor: "#ff0033",
-                                  borderRadius: "50%",
-                                  boxShadow: "0 0 6px rgba(255,0,51,0.6)",
-                                }}
-                                title="Unread messages"
-                              />
-                            )}
-                          </button>
-                        );
-                      });
-                    })()}
-                  </div>
-                </div>
+                <ChannelList
+                  channels={channels}
+                  selectedChannel={selectedChannelKey}
+                  unreadCounts={unreadCountByChannel}
+                  onOpenChannel={handleOpenChannel}
+                  theme={theme}
+                />
 
                 {/* Chat column */}
                 <div
