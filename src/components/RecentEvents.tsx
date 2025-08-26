@@ -160,42 +160,14 @@ export function RecentEvents({
     (a, b) => a.created_at - b.created_at
   );
 
-  // Generate user colors function
-  const generateUserColors = useCallback((hash: string) => {
-    let hashValue = 0;
-    for (let i = 0; i < hash.length; i++) {
-      hashValue = hash.charCodeAt(i) + ((hashValue << 5) - hashValue);
-    }
-
-    const hue = Math.abs(hashValue % 360);
-    const saturation = Math.abs(hashValue % 30) + 70;
-    const lightness = Math.abs(hashValue % 20) + 55;
-
-    return {
-      username: `hsl(${hue}, ${saturation}%, ${lightness}%)`,
-      message: `hsl(${hue}, ${Math.max(saturation - 20, 40)}%, ${Math.min(
-        lightness + 10,
-        80
-      )}%)`,
-      background: `hsla(${hue}, ${Math.max(saturation - 40, 20)}%, ${Math.min(
-        lightness - 30,
-        25
-      )}%, 0.3)`,
-      backgroundHover: `hsla(${hue}, ${Math.max(
-        saturation - 30,
-        30
-      )}%, ${Math.min(lightness - 20, 35)}%, 0.4)`,
-      border: `hsl(${hue}, ${Math.max(saturation - 30, 40)}%, ${Math.min(
-        lightness - 10,
-        45
-      )}%)`,
-      borderHover: `hsl(${hue}, ${saturation}%, ${Math.min(
-        lightness + 5,
-        60
-      )}%)`,
-      leftBorder: `hsl(${hue}, ${saturation}%, ${lightness}%)`,
-      glow: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.2)`,
-    };
+  // Derive user colors from the Nostr pubkey using our hashing utility
+  const getUserColors = useCallback((pubkey: string) => {
+    const base = colorForNostrPubkey(pubkey, true);
+    const [r, g, b] = parseRgb(base);
+    const lighten = (value: number) =>
+      Math.min(255, Math.round(value + (255 - value) * 0.2));
+    const message = `rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`;
+    return { username: base, message };
   }, []);
 
   // Handle scroll state changes for Virtuoso
@@ -280,7 +252,7 @@ export function RecentEvents({
         );
       }
 
-      const userColors = generateUserColors(event.pubkey);
+      const userColors = getUserColors(event.pubkey);
 
       // Calculate username width for hanging indent
       const usernameText = `<@${username}#${pubkeyHash}>`;
@@ -524,7 +496,7 @@ export function RecentEvents({
       isMobileView,
       onSearch,
       searchText,
-      generateUserColors,
+      getUserColors,
       onReply,
     ]
   );
