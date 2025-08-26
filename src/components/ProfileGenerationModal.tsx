@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
-import { colorForNostrPubkey } from "../utils/userColor";
+import { colorForNostrPubkey, hueFromColor } from "../utils/userColor";
 
 interface SavedProfile {
   username: string;
@@ -25,6 +25,7 @@ interface GeneratedProfile {
   npub: string;
   nsec: string;
   color: string;
+  hue: number;
 }
 
 export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: ProfileGenerationModalProps) {
@@ -85,26 +86,29 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
         const publicKey = getPublicKey(privateKey);
         if (!targetSuffix || publicKey.endsWith(targetSuffix)) {
           const color = colorForNostrPubkey(publicKey, true);
+          const hue = hueFromColor(color);
           const npub = nip19.npubEncode(publicKey);
           const nsec = nip19.nsecEncode(privateKey);
           profiles.push({
             username,
-            privateKeyHex: Array.from(privateKey, byte => byte.toString(16).padStart(2, "0")).join(""),
+            privateKeyHex: Array.from(privateKey, (byte) => byte.toString(16).padStart(2, "0")).join(""),
             publicKeyHex: publicKey,
             npub,
             nsec,
             color,
+            hue,
           });
-          setProgress((profiles.length / 64) * 100);
+          const sorted = [...profiles].sort((a, b) => a.hue - b.hue);
+          setGeneratedProfiles(sorted);
+          setProgress((sorted.length / 64) * 100);
         }
 
         attempts++;
         if (attempts % 1000 === 0) {
-          await new Promise(resolve => setTimeout(resolve, 1));
+          await new Promise((resolve) => setTimeout(resolve, 1));
         }
       }
 
-      setGeneratedProfiles(profiles);
       setIsGenerating(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -314,6 +318,32 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
               </>
             ) : (
               <>
+                {isGenerating && generatedProfiles.length < 64 && (
+                  <div style={{ marginBottom: "20px" }}>
+                    <div
+                      style={{
+                        backgroundColor: "#333",
+                        height: "10px",
+                        borderRadius: "5px",
+                        overflow: "hidden",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          backgroundColor: "#00ff00",
+                          height: "100%",
+                          width: `${progress}%`,
+                          transition: "width 0.3s ease",
+                          borderRadius: "5px",
+                        }}
+                      />
+                    </div>
+                    <div style={{ fontSize: "12px", textAlign: "center", color: "#888" }}>
+                      Found {generatedProfiles.length} profile{generatedProfiles.length !== 1 ? "s" : ""}... searching for more
+                    </div>
+                  </div>
+                )}
                 <div
                   style={{
                     display: "grid",

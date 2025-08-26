@@ -70,3 +70,22 @@ export function colorDistance(a: [number, number, number], b: [number, number, n
   const db = a[2] - b[2];
   return Math.sqrt(dr * dr + dg * dg + db * db) / Math.sqrt(3 * 255 * 255);
 }
+
+export function hueFromColor(color: string): number {
+  const [r, g, b] = parseRgb(color).map((v) => v / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  if (max !== min) {
+    const d = max - min;
+    if (max === r) {
+      h = (g - b) / d + (g < b ? 6 : 0);
+    } else if (max === g) {
+      h = (b - r) / d + 2;
+    } else {
+      h = (r - g) / d + 4;
+    }
+    h /= 6;
+  }
+  return h;
+}
