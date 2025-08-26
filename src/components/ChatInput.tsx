@@ -43,6 +43,46 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
       }
     }
   }, [prefillText]); // Only depend on prefillText
+  const publishToChannel = async (
+    content: string,
+    privateKeyHex: string,
+    nameTag: string
+  ) => {
+    const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
+    const tags = [
+      ["n", nameTag],
+      ["client", "bitchat.land"],
+    ];
+
+    if (isGeohash) {
+      tags.push(["g", currentChannel.toLowerCase()]);
+    } else {
+      tags.push(["d", currentChannel.toLowerCase()]);
+      tags.push(["relay", NOSTR_RELAYS[0]]);
+    }
+
+    const eventTemplate = {
+      kind: isGeohash ? 20000 : 23333,
+      created_at: Math.floor(Date.now() / 1000),
+      content,
+      tags,
+    };
+
+    const signedEvent = finalizeEvent(eventTemplate, hexToBytes(privateKeyHex));
+    const valid = validateEvent(signedEvent);
+    const verified = verifyEvent(signedEvent);
+
+    if (!valid) throw new Error("Event validation failed");
+    if (!verified) throw new Error("Event signature verification failed");
+
+    const pool = new SimplePool();
+    try {
+      const publishPromises = pool.publish(NOSTR_RELAYS, signedEvent);
+      await Promise.race(publishPromises);
+    } finally {
+      pool.close(NOSTR_RELAYS);
+    }
+  };
 
   const sendMessage = async () => {
     if (!message.trim() || !savedProfile) {
@@ -54,7 +94,6 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
       return;
     }
 
-    // Handle global channel case
     if (!currentChannel || currentChannel === "global") {
       setError("Please select a specific channel or location to send a message");
       return;
@@ -64,17 +103,10 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
     setError("");
 
     try {
-      console.log("🚀 Starting message send...");
-      console.log("📝 Message:", message.trim());
-      console.log("📍 Channel:", currentChannel);
-      console.log("👤 Profile:", {
-        username: savedProfile.username,
-        publicKey: savedProfile.publicKey.slice(0, 8) + "...",
-        privateKeyLength: savedProfile.privateKey.length
-      });
-
-      let msg = message.trim();
-      let privateKeyHex = savedProfile.privateKey;
+      const msg = message.trim();
+      await publishToChannel(msg, savedProfile.privateKey, savedProfile.username);
+      setMessage("");
+      onMessageSent?.(msg);
 
       if (msg.toLowerCase().startsWith("!roll")) {
         const args = msg.slice(5).trim();
@@ -105,97 +137,25 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
         const pkNum = BigInt("0x" + pubkeyHex);
         const roll = Number(pkNum % range) + min;
 
-        msg = `@${savedProfile.username} rolled ${roll} point(s)`;
-        privateKeyHex = typeof tempSk === "string" ? tempSk : bytesToHex(tempSk);
+        const rollMsg = `@${savedProfile.username}#${savedProfile.publicKey.slice(-4)} rolled ${roll} point(s) via bitchat.land`;
+        const tempSkHex = typeof tempSk === "string" ? tempSk : bytesToHex(tempSk);
+
+        setTimeout(async () => {
+          try {
+            await publishToChannel(rollMsg, tempSkHex, "!roll");
+            onMessageSent?.(rollMsg);
+          } catch (err) {
+            console.error("Failed to send roll result:", err);
+          }
+        }, 1000);
       }
-
-      // Determine event kind and tags based on channel
-      const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
-      
-      console.log(`🔍 Channel analysis:`, {
-        channel: currentChannel,
-        isGeohash: isGeohash,
-        regex: /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel)
-      });
-      
-      const tags = [
-        ["n", savedProfile.username], // username tag
-        ["client", "bitchat.land"] // client tag
-      ];
-
-      let kind;
-      if (isGeohash) {
-        kind = 20000; // Geohash channels use kind 20000
-        tags.push(["g", currentChannel.toLowerCase()]);
-        console.log(`📍 Using kind 20000 with geohash tag: g=${currentChannel.toLowerCase()}`);
-      } else {
-        kind = 23333; // Standard channels use kind 23333
-        tags.push(["d", currentChannel.toLowerCase()]);
-        tags.push(["relay", NOSTR_RELAYS[0]]);
-        console.log(`💬 Using kind 23333 with group tag: d=${currentChannel.toLowerCase()}`);
-      }
-
-      // Create event template (don't include pubkey, finalizeEvent adds it)
-      const eventTemplate = {
-        kind: kind,
-        created_at: Math.floor(Date.now() / 1000),
-        content: msg,
-        tags: tags,
-      };
-
-      console.log("📄 Event template:", eventTemplate);
-
-      // Sign the event
-      const signedEvent = finalizeEvent(eventTemplate, hexToBytes(privateKeyHex));
-      console.log("✍️ Signed event:", signedEvent);
-
-      // Validate the event before publishing
-      const valid = validateEvent(signedEvent);
-      const verified = verifyEvent(signedEvent);
-      
-      if (!valid) {
-        throw new Error("Event validation failed");
-      }
-      if (!verified) {
-        throw new Error("Event signature verification failed");
-      }
-
-      console.log("✅ Event validated successfully");
-
-      // Create pool and publish
-      const pool = new SimplePool();
-
-      try {
-        console.log("Attempting to publish event to relays:", NOSTR_RELAYS);
-        
-        // Publish to relays - pool.publish returns an array of promises
-        const publishPromises = pool.publish(NOSTR_RELAYS, signedEvent);
-        
-        console.log("Publish promises created:", publishPromises.length);
-        
-        // Wait for at least one relay to succeed
-        try {
-          // Use Promise.race instead of Promise.any for better compatibility
-          await Promise.race(publishPromises);
-          console.log("✅ Message published successfully to at least one relay");
-          
-          // Clear input and notify parent
-          setMessage("");
-          onMessageSent?.(msg);
-          
-        } catch (error) {
-          console.error("❌ Failed to publish to any relay:", error);
-          throw new Error("Failed to publish message to any relay");
-        }
-        
-      } finally {
-        // Always close the pool
-        pool.close(NOSTR_RELAYS);
-      }
-      
     } catch (err) {
       console.error("Failed to send message:", err);
-      setError(`Failed to send message: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setError(
+        `Failed to send message: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
     } finally {
       setIsSending(false);
     }
