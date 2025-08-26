@@ -176,6 +176,9 @@ export default function App({
   const [geohashDisplayPrecision] = useState(1);
   const [showGeohashText] = useState(true);
 
+  // Theme state for simple Tailwind-based theming
+  const [theme] = useState<"matrix" | "material">("matrix");
+
   // Mobile view state
   const [isMobile, setIsMobile] = useState(true);
   const [activeView, setActiveView] = useState<"map" | "chat" | "panel">("map");
@@ -638,6 +641,7 @@ export default function App({
               searchText={searchText}
               onSearch={handleTextSearch}
               zoomedGeohash={zoomedGeohash}
+              theme={theme}
             />
 
             <EventHierarchy
