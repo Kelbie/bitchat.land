@@ -17,13 +17,14 @@ import { Map } from "./components/Map";
 import { MobileHeader } from "./components/MobileHeader";
 import { ProfileGenerationModal } from "./components/ProfileGenerationModal";
 import { ChatInput } from "./components/ChatInput";
+import { ProjectionSelector } from "./components/ProjectionSelector";
+import { CornerOverlay } from "./components/CornerOverlay";
 import {
   addGeohashToSearch,
   parseSearchQuery,
   buildSearchQuery,
 } from "./utils/searchParser";
 import { colorForPeerSeed } from "./utils/userColor";
-import { PROJECTIONS } from "./constants/projections";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -626,6 +627,7 @@ export default function App({
             shouldShowLocalizedPrecision={!!shouldShowLocalizedPrecision}
             searchText={searchText}
             onGeohashClick={handleGeohashClickForSearch}
+            theme={theme}
           />
         </div>
 
@@ -914,113 +916,24 @@ export default function App({
       </div>
 
       {/* Nostr Watermark */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: "10px",
-          right: "10px",
-          zIndex: 9999,
-          fontSize: "16px",
-          fontFamily: "Courier New, monospace",
-          opacity: 0.7,
-          transition: "opacity 0.2s ease",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.opacity = "1";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.opacity = "0.7";
-        }}
-      >
+      <CornerOverlay position="bottom-right" theme={theme}>
         <a
           href="https://primal.net/p/nprofile1qqsvvullpd0j9rltp2a3qqvgy9udf3vgh389p7zhzu65fd258dz5lqg9ryan5"
           target="_blank"
           rel="noopener noreferrer"
-          style={{
-            color: "#00aa00",
-            textDecoration: "none",
-            textShadow: "0 0 3px rgba(0, 255, 0, 0.3)",
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-          }}
+          className="flex items-center gap-1 no-underline"
         >
           Follow me on Nostr
         </a>
-      </div>
+      </CornerOverlay>
 
       {/* Projection Selector - Only show on map view */}
       {activeView === "map" && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "10px",
-            left: "10px",
-            zIndex: 9999,
-            fontSize: "16px",
-            fontFamily: "Courier New, monospace",
-            opacity: 0.7,
-            transition: "opacity 0.2s ease",
-            display: "flex",
-            flexDirection: "column",
-            gap: "4px",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = "1";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = "0.7";
-          }}
-        >
-          <div
-            style={{
-              color: "#00aa00",
-              fontSize: "12px",
-              marginBottom: "2px",
-              textShadow: "0 0 3px rgba(0, 255, 0, 0.3)",
-            }}
-          >
-            PROJECTION:
-          </div>
-          {Object.keys(PROJECTIONS).map((projName) => (
-            <button
-              key={projName}
-              onClick={() => setProjection(projName)}
-              style={{
-                background:
-                  projection === projName ? "#003300" : "rgba(0, 0, 0, 0.8)",
-                color: projection === projName ? "#00ff00" : "#00aa00",
-                border: `1px solid ${
-                  projection === projName ? "#00ff00" : "#00aa00"
-                }`,
-                borderRadius: "2px",
-                padding: "2px 6px",
-                fontSize: "10px",
-                fontFamily: "Courier New, monospace",
-                cursor: "pointer",
-                textTransform: "uppercase",
-                textShadow: "0 0 3px rgba(0, 255, 0, 0.3)",
-                transition: "all 0.2s ease",
-                minWidth: "80px",
-                textAlign: "left",
-              }}
-              onMouseEnter={(e) => {
-                if (projection !== projName) {
-                  e.currentTarget.style.background = "rgba(0, 51, 0, 0.6)";
-                  e.currentTarget.style.borderColor = "#00ff00";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (projection !== projName) {
-                  e.currentTarget.style.background = "rgba(0, 0, 0, 0.8)";
-                  e.currentTarget.style.borderColor = "#00aa00";
-                }
-              }}
-            >
-              {projName.replace(/_/g, " ")}
-            </button>
-          ))}
-        </div>
+        <ProjectionSelector
+          projection={projection}
+          onSelect={setProjection}
+          theme={theme}
+        />
       )}
 
       {/* Profile Generation Modal */}
