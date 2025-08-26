@@ -24,9 +24,9 @@ export const PROJECTIONS: { [key: string]: any } = {
 
 export const NOSTR_RELAYS = [
   "wss://relay.damus.io",
-  "wss://nos.lol",
-  "wss://relay.primal.net",
-  "wss://offchain.pub",
+  // "wss://nos.lol",
+  // "wss://relay.primal.net",
+  // "wss://offchain.pub",
   // "wss://nostr21.com",
 ];
 
