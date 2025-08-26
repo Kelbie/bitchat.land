@@ -209,6 +209,7 @@ export function Map({
               shouldShowLocalizedPrecision={shouldShowLocalizedPrecision}
               searchText={searchText}
               onGeohashClick={onGeohashClick}
+              theme={theme}
             />
           </g>
         )}

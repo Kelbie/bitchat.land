@@ -18,6 +18,7 @@ interface GeohashLayerProps {
   shouldShowLocalizedPrecision: boolean;
   searchText: string;
   onGeohashClick: (geohash: string) => void;
+  theme?: "matrix" | "material";
 }
 
 export function GeohashLayer({
@@ -35,8 +36,23 @@ export function GeohashLayer({
   shouldShowLocalizedPrecision,
   searchText,
   onGeohashClick,
+  theme = "matrix",
 }: GeohashLayerProps) {
   if (!showSingleCharGeohashes) return null;
+
+  const styles = {
+    matrix: {
+      base: "0,255,0",
+      text: "font-mono font-bold fill-[#00ff00]",
+      count: "fill-[#00aa00]",
+    },
+    material: {
+      base: "59,130,246",
+      text: "font-sans font-bold fill-blue-600",
+      count: "fill-blue-700",
+    },
+  } as const;
+  const t = styles[theme];
 
   // Parse search to get geohash info for display logic
   const parsedSearch = parseSearchQuery(searchText);
@@ -67,24 +83,24 @@ export function GeohashLayer({
         const recentActivity = timeSinceActivity < 10000; // 10 seconds
 
         // Dynamic colors based on activity
-        let fillColor = `rgba(0, 255, 0, 0.05)`; // Default subtle fill
-        let strokeColor = `rgba(0, 255, 0, 0.3)`; // Default stroke
+        let fillColor = `rgba(${t.base}, 0.05)`; // Default subtle fill
+        let strokeColor = `rgba(${t.base}, 0.3)`; // Default stroke
 
         // Show visual indication if there are hierarchical events
         if (hierarchicalEventCount > 0 && !isAnimating && !recentActivity) {
-          fillColor = `rgba(0, 255, 0, 0.1)`;
-          strokeColor = `rgba(0, 255, 0, 0.5)`;
+          fillColor = `rgba(${t.base}, 0.1)`;
+          strokeColor = `rgba(${t.base}, 0.5)`;
         }
 
         if (isAnimating) {
           // Bright animation colors
-          fillColor = `rgba(0, 255, 0, 0.6)`;
-          strokeColor = `rgba(0, 255, 0, 1.0)`;
+          fillColor = `rgba(${t.base}, 0.6)`;
+          strokeColor = `rgba(${t.base}, 1.0)`;
         } else if (recentActivity) {
           // Recent activity - fade out over time
           const fadeIntensity = Math.max(0.1, 1 - timeSinceActivity / 10000);
-          fillColor = `rgba(0, 255, 0, ${0.05 + fadeIntensity * 0.15})`;
-          strokeColor = `rgba(0, 255, 0, ${0.3 + fadeIntensity * 0.4})`;
+          fillColor = `rgba(${t.base}, ${0.05 + fadeIntensity * 0.15})`;
+          strokeColor = `rgba(${t.base}, ${0.3 + fadeIntensity * 0.4})`;
         }
 
         // Calculate center point for label
@@ -108,11 +124,9 @@ export function GeohashLayer({
               filter={
                 isAnimating ? "url(#activityGlow)" : "url(#matrixGlow)"
               }
-              style={{
-                cursor: "pointer",
-                transition:
-                  isAnimating || isDragging ? "none" : "all 0.3s ease",
-              }}
+              className={`cursor-pointer ${
+                isAnimating || isDragging ? "" : "transition-all duration-300"
+              }`}
               onClick={(e) => {
                 if (events && !hasDragged) {
                   e.stopPropagation();
@@ -127,7 +141,7 @@ export function GeohashLayer({
                 y={centerPoint[1]}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fill={isAnimating ? "#ffffff" : "#00ff00"}
+                className={isAnimating ? "fill-white" : t.text}
                 fontSize={
                   effectivePrecision === 1
                     ? "16"
@@ -143,13 +157,11 @@ export function GeohashLayer({
                     ? "10"
                     : "9"
                 }
-                fontWeight="bold"
-                fontFamily="Courier New, monospace"
                 pointerEvents="none"
                 style={{
                   letterSpacing: "1px",
                   filter: isAnimating
-                    ? "drop-shadow(0 0 5px #00ff00)"
+                    ? `drop-shadow(0 0 5px rgb(${t.base}))`
                     : "none",
                 }}
               >
@@ -159,7 +171,7 @@ export function GeohashLayer({
                     x={centerPoint[0]}
                     dy="12"
                     fontSize="8"
-                    fill="#00aa00"
+                    className={t.count}
                   >
                     {activity.eventCount}
                   </tspan>
@@ -169,7 +181,7 @@ export function GeohashLayer({
                     x={centerPoint[0]}
                     dy="12"
                     fontSize="8"
-                    fill="#00aa00"
+                    className={t.count}
                   >
                     ({hierarchicalEventCount})
                   </tspan>
