@@ -5,9 +5,9 @@ import {
   parseSearchQuery,
   addGeohashToSearch,
   addUserToSearch,
-  addClientToSearch,
 } from "../utils/searchParser";
 import { renderTextWithLinks } from "../utils/linkRenderer";
+import { colorForNostrPubkey, parseRgb, parseHexColor, colorDistance } from "../utils/userColor";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -47,7 +47,8 @@ export function RecentEvents({
     parsedSearch.text ||
     parsedSearch.geohashes.length > 0 ||
     parsedSearch.users.length > 0 ||
-    parsedSearch.clients.length > 0;
+    parsedSearch.clients.length > 0 ||
+    parsedSearch.colors.length > 0;
 
   // Use all stored events when searching, recent events when not searching
   const eventsToShow = hasSearchTerms ? allStoredEvents : recentEvents;
@@ -126,6 +127,16 @@ export function RecentEvents({
         }
       });
       if (!userMatch) matches = false;
+    }
+
+    // Check color filters if specified
+    if (parsedSearch.colors.length > 0 && matches) {
+      const userRgb = parseRgb(colorForNostrPubkey(event.pubkey, true));
+      const colorMatch = parsedSearch.colors.some((searchColor) => {
+        const targetRgb = parseHexColor(searchColor);
+        return colorDistance(userRgb, targetRgb) <= 0.03;
+      });
+      if (!colorMatch) matches = false;
     }
 
     // Check client filters if specified

@@ -19,6 +19,7 @@ import { MobileHeader } from "./components/MobileHeader";
 import { ProfileGenerationModal } from "./components/ProfileGenerationModal";
 import { ChatInput } from "./components/ChatInput";
 import { addGeohashToSearch, parseSearchQuery, buildSearchQuery } from "./utils/searchParser";
+import { colorForNostrPubkey, parseRgb, parseHexColor, colorDistance } from "./utils/userColor";
 import { PROJECTIONS } from "./constants/projections";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
@@ -425,7 +426,11 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   if (width < 10) return null;
 
   // Calculate data for mobile header using parsed search (same logic as RecentEvents)
-  const hasSearchTerms = parsedSearch.text || parsedSearch.geohashes.length > 0 || parsedSearch.users.length > 0;
+  const hasSearchTerms =
+    parsedSearch.text ||
+    parsedSearch.geohashes.length > 0 ||
+    parsedSearch.users.length > 0 ||
+    parsedSearch.colors.length > 0;
   const eventsToShow = hasSearchTerms ? allStoredEvents : recentEvents;
   const filteredEvents = eventsToShow.filter((event) => {
     if (!hasSearchTerms) return true;
@@ -475,7 +480,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
         // Handle both "username" and "username#hash" formats
         if (searchUser.includes('#')) {
           const [searchUsername, searchHash] = searchUser.split('#');
-          return username === searchUsername.toLowerCase() && 
+          return username === searchUsername.toLowerCase() &&
                  pubkeyHash === searchHash.toLowerCase();
         } else {
           return username === searchUser.toLowerCase();
@@ -483,7 +488,17 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
       });
       if (!userMatch) matches = false;
     }
-    
+
+    // Check color filters if specified
+    if (parsedSearch.colors.length > 0 && matches) {
+      const userRgb = parseRgb(colorForNostrPubkey(event.pubkey, true));
+      const colorMatch = parsedSearch.colors.some(searchColor => {
+        const targetRgb = parseHexColor(searchColor);
+        return colorDistance(userRgb, targetRgb) <= 0.03;
+      });
+      if (!colorMatch) matches = false;
+    }
+
     return matches;
   });
   
