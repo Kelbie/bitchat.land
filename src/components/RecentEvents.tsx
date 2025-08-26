@@ -20,7 +20,29 @@ interface RecentEventsProps {
   onSearch?: (text: string) => void;
   forceScrollToBottom?: boolean;
   onReply?: (username: string, pubkeyHash: string) => void;
+  theme: "matrix" | "material";
 }
+
+const styles = {
+  matrix: {
+    container:
+      "relative w-full h-full z-[1000] bg-black text-[14px] flex flex-col",
+    noEvents:
+      "flex items-center justify-center h-full text-green-600 font-mono text-sm text-center p-5",
+    noEventsMessage: "mb-2",
+    scrollButton:
+      "absolute bottom-[70px] right-[30px] bg-green-500 text-black rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,255,0,0.3)] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110",
+  },
+  material: {
+    container:
+      "relative w-full h-full z-[1000] bg-white text-gray-900 text-[14px] flex flex-col",
+    noEvents:
+      "flex items-center justify-center h-full text-gray-500 font-mono text-sm text-center p-5",
+    noEventsMessage: "mb-2",
+    scrollButton:
+      "absolute bottom-[70px] right-[30px] bg-blue-500 text-white rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all duration-200 z-[1000] hover:bg-blue-600 hover:scale-110",
+  },
+} as const;
 
 export function RecentEvents({
   nostrEnabled,
@@ -30,6 +52,7 @@ export function RecentEvents({
   onSearch,
   forceScrollToBottom = false,
   onReply,
+  theme,
 }: RecentEventsProps) {
   const virtuosoRef = useRef<any>(null);
   const scrollTimeoutRef = useRef<number | null>(null);
@@ -517,23 +540,11 @@ export function RecentEvents({
   // Always render the component container, even if no events match
   if (sortedEvents.length === 0) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          color: "#00aa00",
-          fontFamily: "Courier New, monospace",
-          fontSize: "14px",
-          textAlign: "center",
-          padding: "20px",
-        }}
-      >
+      <div className={styles[theme].noEvents}>
         <div>
-          <div style={{ marginBottom: "10px" }}>NO EVENTS FOUND</div>
+          <div className={styles[theme].noEventsMessage}>NO EVENTS FOUND</div>
           {searchText && (
-            <div style={{ fontSize: "12px", opacity: 0.7 }}>
+            <div className="text-xs opacity-70">
               No events matching: "{searchText}"
             </div>
           )}
@@ -543,29 +554,9 @@ export function RecentEvents({
   }
 
   return (
-    <div
-      style={{
-        position: "relative",
-        bottom: "auto",
-        right: "auto",
-        width: "100%",
-        height: "100%",
-        zIndex: 1000,
-        background: "#000000",
-        border: "none",
-        borderRadius: "0px",
-        maxWidth: "100%",
-        maxHeight: "100%",
-        fontSize: "14px",
-        display: "flex",
-        flexDirection: "column",
-        margin: "0",
-      }}
-    >
-
-
+    <div className={styles[theme].container}>
       {/* Virtual scrolling list with Virtuoso */}
-      <div style={{ flex: 1, position: "relative" }}>
+      <div className="flex-1 relative">
         <Virtuoso
           ref={virtuosoRef}
           data={sortedEvents}
@@ -592,31 +583,7 @@ export function RecentEvents({
         {userScrolled && !isAtBottom && (
           <button
             onClick={() => scrollToBottom("smooth")}
-            style={{
-              position: "absolute",
-              bottom: "70px",
-              right: "30px",
-              backgroundColor: "rgba(0, 255, 0, 0.9)",
-              color: "#000000",
-              border: "none",
-              borderRadius: "50%",
-              width: "50px",
-              height: "50px",
-              cursor: "pointer",
-              fontSize: "20px",
-              fontWeight: "bold",
-              boxShadow: "0 4px 12px rgba(0, 255, 0, 0.3)",
-              transition: "all 0.2s ease",
-              zIndex: 1000,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "rgba(0, 255, 0, 1)";
-              e.currentTarget.style.transform = "scale(1.1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "rgba(0, 255, 0, 0.9)";
-              e.currentTarget.style.transform = "scale(1)";
-            }}
+            className={styles[theme].scrollButton}
           >
             ↓
           </button>

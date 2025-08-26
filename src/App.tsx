@@ -761,7 +761,7 @@ export default function App({
                   </div>
 
                   {/* Messages area */}
-                  <div style={{ flex: 1, overflow: "hidden" }}>
+                  <div className="flex-1 overflow-hidden">
                     <RecentEvents
                       nostrEnabled={nostrEnabled}
                       searchText={searchText}
@@ -769,6 +769,7 @@ export default function App({
                       recentEvents={recentEvents}
                       onSearch={handleTextSearch}
                       onReply={handleReply}
+                      theme={theme}
                     />
                   </div>
 
