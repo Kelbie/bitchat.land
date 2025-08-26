@@ -2,35 +2,12 @@ import React, { useState, useEffect, useRef } from "react";
 import { SimplePool } from "nostr-tools/pool";
 import { finalizeEvent, validateEvent, verifyEvent } from "nostr-tools/pure";
 import { NOSTR_RELAYS } from "../constants/projections";
-import { hexToBytes, bytesToHex } from "nostr-tools/utils";
-import { generateSecretKey, getPublicKey } from "nostr-tools";
-import { sha256 } from "@noble/hashes/sha256";
-
-interface RollRange {
-  min: number;
-  max: number;
-}
-
-function parseRollCommand(input: string): RollRange | null {
-  const match = input.trim().match(/^!roll(?:\s+(\d+)(?:-(\d+))?)?$/i);
-  if (!match) return null;
-
-  let min = 1;
-  let max = 10;
-  if (match[1]) {
-    if (match[2]) {
-      min = parseInt(match[1], 10);
-      max = parseInt(match[2], 10);
-    } else {
-      min = 0;
-      max = parseInt(match[1], 10);
-    }
-  }
-  if (min > max) {
-    [min, max] = [max, min];
-  }
-  return { min, max };
-}
+import { hexToBytes } from "nostr-tools/utils";
+import {
+  parseRollCommand,
+  sendRollResult,
+  RollRange,
+} from "../utils/roll";
 
 interface ChatInputProps {
   currentChannel: string; // e.g., "nyc" from "in:nyc"
@@ -71,67 +48,15 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
     }
   }, [prefillText]); // Only depend on prefillText
 
-  const handleRoll = async ({ min, max }: RollRange) => {
-    console.log("🎲 Roll command detected", { min, max });
-  
-    const tempPriv = generateSecretKey();
-    const tempPub = getPublicKey(tempPriv);
-    const hash = sha256(hexToBytes(tempPub));
-    const hashHex = bytesToHex(hash);
-    const rand = parseInt(hashHex.slice(0, 8), 16);
-    const result = (rand % (max - min + 1)) + min;
-  
-    const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
-  
-    const tags = [
-      ["n", "!roll"],
-      ["client", "bitchat.land"],
-    ];
-  
-    let kind;
-    if (isGeohash) {
-      kind = 20000;
-      tags.push(["g", currentChannel.toLowerCase()]);
-    } else {
-      kind = 23333;
-      tags.push(["d", currentChannel.toLowerCase()]);
-      tags.push(["relay", NOSTR_RELAYS[0]]);
-    }
-  
-    const eventTemplate = {
-      kind,
-      created_at: Math.floor(Date.now() / 1000),
-      content: `@${savedProfile.username}#${savedProfile.publicKey.slice(-4)} rolled ${result} point(s) via bitchat.land`,
-      tags,
-    };
-  
-    const signedEvent = finalizeEvent(eventTemplate, tempPriv);
-    const valid = validateEvent(signedEvent);
-    const verified = verifyEvent(signedEvent);
-  
-    if (!valid) throw new Error("Event validation failed");
-    if (!verified) throw new Error("Event signature verification failed");
-  
-    const pool = new SimplePool();
-    try {
-      const publishPromises = pool.publish(NOSTR_RELAYS, signedEvent);
-      
-      // Use Promise.allSettled to wait for all attempts, then check if at least one succeeded
-      const results = await Promise.allSettled(publishPromises);
-      const successful = results.filter(result => result.status === 'fulfilled');
-      
-      if (successful.length === 0) {
-        const errors = results
-          .filter(result => result.status === 'rejected')
-          .map(result => result.reason?.message || 'Unknown error');
-        throw new Error(`Failed to publish to any relay: ${errors.join(', ')}`);
-      }
-      
-      console.log(`✅ Roll published successfully to ${successful.length}/${results.length} relays`);
-      onMessageSent?.(eventTemplate.content);
-    } finally {
-      pool.close(NOSTR_RELAYS);
-    }
+  const handleRoll = async (range: RollRange) => {
+    console.log("🎲 Roll command detected", range);
+    const content = await sendRollResult(
+      currentChannel,
+      savedProfile.username,
+      savedProfile.publicKey,
+      range
+    );
+    onMessageSent?.(content);
   };
   
   const sendMessage = async () => {
