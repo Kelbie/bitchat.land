@@ -1,4 +1,5 @@
 import type { NostrEvent } from "../types";
+import { ThemedButton } from "./ThemedButton";
 
 interface MobileHeaderProps {
   activeView: "map" | "chat" | "panel";
@@ -21,12 +22,6 @@ const styles = {
       "bg-black/95 backdrop-blur flex flex-col items-center font-mono flex-shrink-0 p-2 text-[#00ff00]",
     logoText:
       "text-[#00ff00] text-lg font-bold uppercase tracking-wider drop-shadow-[0_0_10px_rgba(0,255,0,0.5)]",
-    navButtonBase:
-      "flex-1 px-3 py-2 border font-bold uppercase text-sm font-mono transition-colors text-center",
-    navButtonActive:
-      "bg-[#00ff00] text-black shadow-[0_0_10px_rgba(0,255,0,0.5)] border-[#00ff00]",
-    navButtonInactive:
-      "bg-black/70 text-[#00ff00] border-[#00ff00] hover:bg-[#00ff00]/10 hover:shadow-[0_0_5px_rgba(0,255,0,0.3)]",
     searchIcon: "stroke-[#00aa00]",
     searchInput:
       "flex-1 pl-9 pr-3 py-2 bg-black/80 text-[#00ff00] placeholder-[#00ff00]/50 border border-[#00ff00] rounded outline-none focus:shadow-[0_0_5px_rgba(0,255,0,0.5)]",
@@ -45,10 +40,6 @@ const styles = {
     header:
       "bg-white text-gray-800 flex flex-col items-center font-sans flex-shrink-0 p-2",
     logoText: "text-blue-600 text-lg font-bold",
-    navButtonBase:
-      "flex-1 px-3 py-2 border font-bold uppercase text-sm transition-colors text-center",
-    navButtonActive: "bg-blue-600 text-white border-blue-600",
-    navButtonInactive: "bg-white text-blue-600 border-blue-600 hover:bg-blue-50",
     searchIcon: "stroke-blue-600",
     searchInput:
       "flex-1 pl-9 pr-3 py-2 bg-white text-gray-800 placeholder-gray-400 border border-blue-600 rounded outline-none focus:ring-2 focus:ring-blue-600",
@@ -91,38 +82,47 @@ export function MobileHeader({
       </div>
 
       <div className="flex gap-1 justify-center w-full max-w-md">
-        <button
+        <ThemedButton
           onClick={() => onViewChange("panel")}
-          className={`${t.navButtonBase} ${activeView === "panel" ? t.navButtonActive : t.navButtonInactive}`}
+          active={activeView === "panel"}
+          theme={theme}
+          className="flex-1 px-3 py-2 text-sm text-center"
         >
           menu
-        </button>
-        <button
+        </ThemedButton>
+        <ThemedButton
           onClick={() => onViewChange("map")}
-          className={`${t.navButtonBase} ${activeView === "map" ? t.navButtonActive : t.navButtonInactive}`}
+          active={activeView === "map"}
+          theme={theme}
+          className="flex-1 px-3 py-2 text-sm text-center"
         >
           map
-        </button>
-        <button
+        </ThemedButton>
+        <ThemedButton
           onClick={() => onViewChange("chat")}
-          className={`${t.navButtonBase} ${activeView === "chat" ? t.navButtonActive : t.navButtonInactive}`}
+          active={activeView === "chat"}
+          theme={theme}
+          className="flex-1 px-3 py-2 text-sm text-center"
         >
           chat
-        </button>
-        <button
+        </ThemedButton>
+        <ThemedButton
           onClick={onLoginClick}
-          className={`${t.navButtonBase} ${t.navButtonInactive}`}
+          theme={theme}
+          className="flex-1 px-3 py-2 text-sm text-center"
         >
           login
-        </button>
-        <a
+        </ThemedButton>
+        <ThemedButton
+          as="a"
           href="https://bitchat.free/"
           target="_blank"
           rel="noopener noreferrer"
-          className={`${t.navButtonBase} ${t.navButtonInactive}`}
+          theme={theme}
+          className="flex-1 px-3 py-2 text-sm text-center"
         >
           download
-        </a>
+        </ThemedButton>
       </div>
 
       <div className="w-full max-w-md mt-2 mb-4">
