@@ -28,12 +28,19 @@ interface GeneratedProfile {
   hue: number;
 }
 
-export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: ProfileGenerationModalProps) {
+export function ProfileGenerationModal({
+  isOpen,
+  onClose,
+  onProfileSaved,
+}: ProfileGenerationModalProps) {
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [generatedProfiles, setGeneratedProfiles] = useState<GeneratedProfile[]>([]);
-  const [generatedProfile, setGeneratedProfile] = useState<GeneratedProfile | null>(null);
+  const [generatedProfiles, setGeneratedProfiles] = useState<
+    GeneratedProfile[]
+  >([]);
+  const [generatedProfile, setGeneratedProfile] =
+    useState<GeneratedProfile | null>(null);
   const [error, setError] = useState("");
   const [showPrivateKeys, setShowPrivateKeys] = useState(false);
   const cancelRef = useRef(false);
@@ -56,11 +63,11 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
     const parts = inputText.split("#");
     const username = parts[0].trim();
     const suffix = parts.length > 1 ? parts[1].trim() : "";
-    
+
     if (suffix && !/^[0-9a-fA-F]{1,4}$/.test(suffix)) {
       throw new Error("Suffix must be 1-4 hexadecimal characters (0-9, a-f)");
     }
-    
+
     return { username, suffix: suffix.toLowerCase() };
   };
 
@@ -81,7 +88,9 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
       const targetSuffix = suffix;
       const cacheKey = `generated_profiles:${username}:${targetSuffix}`;
       const cached = localStorage.getItem(cacheKey);
-      const profiles: GeneratedProfile[] = cached ? (JSON.parse(cached) as GeneratedProfile[]) : [];
+      const profiles: GeneratedProfile[] = cached
+        ? (JSON.parse(cached) as GeneratedProfile[])
+        : [];
 
       if (profiles.length) {
         const sorted = [...profiles].sort((a, b) => a.hue - b.hue);
@@ -109,7 +118,9 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
             const nsec = nip19.nsecEncode(privateKey);
             profiles.push({
               username,
-              privateKeyHex: Array.from(privateKey, (byte) => byte.toString(16).padStart(2, "0")).join(""),
+              privateKeyHex: Array.from(privateKey, (byte) =>
+                byte.toString(16).padStart(2, "0")
+              ).join(""),
               publicKeyHex: publicKey,
               npub,
               nsec,
@@ -141,7 +152,7 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
     if (!generatedProfile) return;
     cancelRef.current = true;
     setIsGenerating(false);
-    
+
     try {
       const profileData: SavedProfile = {
         username: generatedProfile.username,
@@ -152,14 +163,14 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
         color: generatedProfile.color,
         createdAt: Date.now(),
       };
-      
+
       localStorage.setItem("nostr_profile", JSON.stringify(profileData));
-      
+
       // Call the callback to immediately update parent state with the new profile
       if (onProfileSaved) {
         onProfileSaved(profileData);
       }
-      
+
       // Close modal after successful save
       onClose();
     } catch {
@@ -210,13 +221,22 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
           boxShadow: "0 0 20px rgba(0, 255, 0, 0.3)",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-          <h2 style={{ 
-            margin: 0, 
-            color: "#00ff00", 
-            textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-            fontSize: "20px" 
-          }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "20px",
+          }}
+        >
+          <h2
+            style={{
+              margin: 0,
+              color: "#00ff00",
+              textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
+              fontSize: "20px",
+            }}
+          >
             🔐 CREATE NOSTR PROFILE
           </h2>
           <button
@@ -243,9 +263,17 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
           <>
             {generatedProfiles.length === 0 ? (
               <>
-                <p style={{ marginBottom: "20px", fontSize: "14px", lineHeight: "1.4" }}>
-                  Enter your desired username. Optionally add <strong>#XXXX</strong> to generate a public key ending with those 4 hex characters.
-                  We'll generate 64 profiles for you to choose from.
+                <p
+                  style={{
+                    marginBottom: "20px",
+                    fontSize: "14px",
+                    lineHeight: "1.4",
+                  }}
+                >
+                  Enter your desired username. Optionally add{" "}
+                  <strong>#XXXX</strong> to generate a public key ending with
+                  those 4 hex characters. We'll generate 64 profiles for you to
+                  choose from.
                 </p>
 
                 <div style={{ marginBottom: "20px" }}>
@@ -275,28 +303,32 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
                 </div>
 
                 {error && (
-                  <div style={{
-                    backgroundColor: "#330000",
-                    border: "1px solid #ff0000",
-                    color: "#ff6666",
-                    padding: "10px",
-                    borderRadius: "5px",
-                    marginBottom: "20px",
-                    fontSize: "14px",
-                  }}>
+                  <div
+                    style={{
+                      backgroundColor: "#330000",
+                      border: "1px solid #ff0000",
+                      color: "#ff6666",
+                      padding: "10px",
+                      borderRadius: "5px",
+                      marginBottom: "20px",
+                      fontSize: "14px",
+                    }}
+                  >
                     {error}
                   </div>
                 )}
 
                 {isGenerating && (
                   <div style={{ marginBottom: "20px" }}>
-                    <div style={{
-                      backgroundColor: "#333",
-                      height: "10px",
-                      borderRadius: "5px",
-                      overflow: "hidden",
-                      marginBottom: "10px",
-                    }}>
+                    <div
+                      style={{
+                        backgroundColor: "#333",
+                        height: "10px",
+                        borderRadius: "5px",
+                        overflow: "hidden",
+                        marginBottom: "10px",
+                      }}
+                    >
                       <div
                         style={{
                           backgroundColor: "#00ff00",
@@ -307,7 +339,13 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
                         }}
                       />
                     </div>
-                    <div style={{ fontSize: "12px", textAlign: "center", color: "#888" }}>
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        textAlign: "center",
+                        color: "#888",
+                      }}
+                    >
                       Generating keys... {Math.round(progress)}%
                       {input.includes("#") && (
                         <div style={{ marginTop: "5px" }}>
@@ -324,13 +362,17 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
                   style={{
                     width: "100%",
                     padding: "12px",
-                    backgroundColor: isGenerating || !input.trim() ? "#333" : "#000",
+                    backgroundColor:
+                      isGenerating || !input.trim() ? "#333" : "#000",
                     color: isGenerating || !input.trim() ? "#666" : "#00ff00",
-                    border: `1px solid ${isGenerating || !input.trim() ? "#666" : "#00ff00"}`,
+                    border: `1px solid ${
+                      isGenerating || !input.trim() ? "#666" : "#00ff00"
+                    }`,
                     borderRadius: "5px",
                     fontSize: "16px",
                     fontFamily: "Courier New, monospace",
-                    cursor: isGenerating || !input.trim() ? "not-allowed" : "pointer",
+                    cursor:
+                      isGenerating || !input.trim() ? "not-allowed" : "pointer",
                     textTransform: "uppercase",
                     fontWeight: "bold",
                   }}
@@ -361,8 +403,16 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
                         }}
                       />
                     </div>
-                    <div style={{ fontSize: "12px", textAlign: "center", color: "#888" }}>
-                      Found {generatedProfiles.length} profile{generatedProfiles.length !== 1 ? "s" : ""}... searching for more
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        textAlign: "center",
+                        color: "#888",
+                      }}
+                    >
+                      Found {generatedProfiles.length} profile
+                      {generatedProfiles.length !== 1 ? "s" : ""}... searching
+                      for more
                     </div>
                   </div>
                 )}
@@ -370,7 +420,8 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
                   style={{
                     display: "grid",
                     gridTemplateColumns: "repeat(8, 1fr)",
-                    gap: "5px",
+                    gridAutoRows: "1fr", // make rows flexible too
+                    gap: "12px",
                     marginBottom: "20px",
                   }}
                 >
@@ -384,6 +435,7 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
                         backgroundColor: profile.color,
                         border: "1px solid #00ff00",
                         cursor: "pointer",
+                        borderRadius: "50%",
                       }}
                       title={profile.publicKeyHex.slice(-4)}
                     />
@@ -407,7 +459,7 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
                     textTransform: "uppercase",
                   }}
                 >
-                  Generate Again
+                  Change Name
                 </button>
               </>
             )}
@@ -415,54 +467,65 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
         ) : (
           <>
             {/* Profile Card Preview */}
-            <div style={{
-              backgroundColor: "#001100",
-              border: "2px solid #00ff00",
-              borderRadius: "15px",
-              padding: "25px",
-              marginBottom: "20px",
-              boxShadow: "0 0 20px rgba(0, 255, 0, 0.2)",
-            }}>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "15px",
+            <div
+              style={{
+                backgroundColor: "#001100",
+                border: "2px solid #00ff00",
+                borderRadius: "15px",
+                padding: "25px",
                 marginBottom: "20px",
-              }}>
-                {/* Avatar */}
-                <div style={{
-                  width: "60px",
-                  height: "60px",
-                  borderRadius: "50%",
-                  backgroundColor: generatedProfile.color,
+                boxShadow: "0 0 20px rgba(0, 255, 0, 0.2)",
+              }}
+            >
+              <div
+                style={{
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "24px",
-                  fontWeight: "bold",
-                  color: "#000",
-                  textShadow: "none",
-                  border: `2px solid ${generatedProfile.color}`,
-                  boxShadow: "0 0 15px rgba(0, 255, 0, 0.3)",
-                }}>
+                  gap: "15px",
+                  marginBottom: "20px",
+                }}
+              >
+                {/* Avatar */}
+                <div
+                  style={{
+                    width: "60px",
+                    height: "60px",
+                    borderRadius: "50%",
+                    backgroundColor: generatedProfile.color,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "24px",
+                    fontWeight: "bold",
+                    color: "#000",
+                    textShadow: "none",
+                    border: `2px solid ${generatedProfile.color}`,
+                    boxShadow: "0 0 15px rgba(0, 255, 0, 0.3)",
+                  }}
+                >
                   {generatedProfile.username.charAt(0).toUpperCase()}
                 </div>
-                
+
                 {/* Profile Info */}
                 <div style={{ flex: 1 }}>
-                  <h3 style={{ 
-                    margin: "0", 
-                    color: "#00ff00",
-                    fontSize: "20px",
-                    textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-                  }}>
-                    @{generatedProfile.username}#<span style={{ 
-                      backgroundColor: "#ffff00", 
-                      color: "#000", 
-                      padding: "2px 4px", 
-                      borderRadius: "3px",
-                      fontWeight: "bold",
-                    }}>
+                  <h3
+                    style={{
+                      margin: "0",
+                      color: "#00ff00",
+                      fontSize: "20px",
+                      textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
+                    }}
+                  >
+                    @{generatedProfile.username}#
+                    <span
+                      style={{
+                        backgroundColor: "#ffff00",
+                        color: "#000",
+                        padding: "2px 4px",
+                        borderRadius: "3px",
+                        fontWeight: "bold",
+                      }}
+                    >
                       {generatedProfile.publicKeyHex.slice(-4)}
                     </span>
                   </h3>
@@ -471,13 +534,15 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
             </div>
 
             {/* Private Keys Section - Collapsible */}
-            <div style={{
-              backgroundColor: "#110000",
-              border: "1px solid #ff3300",
-              borderRadius: "8px",
-              marginBottom: "20px",
-            }}>
-              <div 
+            <div
+              style={{
+                backgroundColor: "#110000",
+                border: "1px solid #ff3300",
+                borderRadius: "8px",
+                marginBottom: "20px",
+              }}
+            >
+              <div
                 onClick={() => setShowPrivateKeys(!showPrivateKeys)}
                 style={{
                   padding: "12px 15px",
@@ -488,44 +553,62 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
                   borderBottom: showPrivateKeys ? "1px solid #ff3300" : "none",
                 }}
               >
-                <div style={{
-                  fontSize: "12px",
-                  color: "#ff6666",
-                  textTransform: "uppercase",
-                  fontWeight: "bold",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}>
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#ff6666",
+                    textTransform: "uppercase",
+                    fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
                   🔐 Private Keys (Keep Secret!)
                 </div>
-                <div style={{
-                  fontSize: "16px",
-                  color: "#ff6666",
-                  transform: showPrivateKeys ? "rotate(180deg)" : "rotate(0deg)",
-                  transition: "transform 0.2s ease",
-                }}>
+                <div
+                  style={{
+                    fontSize: "16px",
+                    color: "#ff6666",
+                    transform: showPrivateKeys
+                      ? "rotate(180deg)"
+                      : "rotate(0deg)",
+                    transition: "transform 0.2s ease",
+                  }}
+                >
                   ▼
                 </div>
               </div>
-              
+
               {showPrivateKeys && (
                 <div style={{ padding: "15px" }}>
                   <div style={{ marginBottom: "15px" }}>
-                    <div style={{ fontSize: "11px", color: "#ff9999", marginBottom: "5px" }}>Private Key (nsec):</div>
-                    <div style={{ 
-                      backgroundColor: "#000", 
-                      padding: "8px", 
-                      borderRadius: "3px", 
-                      fontSize: "11px",
-                      wordBreak: "break-all" as const,
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: "10px",
-                      border: "1px solid #330000",
-                    }}>
-                      <span style={{ color: "#ff9999" }}>{generatedProfile.nsec}</span>
+                    <div
+                      style={{
+                        fontSize: "11px",
+                        color: "#ff9999",
+                        marginBottom: "5px",
+                      }}
+                    >
+                      Private Key (nsec):
+                    </div>
+                    <div
+                      style={{
+                        backgroundColor: "#000",
+                        padding: "8px",
+                        borderRadius: "3px",
+                        fontSize: "11px",
+                        wordBreak: "break-all" as const,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: "10px",
+                        border: "1px solid #330000",
+                      }}
+                    >
+                      <span style={{ color: "#ff9999" }}>
+                        {generatedProfile.nsec}
+                      </span>
                       <button
                         onClick={() => copyToClipboard(generatedProfile.nsec)}
                         style={{
@@ -563,7 +646,7 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
                   textTransform: "uppercase",
                 }}
               >
-                Generate Another
+                Change Color
               </button>
               <button
                 onClick={saveProfile}
