@@ -791,21 +791,12 @@ export default function App({
 
             {/* Panel View */}
             {activeView === "panel" && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  backgroundColor: "#000000",
-                  overflow: "hidden",
-                }}
-              >
+              <div className="absolute inset-0 w-full h-full bg-black overflow-hidden">
                 <EventHierarchy
                   searchText={searchText}
                   allEventsByGeohash={allEventsByGeohash}
                   onSearch={handleTextSearch}
+                  theme={theme}
                 />
               </div>
             )}
