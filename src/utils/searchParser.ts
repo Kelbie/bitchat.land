@@ -3,6 +3,7 @@ export interface ParsedSearch {
   geohashes: string[]; // Note: "geohashes" name kept for backward compatibility, but can contain any location strings
   users: string[];
   clients: string[]; // New field for client filters
+  colors: string[]; // Hex color filters
 }
 
 /**
@@ -13,12 +14,13 @@ export interface ParsedSearch {
  */
 export function parseSearchQuery(query: string): ParsedSearch {
   if (!query.trim()) {
-    return { text: "", geohashes: [], users: [], clients: [] };
+    return { text: "", geohashes: [], users: [], clients: [], colors: [] };
   }
 
   const geohashes: string[] = [];
   const users: string[] = [];
   const clients: string[] = [];
+  const colors: string[] = [];
   let text = query;
 
   // Extract "in:" terms (any string)
@@ -59,10 +61,20 @@ export function parseSearchQuery(query: string): ParsedSearch {
     text = text.replace(match[0], ' ');
   }
 
+  // Extract "color:" terms (hex colors)
+  const colorPattern = /\s*color:(#[0-9a-fA-F]{6})\s*/gi;
+  while ((match = colorPattern.exec(query)) !== null) {
+    const colorFilter = match[1].toLowerCase();
+    if (!colors.includes(colorFilter)) {
+      colors.push(colorFilter);
+    }
+    text = text.replace(match[0], ' ');
+  }
+
   // Clean up the remaining text
   text = text.replace(/\s+/g, ' ').trim();
 
-  return { text, geohashes, users, clients };
+  return { text, geohashes, users, clients, colors };
 }
 
 /**
@@ -80,12 +92,17 @@ export function buildSearchQuery(parsed: ParsedSearch): string {
   for (const user of parsed.users) {
     query += ` from:${user}`;
   }
-  
+
   // Add client terms
   for (const client of parsed.clients) {
     query += ` client:${client}`;
   }
-  
+
+  // Add color terms
+  for (const color of parsed.colors) {
+    query += ` color:${color}`;
+  }
+
   return query.trim();
 }
 
@@ -185,5 +202,20 @@ export function addClientToSearch(currentQuery: string, clientName: string): str
   }
   
   parsed.clients.push(clientName.toLowerCase());
+  return buildSearchQuery(parsed);
+}
+
+/**
+ * Adds a color to an existing search query
+ */
+export function addColorToSearch(currentQuery: string, color: string): string {
+  const parsed = parseSearchQuery(currentQuery);
+
+  const normalized = color.toLowerCase();
+  if (parsed.colors.includes(normalized)) {
+    return currentQuery;
+  }
+
+  parsed.colors.push(normalized);
   return buildSearchQuery(parsed);
 }
