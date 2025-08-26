@@ -499,7 +499,7 @@ export function ProfileGenerationModal({
                       style={{
                         width: "40px",
                         height: "40px",
-                        backgroundColor: profile.color,
+                        backgroundColor: colorForPeerSeed('nostr:' + profile.publicKeyHex, true).hex,
                         border: "1px solid #00ff00",
                         cursor: "pointer",
                         borderRadius: "50%",
