@@ -78,7 +78,7 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
     const pool = new SimplePool();
     try {
       const publishPromises = pool.publish(NOSTR_RELAYS, signedEvent);
-      await Promise.race(publishPromises);
+      await Promise.all(publishPromises);
     } finally {
       pool.close(NOSTR_RELAYS);
     }
