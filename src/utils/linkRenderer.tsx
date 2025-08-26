@@ -12,7 +12,9 @@ import React from 'react';
 const URL_REGEX = /https?:\/\/(?:[-\w.])+(?:[:\d]+)?(?:\/(?:[\w\/_.-])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?/gi;
 // Separate regex patterns for hashtags and mentions
 const HASHTAG_PATTERN = '#[0-9A-Za-z]+';
-const MENTION_PATTERN = '@[A-Za-z0-9_]+#[0-9a-f]{4}';
+// Allow mention names to contain virtually any characters except whitespace or additional '#'
+// eslint-disable-next-line no-useless-escape
+const MENTION_PATTERN = '@[^\s#]+#[0-9a-f]{4}';
 
 // Regexes used for classification
 const HASHTAG_REGEX = new RegExp(`^${HASHTAG_PATTERN}$`);
