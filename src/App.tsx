@@ -18,6 +18,7 @@ import { MobileHeader } from "./components/MobileHeader";
 import { ProfileGenerationModal } from "./components/ProfileGenerationModal";
 import { ChatInput } from "./components/ChatInput";
 import { ProjectionSelector } from "./components/ProjectionSelector";
+import { MarqueeBanner } from "./components/MarqueeBanner";
 import { CornerOverlay } from "./components/CornerOverlay";
 import {
   addGeohashToSearch,
@@ -29,109 +30,6 @@ import { colorForPeerSeed } from "./utils/userColor";
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
 
-// Marquee Banner Component
-function MarqueeBanner() {
-  const marqueeRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState(0);
-  const animationRef = useRef<number>();
-  const lastTimeRef = useRef<number>(0);
-
-  useEffect(() => {
-    const animate = (currentTime: number) => {
-      // Calculate delta time for consistent speed regardless of frame rate
-      if (lastTimeRef.current !== 0) {
-        const deltaTime = currentTime - lastTimeRef.current;
-        const speed = 0.002; // Much slower speed for comfortable reading
-
-        setPosition((prev) => {
-          const newPos = prev - speed * deltaTime;
-          // Reset position when content moves completely off screen
-          // Reset to 100vw to start from right edge again
-          return newPos <= -100 ? 100 : newPos;
-        });
-      }
-      lastTimeRef.current = currentTime;
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    animationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, []);
-
-  const handleMarqueeClick = () => {
-    window.open("https://sovran.money/esims", "_blank", "noopener,noreferrer");
-  };
-
-  return (
-    <div
-      onClick={handleMarqueeClick}
-      style={{
-        backgroundColor: "rgba(0, 25, 0",
-        border: "1px solid #00aa00",
-        borderLeft: "none",
-        borderRight: "none",
-        height: "30px",
-        display: "flex",
-        alignItems: "center",
-        overflow: "hidden",
-        position: "relative",
-        zIndex: 1000,
-        cursor: "pointer",
-        transition: "backgroundColor 0.2s ease",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = "#002200";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "#001100";
-      }}
-    >
-      <div
-        ref={marqueeRef}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          whiteSpace: "nowrap",
-          fontSize: "12px",
-          fontWeight: "bold",
-          color: "#00ff00",
-          textShadow: "0 0 5px rgba(0, 255, 0, 0.5)",
-          transform: `translateX(${position}vw)`, // Use viewport width for better control
-          willChange: "transform", // Optimize for animations
-        }}
-      >
-        {/* Repeat content multiple times for seamless loop */}
-        {Array(4)
-          .fill(null)
-          .map((_, index) => (
-            <span
-              key={index}
-              style={{ paddingRight: "50px", minWidth: "max-content" }}
-            >
-              🌍 GET GLOBAL eSIMS FOR BITCOIN • PRIVACY • NO KYC • INSTANT
-              ACTIVATION •{" "}
-              <span
-                style={{
-                  color: "#ffaa00",
-                  fontWeight: "bold",
-                  textShadow: "0 0 5px rgba(255, 170, 0, 0.5)",
-                }}
-              >
-                SOVRAN.MONEY/ESIMS
-              </span>{" "}
-              • STAY CONNECTED WORLDWIDE • PAY WITH BITCOIN ₿ • TRAVEL WITHOUT
-              LIMITS • ANONYMOUS CONNECTIVITY •{" "}
-            </span>
-          ))}
-      </div>
-    </div>
-  );
-}
 
 export const background = "#000000";
 
@@ -159,7 +57,6 @@ declare global {
 Array.prototype.max = function () {
   return Math.max.apply(null, this);
 };
-
 Array.prototype.min = function () {
   return Math.min.apply(null, this);
 };
@@ -569,7 +466,7 @@ export default function App({
       }}
     >
       {/* eSIM Marquee Banner */}
-      <MarqueeBanner />
+      <MarqueeBanner theme={theme} />
       {/* Mobile Header */}
       <MobileHeader
         activeView={activeView}
