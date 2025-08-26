@@ -34,6 +34,32 @@ const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
 
 export const background = "#000000";
 
+const styles = {
+  matrix: {
+    appContainer:
+      "flex flex-col w-screen h-screen overflow-hidden bg-black text-[#00ff00] font-mono",
+    mainArea: "flex-1 relative w-full overflow-hidden",
+    chatViewContainer:
+      "absolute inset-0 w-full h-full bg-black flex flex-row overflow-hidden",
+    chatColumn: "flex-1 flex flex-col",
+    subHeader:
+      "bg-black/95 text-[#00aa00] px-4 py-3 border-b border-[#003300]",
+    subHeaderTitle:
+      "text-base uppercase tracking-wider [text-shadow:0_0_10px_rgba(0,255,0,0.5)]",
+  },
+  material: {
+    appContainer:
+      "flex flex-col w-screen h-screen overflow-hidden bg-white text-gray-800 font-sans",
+    mainArea: "flex-1 relative w-full overflow-hidden",
+    chatViewContainer:
+      "absolute inset-0 w-full h-full bg-white flex flex-row overflow-hidden",
+    chatColumn: "flex-1 flex flex-col",
+    subHeader:
+      "bg-white text-blue-600 px-4 py-3 border-b border-blue-200",
+    subHeaderTitle: "text-base uppercase tracking-wider",
+  },
+} as const;
+
 // Matrix-themed heatmap color scale (currently unused but may be needed for future features)
 // const heatmapColor = scaleQuantize({
 //   domain: [0, 100],
@@ -76,6 +102,7 @@ export default function App({
 
   // Theme state for simple Tailwind-based theming
   const [theme, setTheme] = useState<"matrix" | "material">("matrix");
+  const t = styles[theme];
 
   // View state
   const [activeView, setActiveView] = useState<"map" | "chat" | "panel">("map");
@@ -512,18 +539,7 @@ export default function App({
     : { direct: 0, total: 0 };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        width: "100vw",
-        height: "100vh",
-        backgroundColor: "#000000",
-        color: "#00ff00",
-        fontFamily: "Courier New, monospace",
-        overflow: "hidden",
-      }}
-    >
+    <div className={t.appContainer}>
       {/* eSIM Marquee Banner */}
       <MarqueeBanner theme={theme} />
       {/* Mobile Header */}
@@ -544,21 +560,10 @@ export default function App({
       />
 
       {/* Main Content Area */}
-      <div
-        style={{
-          flex: 1,
-          position: "relative",
-          width: "100%",
-          overflow: "hidden",
-        }}
-      >
+      <div className={t.mainArea}>
         {/* Map - Always rendered, but might be hidden on mobile */}
         <div
-          style={{
-            width: "100%",
-            height: "100%",
-            display: activeView !== "map" ? "none" : "block",
-          }}
+          className={`${activeView !== "map" ? "hidden" : "block"} w-full h-full`}
         >
           <Map
             width={mapWidth}
@@ -592,19 +597,7 @@ export default function App({
         <>
             {/* Chat View */}
             {activeView === "chat" && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  backgroundColor: "#000000",
-                  display: "flex",
-                  flexDirection: "row",
-                  overflow: "hidden",
-                }}
-              >
+              <div className={t.chatViewContainer}>
                 <ChannelList
                   channels={channels}
                   selectedChannel={selectedChannelKey}
@@ -614,26 +607,10 @@ export default function App({
                 />
 
                 {/* Chat column */}
-                <div
-                  style={{ flex: 1, display: "flex", flexDirection: "column" }}
-                >
+                <div className={t.chatColumn}>
                   {/* Sub header (chat) to align next to channels */}
-                  <div
-                    style={{
-                      backgroundColor: "rgba(0, 0, 0, 0.98)",
-                      color: "#00aa00",
-                      padding: "12px 16px",
-                      borderBottom: "1px solid #003300",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: "16px",
-                        textTransform: "uppercase",
-                        letterSpacing: "1px",
-                        textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-                      }}
-                    >
+                  <div className={t.subHeader}>
+                    <div className={t.subHeaderTitle}>
                       RECENT NOSTR EVENTS{" "}
                       {searchText ? `MATCHING "${searchText}"` : ""}
                     </div>

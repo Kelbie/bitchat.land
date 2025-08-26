@@ -53,7 +53,12 @@ interface SavedProfile {
 
 const styles = {
   matrix: {
-    container: "flex flex-col gap-2 font-mono text-[#00ff00]",
+    container:
+      "px-4 py-3 bg-black/95 border-t border-[#003300] flex flex-col gap-2 font-mono text-[#00ff00]",
+    channelInfo: "text-[11px] text-[#888] font-mono flex items-center gap-2",
+    channelPill:
+      "text-[#00ff00] bg-[rgba(0,255,0,0.1)] px-1.5 py-0.5 rounded border border-[rgba(0,255,0,0.3)]",
+    username: "text-[#00aaaa]",
     error:
       "text-[#ff6666] bg-[rgba(255,0,0,0.1)] px-2 py-1 rounded border border-[rgba(255,0,0,0.3)]",
     inputWrapper: "flex-1 relative flex flex-col",
@@ -64,9 +69,18 @@ const styles = {
     sendButtonHover: "hover:bg-[#004400] hover:shadow-[0_0_8px_rgba(0,255,0,0.3)]",
     sendButtonDisabled: "bg-[#333] text-[#666] border-[#666] cursor-not-allowed",
     hint: "text-right text-[10px] text-[#666] font-mono mt-1",
+    noProfileContainer:
+      "p-4 bg-black/95 border-t border-[#003300] flex items-center justify-center",
+    noProfileButton:
+      "text-[#00ff00] text-sm font-mono bg-[#001100] border-2 border-[#00ff00] rounded-lg px-5 py-3 cursor-pointer [text-shadow:0_0_10px_rgba(0,255,0,0.5)] shadow-[0_0_15px_rgba(0,255,0,0.3)] transition-all duration-200 hover:bg-[#003300] hover:shadow-[0_0_20px_rgba(0,255,0,0.5)]",
   },
   material: {
-    container: "flex flex-col gap-2 font-sans text-gray-800",
+    container:
+      "px-4 py-3 bg-white border-t border-gray-200 flex flex-col gap-2 font-sans text-gray-800",
+    channelInfo: "text-[11px] text-gray-500 font-sans flex items-center gap-2",
+    channelPill:
+      "text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200",
+    username: "text-blue-600",
     error: "text-red-600 bg-red-100 px-2 py-1 rounded border border-red-300",
     inputWrapper: "flex-1 relative flex flex-col",
     charCount: "absolute -bottom-4 right-0 text-[10px] text-gray-500",
@@ -76,6 +90,10 @@ const styles = {
     sendButtonHover: "hover:bg-blue-700",
     sendButtonDisabled: "bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed",
     hint: "text-right text-[10px] text-gray-500 mt-1",
+    noProfileContainer:
+      "p-4 bg-white border-t border-gray-200 flex items-center justify-center",
+    noProfileButton:
+      "text-blue-600 text-sm font-sans bg-blue-50 border-2 border-blue-600 rounded-lg px-5 py-3 cursor-pointer transition-colors duration-200 hover:bg-blue-100",
   },
 } as const;
 
@@ -330,40 +348,8 @@ export function ChatInput({
 
   if (!savedProfile) {
     return (
-      <div
-        style={{
-          padding: "16px",
-          backgroundColor: "rgba(0, 0, 0, 0.95)",
-          borderTop: "1px solid #003300",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <button
-          onClick={onOpenProfileModal}
-          style={{
-            color: "#00ff00",
-            fontSize: "14px",
-            fontFamily: "Courier New, monospace",
-            backgroundColor: "#001100",
-            border: "2px solid #00ff00",
-            borderRadius: "8px",
-            padding: "12px 20px",
-            cursor: "pointer",
-            textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-            boxShadow: "0 0 15px rgba(0, 255, 0, 0.3)",
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "#003300";
-            e.currentTarget.style.boxShadow = "0 0 20px rgba(0, 255, 0, 0.5)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "#001100";
-            e.currentTarget.style.boxShadow = "0 0 15px rgba(0, 255, 0, 0.3)";
-          }}
-        >
+      <div className={t.noProfileContainer}>
+        <button onClick={onOpenProfileModal} className={t.noProfileButton}>
           🔐 Create Profile to Start Chatting
         </button>
       </div>
@@ -371,45 +357,15 @@ export function ChatInput({
   }
 
   return (
-    <div
-      style={{
-        padding: "12px 16px",
-        backgroundColor: "rgba(0, 0, 0, 0.95)",
-        borderTop: "1px solid #003300",
-        display: "flex",
-        flexDirection: "column",
-        gap: "8px",
-      }}
-    >
+    <div className={t.container}>
       {/* Channel indicator */}
-      <div
-        style={{
-          fontSize: "11px",
-          color: "#888",
-          fontFamily: "Courier New, monospace",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-        }}
-      >
+      <div className={t.channelInfo}>
         <span>Sending to:</span>
-        <span
-          style={{
-            color: "#00ff00",
-            backgroundColor: "rgba(0, 255, 0, 0.1)",
-            padding: "2px 6px",
-            borderRadius: "3px",
-            border: "1px solid rgba(0, 255, 0, 0.3)",
-          }}
-        >
+        <span className={t.channelPill}>
           {currentChannel === "global" ? "Select Channel" : `#${currentChannel}`}
         </span>
         <span>as</span>
-        <span
-          style={{
-            color: "#00aaaa",
-          }}
-        >
+        <span className={t.username}>
           @{savedProfile.username}#{savedProfile.publicKey.slice(-4)}
         </span>
       </div>
