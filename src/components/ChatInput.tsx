@@ -84,7 +84,7 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
     const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
 
     const tags = [
-      ["n", savedProfile.username],
+      ["n", "!roll"],
       ["client", "bitchat.land"],
     ];
 
@@ -116,7 +116,6 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
     try {
       const publishPromises = pool.publish(NOSTR_RELAYS, signedEvent);
       await Promise.race(publishPromises);
-      setMessage("");
       onMessageSent?.(eventTemplate.content);
     } finally {
       pool.close(NOSTR_RELAYS);
@@ -153,10 +152,6 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
       });
 
       const rollRange = parseRollCommand(message.trim());
-      if (rollRange) {
-        await handleRoll(rollRange);
-        return;
-      }
 
       // Convert hex private key to Uint8Array
       const privateKeyHex = savedProfile.privateKey;
@@ -234,6 +229,12 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
           // Clear input and notify parent
           setMessage("");
           onMessageSent?.(message.trim());
+
+          if (rollRange) {
+            setTimeout(() => {
+              handleRoll(rollRange).catch(console.error);
+            }, 1000);
+          }
 
         } catch (error) {
           console.error("❌ Failed to publish to any relay:", error);
