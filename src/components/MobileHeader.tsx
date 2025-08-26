@@ -1,5 +1,6 @@
 import type { NostrEvent } from "../types";
 import { ThemedButton } from "./ThemedButton";
+import { ThemedInput } from "./ThemedInput";
 
 interface MobileHeaderProps {
   activeView: "map" | "chat" | "panel";
@@ -23,8 +24,6 @@ const styles = {
     logoText:
       "text-[#00ff00] text-lg font-bold uppercase tracking-wider drop-shadow-[0_0_10px_rgba(0,255,0,0.5)]",
     searchIcon: "stroke-[#00aa00]",
-    searchInput:
-      "flex-1 pl-9 pr-3 py-2 bg-black/80 text-[#00ff00] placeholder-[#00ff00]/50 border border-[#00ff00] rounded outline-none focus:shadow-[0_0_5px_rgba(0,255,0,0.5)]",
     clearButton:
       "px-3 py-2 bg-green-900/80 text-[#00ff00] border border-[#00ff00] rounded text-xs font-mono uppercase hover:bg-green-900",
     separator:
@@ -41,8 +40,6 @@ const styles = {
       "bg-white text-gray-800 flex flex-col items-center font-sans flex-shrink-0 p-2",
     logoText: "text-blue-600 text-lg font-bold",
     searchIcon: "stroke-blue-600",
-    searchInput:
-      "flex-1 pl-9 pr-3 py-2 bg-white text-gray-800 placeholder-gray-400 border border-blue-600 rounded outline-none focus:ring-2 focus:ring-blue-600",
     clearButton:
       "px-3 py-2 bg-blue-100 text-blue-600 border border-blue-600 rounded text-xs uppercase hover:bg-blue-200",
     separator: "w-full h-0.5 bg-blue-600",
@@ -143,12 +140,16 @@ export function MobileHeader({
                 <path d="m21 21-4.35-4.35" />
               </svg>
             </div>
-            <input
-              type="text"
+            <ThemedInput
               value={searchText}
-              onChange={(e) => onSearch(e.target.value)}
+              onChange={(e) => onSearch((e.target as HTMLInputElement).value)}
               placeholder="hello in:nyc from:@jack"
-              className={t.searchInput}
+              theme={theme}
+              className={`flex-1 pl-9 pr-3 py-2 ${
+                theme === "matrix"
+                  ? "focus:shadow-[0_0_5px_rgba(0,255,0,0.5)]"
+                  : "focus:ring-2 focus:ring-blue-600"
+              }`}
             />
           </div>
           {searchText && (

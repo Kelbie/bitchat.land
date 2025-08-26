@@ -829,6 +829,7 @@ export default function App({
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
         onProfileSaved={handleProfileSaved}
+        theme={theme}
       />
     </div>
   );

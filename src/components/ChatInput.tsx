@@ -5,6 +5,7 @@ import { NOSTR_RELAYS } from "../constants/projections";
 import { hexToBytes, bytesToHex } from "nostr-tools/utils";
 import { generateSecretKey, getPublicKey } from "nostr-tools";
 import { sha256 } from "@noble/hashes/sha256";
+import { ThemedInput } from "./ThemedInput";
 
 interface RollRange {
   min: number;
@@ -56,8 +57,6 @@ const styles = {
     error:
       "text-[#ff6666] bg-[rgba(255,0,0,0.1)] px-2 py-1 rounded border border-[rgba(255,0,0,0.3)]",
     inputWrapper: "flex-1 relative flex flex-col",
-    textarea:
-      "w-full min-h-[36px] max-h-[120px] p-2 bg-black/80 text-[#00ff00] placeholder-[#00ff00]/50 border border-[#00ff00] rounded outline-none resize-vertical focus:shadow-[0_0_8px_rgba(0,255,0,0.3)]",
     charCount: "absolute -bottom-4 right-0 text-[10px] font-mono text-[#888]",
     charCountExceeded: "text-[#ff6666]",
     sendButton:
@@ -70,8 +69,6 @@ const styles = {
     container: "flex flex-col gap-2 font-sans text-gray-800",
     error: "text-red-600 bg-red-100 px-2 py-1 rounded border border-red-300",
     inputWrapper: "flex-1 relative flex flex-col",
-    textarea:
-      "w-full min-h-[36px] max-h-[120px] p-2 bg-white text-gray-800 placeholder-gray-400 border border-blue-600 rounded outline-none resize-vertical focus:ring-2 focus:ring-blue-600",
     charCount: "absolute -bottom-4 right-0 text-[10px] text-gray-500",
     charCountExceeded: "text-red-600",
     sendButton:
@@ -422,7 +419,8 @@ export function ChatInput({
 
       <div className="flex gap-2 items-stretch">
         <div className={t.inputWrapper}>
-          <textarea
+          <ThemedInput
+            as="textarea"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -432,7 +430,12 @@ export function ChatInput({
                 : `Message #${currentChannel}...`
             }
             disabled={isSending}
-            className={t.textarea}
+            theme={theme}
+            className={`w-full min-h-[36px] max-h-[120px] p-2 resize-vertical ${
+              theme === "matrix"
+                ? "focus:shadow-[0_0_8px_rgba(0,255,0,0.3)]"
+                : "focus:ring-2 focus:ring-blue-600"
+            }`}
           />
           <div
             className={`${t.charCount} ${
