@@ -101,7 +101,7 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
     const eventTemplate = {
       kind,
       created_at: Math.floor(Date.now() / 1000),
-      content: `@${savedProfile.username}#${savedProfile.publicKey.slice(-4)} rolled ${result} point(s)`,
+      content: `@${savedProfile.username}#${savedProfile.publicKey.slice(-4)} rolled ${result} point(s) via bitchat.land`,
       tags,
     };
 
@@ -115,7 +115,7 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
     const pool = new SimplePool();
     try {
       const publishPromises = pool.publish(NOSTR_RELAYS, signedEvent);
-      await Promise.race(publishPromises);
+      await Promise.all(publishPromises);
       onMessageSent?.(eventTemplate.content);
     } finally {
       pool.close(NOSTR_RELAYS);
@@ -223,10 +223,10 @@ export function ChatInput({ currentChannel, onMessageSent, onOpenProfileModal, p
         // Wait for at least one relay to succeed
         try {
           // Use Promise.race instead of Promise.any for better compatibility
-          await Promise.race(publishPromises);
+          await Promise.all(publishPromises);
           console.log("✅ Message published successfully to at least one relay");
 
-          // Clear input and notify parent
+          // // Clear input and notify parent
           setMessage("");
           onMessageSent?.(message.trim());
 
