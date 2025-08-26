@@ -1,10 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
+import {
+  colorForNostrPubkey,
+  parseHexColor,
+  parseRgb,
+  colorDistance,
+} from "../utils/userColor";
+
+interface SavedProfile {
+  username: string;
+  privateKey: string;
+  publicKey: string;
+  npub: string;
+  nsec: string;
+  color: string;
+  createdAt: number;
+}
 
 interface ProfileGenerationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onProfileSaved?: (profile: any) => void;
+  onProfileSaved?: (profile: SavedProfile) => void;
 }
 
 interface GeneratedProfile {
@@ -13,6 +29,7 @@ interface GeneratedProfile {
   publicKeyHex: string;
   npub: string;
   nsec: string;
+  color: string;
 }
 
 export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: ProfileGenerationModalProps) {
@@ -22,6 +39,9 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
   const [generatedProfile, setGeneratedProfile] = useState<GeneratedProfile | null>(null);
   const [error, setError] = useState("");
   const [showPrivateKeys, setShowPrivateKeys] = useState(false);
+  const [targetColor, setTargetColor] = useState("#00ff00");
+
+  const COLOR_TOLERANCE = 0.03;
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -32,6 +52,7 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
       setGeneratedProfile(null);
       setError("");
       setShowPrivateKeys(false);
+      setTargetColor("#00ff00");
     }
   }, [isOpen]);
 
@@ -59,50 +80,43 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
 
       setIsGenerating(true);
       setProgress(0);
-      
+
       let keysGenerated = 0;
       const targetSuffix = suffix;
-      const startTime = Date.now();
-      
-      // Estimate progress based on probability
-      const expectedAttempts = targetSuffix ? Math.pow(16, targetSuffix.length) : 1;
+      const targetRgb = parseHexColor(targetColor);
+      const colorVolume = (4 / 3) * Math.PI * Math.pow(COLOR_TOLERANCE, 3);
+      const expectedAttemptsColor = 1 / colorVolume;
+      const expectedAttemptsSuffix = targetSuffix ? Math.pow(16, targetSuffix.length) : 1;
+      const expectedAttempts = expectedAttemptsColor * expectedAttemptsSuffix;
       
       while (true) {
         const privateKey = generateSecretKey();
         const publicKey = getPublicKey(privateKey);
+        const color = colorForNostrPubkey(publicKey, true);
+        const rgb = parseRgb(color);
         keysGenerated++;
-        
-        // Update progress every 100 keys or so
+
         if (keysGenerated % 100 === 0) {
-          const elapsedTime = Date.now() - startTime;
-          const rate = keysGenerated / (elapsedTime / 1000);
-          
-          // Estimate progress based on probability and current rate
-          let estimatedProgress;
-          if (targetSuffix) {
-            const probability = 1 / expectedAttempts;
-            const expectedTime = expectedAttempts / rate;
-            estimatedProgress = Math.min(95, (elapsedTime / 1000) / expectedTime * 100);
-          } else {
-            estimatedProgress = 100; // No suffix, instant
-          }
-          
+          const estimatedProgress = Math.min(95, (keysGenerated / expectedAttempts) * 100);
           setProgress(estimatedProgress);
         }
-        
-        // Check if we found a match
-        if (!targetSuffix || publicKey.endsWith(targetSuffix)) {
+
+        const matchesColor = colorDistance(rgb, targetRgb) <= COLOR_TOLERANCE;
+        const matchesSuffix = !targetSuffix || publicKey.endsWith(targetSuffix);
+
+        if (matchesColor && matchesSuffix) {
           const npub = nip19.npubEncode(publicKey);
           const nsec = nip19.nsecEncode(privateKey);
-          
+
           setGeneratedProfile({
             username,
             privateKeyHex: Array.from(privateKey, byte => byte.toString(16).padStart(2, '0')).join(''),
             publicKeyHex: publicKey,
             npub,
             nsec,
+            color,
           });
-          
+
           setProgress(100);
           setIsGenerating(false);
           break;
@@ -124,12 +138,13 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
     if (!generatedProfile) return;
     
     try {
-      const profileData = {
+      const profileData: SavedProfile = {
         username: generatedProfile.username,
         privateKey: generatedProfile.privateKeyHex,
         publicKey: generatedProfile.publicKeyHex,
         npub: generatedProfile.npub,
         nsec: generatedProfile.nsec,
+        color: generatedProfile.color,
         createdAt: Date.now(),
       };
       
@@ -142,7 +157,7 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
       
       // Close modal after successful save
       onClose();
-    } catch (err) {
+    } catch {
       setError("Failed to save profile to localStorage");
     }
   };
@@ -223,6 +238,7 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
           <>
             <p style={{ marginBottom: "20px", fontSize: "14px", lineHeight: "1.4" }}>
               Enter your desired username. Optionally add <strong>#XXXX</strong> to generate a public key ending with those 4 hex characters.
+              Pick a color to generate keys until the profile matches it.
             </p>
             
             <div style={{ marginBottom: "20px" }}>
@@ -249,6 +265,19 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
                   }
                 }}
               />
+            </div>
+
+            <div style={{ marginBottom: "20px" }}>
+              <label style={{ fontSize: "14px" }}>
+                Pick a color:
+                <input
+                  type="color"
+                  value={targetColor}
+                  onChange={(e) => setTargetColor(e.target.value)}
+                  disabled={isGenerating}
+                  style={{ marginLeft: "10px" }}
+                />
+              </label>
             </div>
 
             {error && (
@@ -337,7 +366,7 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
                   width: "60px",
                   height: "60px",
                   borderRadius: "50%",
-                  background: "linear-gradient(135deg, #003300, #00ff00)",
+                  backgroundColor: generatedProfile.color,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -345,7 +374,7 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
                   fontWeight: "bold",
                   color: "#000",
                   textShadow: "none",
-                  border: "2px solid #00ff00",
+                  border: `2px solid ${generatedProfile.color}`,
                   boxShadow: "0 0 15px rgba(0, 255, 0, 0.3)",
                 }}>
                   {generatedProfile.username.charAt(0).toUpperCase()}
