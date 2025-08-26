@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
-import {
-  colorForNostrPubkey,
-  parseHexColor,
-  parseRgb,
-  colorDistance,
-} from "../utils/userColor";
+import { colorForNostrPubkey } from "../utils/userColor";
 
 interface SavedProfile {
   username: string;
@@ -32,23 +27,14 @@ interface GeneratedProfile {
   color: string;
 }
 
-interface GenerationLog {
-  pubkey: string;
-  color: string;
-  error: number;
-}
-
 export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: ProfileGenerationModalProps) {
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [generatedProfiles, setGeneratedProfiles] = useState<GeneratedProfile[]>([]);
   const [generatedProfile, setGeneratedProfile] = useState<GeneratedProfile | null>(null);
   const [error, setError] = useState("");
   const [showPrivateKeys, setShowPrivateKeys] = useState(false);
-  const [targetColor, setTargetColor] = useState("#00ff00");
-  const [generationLogs, setGenerationLogs] = useState<GenerationLog[]>([]);
-
-  const COLOR_TOLERANCE = 0.03;
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -56,11 +42,10 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
       setInput("");
       setIsGenerating(false);
       setProgress(0);
+      setGeneratedProfiles([]);
       setGeneratedProfile(null);
       setError("");
       setShowPrivateKeys(false);
-      setTargetColor("#00ff00");
-      setGenerationLogs([]);
     }
   }, [isOpen]);
 
@@ -80,7 +65,7 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
     try {
       setError("");
       const { username, suffix } = parseInput(input);
-      
+
       if (!username) {
         setError("Please enter a username");
         return;
@@ -88,57 +73,39 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
 
       setIsGenerating(true);
       setProgress(0);
-      setGenerationLogs([]);
+      setGeneratedProfiles([]);
+      setGeneratedProfile(null);
 
-      let keysGenerated = 0;
       const targetSuffix = suffix;
-      const targetRgb = parseHexColor(targetColor);
-      const colorVolume = (4 / 3) * Math.PI * Math.pow(COLOR_TOLERANCE, 3);
-      const expectedAttemptsColor = 1 / colorVolume;
-      const expectedAttemptsSuffix = targetSuffix ? Math.pow(16, targetSuffix.length) : 1;
-      const expectedAttempts = expectedAttemptsColor * expectedAttemptsSuffix;
-      
-      while (true) {
+      const profiles: GeneratedProfile[] = [];
+      let attempts = 0;
+
+      while (profiles.length < 64) {
         const privateKey = generateSecretKey();
         const publicKey = getPublicKey(privateKey);
-        const color = colorForNostrPubkey(publicKey, true);
-        const rgb = parseRgb(color);
-        const errorValue = colorDistance(rgb, targetRgb);
-        keysGenerated++;
-
-        setGenerationLogs(prev => [...prev.slice(-49), { pubkey: publicKey, color, error: errorValue }]);
-
-        if (keysGenerated % 100 === 0) {
-          const estimatedProgress = Math.min(95, (keysGenerated / expectedAttempts) * 100);
-          setProgress(estimatedProgress);
-        }
-
-        const matchesColor = errorValue <= COLOR_TOLERANCE;
-        const matchesSuffix = !targetSuffix || publicKey.endsWith(targetSuffix);
-
-        if (matchesColor && matchesSuffix) {
+        if (!targetSuffix || publicKey.endsWith(targetSuffix)) {
+          const color = colorForNostrPubkey(publicKey, true);
           const npub = nip19.npubEncode(publicKey);
           const nsec = nip19.nsecEncode(privateKey);
-
-          setGeneratedProfile({
+          profiles.push({
             username,
-            privateKeyHex: Array.from(privateKey, byte => byte.toString(16).padStart(2, '0')).join(''),
+            privateKeyHex: Array.from(privateKey, byte => byte.toString(16).padStart(2, "0")).join(""),
             publicKeyHex: publicKey,
             npub,
             nsec,
             color,
           });
-
-          setProgress(100);
-          setIsGenerating(false);
-          break;
+          setProgress((profiles.length / 64) * 100);
         }
-        
-        // Add a small delay every 1000 iterations to prevent UI blocking
-        if (keysGenerated % 1000 === 0) {
+
+        attempts++;
+        if (attempts % 1000 === 0) {
           await new Promise(resolve => setTimeout(resolve, 1));
         }
       }
+
+      setGeneratedProfiles(profiles);
+      setIsGenerating(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       setIsGenerating(false);
@@ -248,146 +215,150 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
 
         {!generatedProfile ? (
           <>
-            <p style={{ marginBottom: "20px", fontSize: "14px", lineHeight: "1.4" }}>
-              Enter your desired username. Optionally add <strong>#XXXX</strong> to generate a public key ending with those 4 hex characters.
-              Pick a color to generate keys until the profile matches it.
-            </p>
-            
-            <div style={{ marginBottom: "20px" }}>
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="username#1999"
-                disabled={isGenerating}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  backgroundColor: "#000",
-                  color: "#00ff00",
-                  border: "1px solid #00ff00",
-                  borderRadius: "5px",
-                  fontSize: "16px",
-                  fontFamily: "Courier New, monospace",
-                  outline: "none",
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !isGenerating) {
-                    generateKeys();
-                  }
-                }}
-              />
-            </div>
+            {generatedProfiles.length === 0 ? (
+              <>
+                <p style={{ marginBottom: "20px", fontSize: "14px", lineHeight: "1.4" }}>
+                  Enter your desired username. Optionally add <strong>#XXXX</strong> to generate a public key ending with those 4 hex characters.
+                  We'll generate 64 profiles for you to choose from.
+                </p>
 
-            <div style={{ marginBottom: "20px" }}>
-              <label style={{ fontSize: "14px" }}>
-                Pick a color:
-                <input
-                  type="color"
-                  value={targetColor}
-                  onChange={(e) => setTargetColor(e.target.value)}
-                  disabled={isGenerating}
-                  style={{ marginLeft: "10px" }}
-                />
-              </label>
-            </div>
-
-            <div
-              style={{
-                backgroundColor: "#000",
-                border: "1px solid #00ff00",
-                color: "#00ff00",
-                fontSize: "12px",
-                padding: "10px",
-                borderRadius: "5px",
-                marginBottom: "20px",
-                maxHeight: "120px",
-                overflowY: "auto",
-                fontFamily: "Courier New, monospace",
-              }}
-            >
-              <div>
-                Target rgb: rgb({parseHexColor(targetColor).join(", ")})
-              </div>
-              {generationLogs.map((log, idx) => (
-                <div key={idx}>
-                  <span
+                <div style={{ marginBottom: "20px" }}>
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="username#1999"
+                    disabled={isGenerating}
                     style={{
-                      backgroundColor: log.color,
-                      display: "inline-block",
-                      width: "10px",
-                      height: "10px",
-                      marginRight: "5px",
-                    }}
-                  />
-                  {log.pubkey} {log.color} err={(log.error * 100).toFixed(2)}%
-                </div>
-              ))}
-            </div>
-
-            {error && (
-              <div style={{
-                backgroundColor: "#330000",
-                border: "1px solid #ff0000",
-                color: "#ff6666",
-                padding: "10px",
-                borderRadius: "5px",
-                marginBottom: "20px",
-                fontSize: "14px",
-              }}>
-                {error}
-              </div>
-            )}
-
-            {isGenerating && (
-              <div style={{ marginBottom: "20px" }}>
-                <div style={{
-                  backgroundColor: "#333",
-                  height: "10px",
-                  borderRadius: "5px",
-                  overflow: "hidden",
-                  marginBottom: "10px",
-                }}>
-                  <div
-                    style={{
-                      backgroundColor: "#00ff00",
-                      height: "100%",
-                      width: `${progress}%`,
-                      transition: "width 0.3s ease",
+                      width: "100%",
+                      padding: "12px",
+                      backgroundColor: "#000",
+                      color: "#00ff00",
+                      border: "1px solid #00ff00",
                       borderRadius: "5px",
+                      fontSize: "16px",
+                      fontFamily: "Courier New, monospace",
+                      outline: "none",
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !isGenerating) {
+                        generateKeys();
+                      }
                     }}
                   />
                 </div>
-                <div style={{ fontSize: "12px", textAlign: "center", color: "#888" }}>
-                  Generating keys... {Math.round(progress)}%
-                  {input.includes("#") && (
-                    <div style={{ marginTop: "5px" }}>
-                      This may take a while for longer suffixes
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
-            <button
-              onClick={generateKeys}
-              disabled={isGenerating || !input.trim()}
-              style={{
-                width: "100%",
-                padding: "12px",
-                backgroundColor: isGenerating || !input.trim() ? "#333" : "#000",
-                color: isGenerating || !input.trim() ? "#666" : "#00ff00",
-                border: `1px solid ${isGenerating || !input.trim() ? "#666" : "#00ff00"}`,
-                borderRadius: "5px",
-                fontSize: "16px",
-                fontFamily: "Courier New, monospace",
-                cursor: isGenerating || !input.trim() ? "not-allowed" : "pointer",
-                textTransform: "uppercase",
-                fontWeight: "bold",
-              }}
-            >
-              {isGenerating ? "GENERATING..." : "GENERATE PROFILE"}
-            </button>
+                {error && (
+                  <div style={{
+                    backgroundColor: "#330000",
+                    border: "1px solid #ff0000",
+                    color: "#ff6666",
+                    padding: "10px",
+                    borderRadius: "5px",
+                    marginBottom: "20px",
+                    fontSize: "14px",
+                  }}>
+                    {error}
+                  </div>
+                )}
+
+                {isGenerating && (
+                  <div style={{ marginBottom: "20px" }}>
+                    <div style={{
+                      backgroundColor: "#333",
+                      height: "10px",
+                      borderRadius: "5px",
+                      overflow: "hidden",
+                      marginBottom: "10px",
+                    }}>
+                      <div
+                        style={{
+                          backgroundColor: "#00ff00",
+                          height: "100%",
+                          width: `${progress}%`,
+                          transition: "width 0.3s ease",
+                          borderRadius: "5px",
+                        }}
+                      />
+                    </div>
+                    <div style={{ fontSize: "12px", textAlign: "center", color: "#888" }}>
+                      Generating keys... {Math.round(progress)}%
+                      {input.includes("#") && (
+                        <div style={{ marginTop: "5px" }}>
+                          This may take a while for longer suffixes
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={generateKeys}
+                  disabled={isGenerating || !input.trim()}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    backgroundColor: isGenerating || !input.trim() ? "#333" : "#000",
+                    color: isGenerating || !input.trim() ? "#666" : "#00ff00",
+                    border: `1px solid ${isGenerating || !input.trim() ? "#666" : "#00ff00"}`,
+                    borderRadius: "5px",
+                    fontSize: "16px",
+                    fontFamily: "Courier New, monospace",
+                    cursor: isGenerating || !input.trim() ? "not-allowed" : "pointer",
+                    textTransform: "uppercase",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {isGenerating ? "GENERATING..." : "GENERATE PROFILES"}
+                </button>
+              </>
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(8, 1fr)",
+                    gap: "5px",
+                    marginBottom: "20px",
+                  }}
+                >
+                  {generatedProfiles.map((profile, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setGeneratedProfile(profile)}
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        backgroundColor: profile.color,
+                        border: "1px solid #00ff00",
+                        cursor: "pointer",
+                      }}
+                      title={profile.publicKeyHex.slice(-4)}
+                    />
+                  ))}
+                </div>
+                <button
+                  onClick={() => {
+                    setGeneratedProfiles([]);
+                    setProgress(0);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    backgroundColor: "#333",
+                    color: "#fff",
+                    border: "1px solid #555",
+                    borderRadius: "5px",
+                    fontSize: "14px",
+                    fontFamily: "Courier New, monospace",
+                    cursor: "pointer",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Generate Again
+                </button>
+              </>
+            )}
           </>
         ) : (
           <>
