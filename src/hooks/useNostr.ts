@@ -4,6 +4,7 @@ import type { Event as NostrEventOriginal } from "nostr-tools";
 import { NostrEvent, GeohashActivity } from "../types";
 import { NOSTR_RELAYS } from "../constants/projections";
 import { findMatchingGeohash } from "../utils/geohashUtils";
+import { parseRollCommand, publishRoll } from "../utils/roll";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -11,7 +12,8 @@ const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
 export function useNostr(
   searchGeohash: string,
   currentGeohashes: string[],
-  onGeohashAnimate: (geohash: string) => void
+  onGeohashAnimate: (geohash: string) => void,
+  autoRoll: boolean
 ) {
   const [connectedRelays, setConnectedRelays] = useState<string[]>([]);
   const [recentEvents, setRecentEvents] = useState<NostrEvent[]>([]);
@@ -28,6 +30,30 @@ export function useNostr(
   const poolRef = useRef<SimplePool | null>(null);
   const subRef = useRef<any>(null);
   const statusIntervalRef = useRef<number | null>(null);
+  const rollQueueRef = useRef<Array<() => Promise<void>>>([]);
+  const processingRollRef = useRef(false);
+
+  const processRollQueue = async () => {
+    if (processingRollRef.current) return;
+    processingRollRef.current = true;
+    while (rollQueueRef.current.length > 0) {
+      const job = rollQueueRef.current.shift();
+      if (job) {
+        try {
+          await job();
+        } catch (e) {
+          console.error("Roll job failed", e);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+    processingRollRef.current = false;
+  };
+
+  const enqueueRoll = (job: () => Promise<void>) => {
+    rollQueueRef.current.push(job);
+    processRollQueue();
+  };
 
   const connectToNostr = () => {
     try {
@@ -141,20 +167,47 @@ export function useNostr(
           // Add to all stored events (no limit) - we'll filter dynamically
           setAllStoredEvents((prev) => {
             // Check for duplicates using event ID
-            if (prev.some(existingEvent => existingEvent.id === event.id)) {
+            if (prev.some((existingEvent) => existingEvent.id === event.id)) {
               return prev; // Event already exists, don't add duplicate
             }
             return [event, ...prev];
           });
-          
+
           // Always add to recent events for the live feed (no limit)
           setRecentEvents((prev) => {
             // Check for duplicates using event ID
-            if (prev.some(existingEvent => existingEvent.id === event.id)) {
+            if (prev.some((existingEvent) => existingEvent.id === event.id)) {
               return prev; // Event already exists, don't add duplicate
             }
             return [event, ...prev];
           });
+
+          if (autoRoll) {
+            const rollRange = parseRollCommand(event.content || "");
+            if (rollRange) {
+              const clientTag = event.tags.find((t: any) => t[0] === "client");
+              const client = clientTag ? clientTag[1] : "";
+              if (client !== "bitchat.land") {
+                const nameTag = event.tags.find((t: any) => t[0] === "n");
+                const username = nameTag ? nameTag[1] : "anonymous";
+                const geoTag = event.tags.find((t: any) => t[0] === "g");
+                const groupTag = event.tags.find((t: any) => t[0] === "d");
+                const channel = geoTag ? geoTag[1] : groupTag ? groupTag[1] : null;
+                const isGeohash = !!geoTag;
+                if (channel) {
+                  enqueueRoll(() =>
+                    publishRoll(
+                      rollRange,
+                      channel.toLowerCase(),
+                      isGeohash,
+                      username,
+                      event.pubkey
+                    )
+                  );
+                }
+              }
+            }
+          }
         },
         oneose() {
           console.log("End of stored events");

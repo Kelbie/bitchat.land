@@ -21,6 +21,8 @@ interface RecentEventsProps {
   onSearch?: (text: string) => void;
   forceScrollToBottom?: boolean;
   onReply?: (username: string, pubkeyHash: string) => void;
+  rollBotEnabled?: boolean;
+  onToggleRollBot?: () => void;
 }
 
 export function RecentEvents({
@@ -32,6 +34,8 @@ export function RecentEvents({
   onSearch,
   forceScrollToBottom = false,
   onReply,
+  rollBotEnabled = false,
+  onToggleRollBot,
 }: RecentEventsProps) {
   const virtuosoRef = useRef<any>(null);
   const scrollTimeoutRef = useRef<number | null>(null);
@@ -655,6 +659,48 @@ export function RecentEvents({
               Showing latest {sortedEvents.length} events from the network
             </div>
           )}
+          {onToggleRollBot && (
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                marginTop: "5px",
+                fontSize: "9px",
+                color: "#00ff00",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={rollBotEnabled}
+                onChange={onToggleRollBot}
+                style={{ marginRight: "4px" }}
+              />
+              respond to !roll
+            </label>
+          )}
+        </div>
+      )}
+
+      {isMobileView && onToggleRollBot && (
+        <div
+          style={{
+            padding: "5px",
+            backgroundColor: "rgba(0, 0, 0, 0.95)",
+            borderBottom: "1px solid #003300",
+            color: "#00aa00",
+          }}
+        >
+          <label
+            style={{ display: "flex", alignItems: "center", fontSize: "12px" }}
+          >
+            <input
+              type="checkbox"
+              checked={rollBotEnabled}
+              onChange={onToggleRollBot}
+              style={{ marginRight: "6px" }}
+            />
+            Respond to !roll
+          </label>
         </div>
       )}
 

@@ -176,6 +176,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
   
   // Reply state
   const [replyPrefillText, setReplyPrefillText] = useState("");
+  const [rollBotEnabled, setRollBotEnabled] = useState(false);
 
   // Header height constant - measured exact value
   const headerHeight = 182.2;
@@ -276,7 +277,7 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
     nostrEnabled,
     allStoredEvents,
     allEventsByGeohash,
-  } = useNostr(searchGeohash, currentGeohashes, animateGeohash);
+  } = useNostr(searchGeohash, currentGeohashes, animateGeohash, rollBotEnabled);
 
   // Generate heatmap data (currently unused but may be needed for future features)
   // const heatmapData = generateSampleHeatmapData(geohashPrecision);
@@ -600,6 +601,8 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
               recentEvents={recentEvents}
               onSearch={handleTextSearch}
               onReply={handleReply}
+              rollBotEnabled={rollBotEnabled}
+              onToggleRollBot={() => setRollBotEnabled((v) => !v)}
             />
           </>
         )}
@@ -801,6 +804,8 @@ export default function App({ width, height, events = true }: GeoMercatorProps) 
                       isMobileView={true}
                       onSearch={handleTextSearch}
                       onReply={handleReply}
+                      rollBotEnabled={rollBotEnabled}
+                      onToggleRollBot={() => setRollBotEnabled((v) => !v)}
                     />
                   </div>
                   
