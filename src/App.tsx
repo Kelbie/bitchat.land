@@ -74,7 +74,7 @@ export default function App({
   const [showGeohashText] = useState(true);
 
   // Theme state for simple Tailwind-based theming
-  const [theme] = useState<"matrix" | "material">("matrix");
+  const [theme, setTheme] = useState<"matrix" | "material">("matrix");
 
   // View state
   const [activeView, setActiveView] = useState<"map" | "chat" | "panel">("map");
@@ -481,6 +481,7 @@ export default function App({
         allStoredEvents={allStoredEvents}
         onLoginClick={() => setShowProfileModal(true)}
         theme={theme}
+        onThemeChange={setTheme}
       />
 
       {/* Main Content Area */}

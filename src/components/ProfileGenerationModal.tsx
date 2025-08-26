@@ -3,6 +3,7 @@ import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
 import { colorForPeerSeed } from "../utils/userColor";
 import { ThemedInput } from "./ThemedInput";
 import { ThemedButton } from "./ThemedButton";
+import { ThemedProgressBar } from "./ThemedProgressBar";
 
 interface SavedProfile {
   username: string;
@@ -41,8 +42,6 @@ const styles = {
       "px-2 py-1 bg-black text-[#00ff00] border border-[#00ff00] rounded text-xs font-mono",
     error:
       "bg-[#330000] border border-[#ff0000] text-[#ff6666] p-2 rounded mb-5 text-sm",
-    progressOuter: "bg-[#333] h-2 rounded overflow-hidden mb-2",
-    progressInner: "bg-[#00ff00] h-full transition-[width] duration-300",
     progressText: "text-center text-xs text-[#888]",
   },
   material: {
@@ -54,8 +53,6 @@ const styles = {
       "px-2 py-1 bg-white text-blue-600 border border-blue-600 rounded text-xs",
     error:
       "bg-red-50 border border-red-400 text-red-600 p-2 rounded mb-5 text-sm",
-    progressOuter: "bg-gray-200 h-2 rounded overflow-hidden mb-2",
-    progressInner: "bg-blue-600 h-full transition-[width] duration-300",
     progressText: "text-center text-xs text-gray-500",
   },
 } as const;
@@ -325,12 +322,7 @@ export function ProfileGenerationModal({
 
                 {isGenerating && (
                   <div className="mb-5">
-                    <div className={t.progressOuter}>
-                      <div
-                        className={t.progressInner}
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
+                    <ThemedProgressBar progress={progress} theme={theme} />
                     <div className={t.progressText}>
                       Generating keys... {Math.round(progress)}%
                       {input.includes("#") && (
@@ -355,12 +347,7 @@ export function ProfileGenerationModal({
               <>
                 {isGenerating && generatedProfiles.length < 64 && (
                   <div className="mb-5">
-                    <div className={t.progressOuter}>
-                      <div
-                        className={t.progressInner}
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
+                    <ThemedProgressBar progress={progress} theme={theme} />
                     <div className={t.progressText}>
                       Found {generatedProfiles.length} profile
                       {generatedProfiles.length !== 1 ? "s" : ""}... searching

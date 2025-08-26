@@ -15,6 +15,7 @@ interface MobileHeaderProps {
   allStoredEvents?: NostrEvent[];
   onLoginClick?: () => void;
   theme?: "matrix" | "material";
+  onThemeChange?: (next: "matrix" | "material") => void;
 }
 
 const styles = {
@@ -63,6 +64,7 @@ export function MobileHeader({
   allStoredEvents = [],
   onLoginClick,
   theme = "matrix",
+  onThemeChange,
 }: MobileHeaderProps) {
   // avoid unused warnings for props not yet used
   void zoomedGeohash;
@@ -119,6 +121,15 @@ export function MobileHeader({
           className="flex-1 px-3 py-2 text-sm text-center"
         >
           download
+        </ThemedButton>
+        <ThemedButton
+          onClick={() =>
+            onThemeChange?.(theme === "matrix" ? "material" : "matrix")
+          }
+          theme={theme}
+          className="flex-1 px-3 py-2 text-sm text-center"
+        >
+          theme
         </ThemedButton>
       </div>
 

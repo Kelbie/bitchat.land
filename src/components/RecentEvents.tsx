@@ -468,7 +468,9 @@ export function RecentEvents({
                       paddingLeft: `${8}px`,
                     }}
                   >
-                    {event.content ? renderTextWithLinks(event.content) : "[No content]"}
+                    {event.content
+                      ? renderTextWithLinks(event.content, theme)
+                      : "[No content]"}
                   </span>
 
                   {/* Date appended to message */}
