@@ -32,6 +32,12 @@ interface GeneratedProfile {
   color: string;
 }
 
+interface GenerationLog {
+  pubkey: string;
+  color: string;
+  error: number;
+}
+
 export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: ProfileGenerationModalProps) {
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -40,6 +46,7 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
   const [error, setError] = useState("");
   const [showPrivateKeys, setShowPrivateKeys] = useState(false);
   const [targetColor, setTargetColor] = useState("#00ff00");
+  const [generationLogs, setGenerationLogs] = useState<GenerationLog[]>([]);
 
   const COLOR_TOLERANCE = 0.03;
 
@@ -53,6 +60,7 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
       setError("");
       setShowPrivateKeys(false);
       setTargetColor("#00ff00");
+      setGenerationLogs([]);
     }
   }, [isOpen]);
 
@@ -80,6 +88,7 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
 
       setIsGenerating(true);
       setProgress(0);
+      setGenerationLogs([]);
 
       let keysGenerated = 0;
       const targetSuffix = suffix;
@@ -94,14 +103,17 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
         const publicKey = getPublicKey(privateKey);
         const color = colorForNostrPubkey(publicKey, true);
         const rgb = parseRgb(color);
+        const errorValue = colorDistance(rgb, targetRgb);
         keysGenerated++;
+
+        setGenerationLogs(prev => [...prev.slice(-49), { pubkey: publicKey, color, error: errorValue }]);
 
         if (keysGenerated % 100 === 0) {
           const estimatedProgress = Math.min(95, (keysGenerated / expectedAttempts) * 100);
           setProgress(estimatedProgress);
         }
 
-        const matchesColor = colorDistance(rgb, targetRgb) <= COLOR_TOLERANCE;
+        const matchesColor = errorValue <= COLOR_TOLERANCE;
         const matchesSuffix = !targetSuffix || publicKey.endsWith(targetSuffix);
 
         if (matchesColor && matchesSuffix) {
@@ -278,6 +290,39 @@ export function ProfileGenerationModal({ isOpen, onClose, onProfileSaved }: Prof
                   style={{ marginLeft: "10px" }}
                 />
               </label>
+            </div>
+
+            <div
+              style={{
+                backgroundColor: "#000",
+                border: "1px solid #00ff00",
+                color: "#00ff00",
+                fontSize: "12px",
+                padding: "10px",
+                borderRadius: "5px",
+                marginBottom: "20px",
+                maxHeight: "120px",
+                overflowY: "auto",
+                fontFamily: "Courier New, monospace",
+              }}
+            >
+              <div>
+                Target rgb: rgb({parseHexColor(targetColor).join(", ")})
+              </div>
+              {generationLogs.map((log, idx) => (
+                <div key={idx}>
+                  <span
+                    style={{
+                      backgroundColor: log.color,
+                      display: "inline-block",
+                      width: "10px",
+                      height: "10px",
+                      marginRight: "5px",
+                    }}
+                  />
+                  {log.pubkey} {log.color} err={(log.error * 100).toFixed(2)}%
+                </div>
+              ))}
             </div>
 
             {error && (
