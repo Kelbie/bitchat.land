@@ -43,6 +43,7 @@ export function ProfileGenerationModal({
     useState<GeneratedProfile | null>(null);
   const [error, setError] = useState("");
   const [showPrivateKeys, setShowPrivateKeys] = useState(false);
+  const [recentIdentities, setRecentIdentities] = useState<string[]>([]);
   const cancelRef = useRef(false);
 
   // Reset state when modal opens/closes
@@ -59,6 +60,28 @@ export function ProfileGenerationModal({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("nostr_identities");
+      if (stored) {
+        setRecentIdentities(JSON.parse(stored));
+      }
+    } catch {
+      // ignore parsing errors
+    }
+  }, []);
+
+  const addIdentityToHistory = (identity: string) => {
+    setRecentIdentities((prev) => {
+      const updated = [identity, ...prev.filter((i) => i !== identity)].slice(
+        0,
+        5
+      );
+      localStorage.setItem("nostr_identities", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const parseInput = (inputText: string) => {
     const parts = inputText.split("#");
     const username = parts[0].trim();
@@ -71,15 +94,20 @@ export function ProfileGenerationModal({
     return { username, suffix: suffix.toLowerCase() };
   };
 
-  const generateKeys = async () => {
+  const generateKeys = async (identityInput?: string) => {
     try {
       setError("");
-      const { username, suffix } = parseInput(input);
+      const rawInput =
+        typeof identityInput === "string" ? identityInput.trim() : input.trim();
+      const { username, suffix } = parseInput(rawInput);
 
       if (!username) {
         setError("Please enter a username");
         return;
       }
+
+      setInput(rawInput);
+      addIdentityToHistory(rawInput);
 
       setProgress(0);
       setGeneratedProfiles([]);
@@ -276,6 +304,45 @@ export function ProfileGenerationModal({
                   choose from.
                 </p>
 
+                {recentIdentities.length > 0 && (
+                  <div style={{ marginBottom: "20px" }}>
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      Previous identities:
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "8px",
+                      }}
+                    >
+                      {recentIdentities.map((id) => (
+                        <button
+                          key={id}
+                          onClick={() => generateKeys(id)}
+                          style={{
+                            padding: "6px 10px",
+                            backgroundColor: "#000",
+                            color: "#00ff00",
+                            border: "1px solid #00ff00",
+                            borderRadius: "5px",
+                            fontFamily: "Courier New, monospace",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                          }}
+                        >
+                          {id}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ marginBottom: "20px" }}>
                   <input
                     type="text"
@@ -357,7 +424,7 @@ export function ProfileGenerationModal({
                 )}
 
                 <button
-                  onClick={generateKeys}
+                  onClick={() => generateKeys()}
                   disabled={isGenerating || !input.trim()}
                   style={{
                     width: "100%",
