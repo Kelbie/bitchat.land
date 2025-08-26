@@ -97,7 +97,8 @@ export function ProfileGenerationModal({
   const generateKeys = async (identityInput?: string) => {
     try {
       setError("");
-      const rawInput = (identityInput ?? input).trim();
+      const rawInput =
+        typeof identityInput === "string" ? identityInput.trim() : input.trim();
       const { username, suffix } = parseInput(rawInput);
 
       if (!username) {
@@ -423,7 +424,7 @@ export function ProfileGenerationModal({
                 )}
 
                 <button
-                  onClick={generateKeys}
+                  onClick={() => generateKeys()}
                   disabled={isGenerating || !input.trim()}
                   style={{
                     width: "100%",
