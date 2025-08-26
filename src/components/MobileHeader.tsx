@@ -1,4 +1,3 @@
-// import React from "react"; // Not needed for JSX
 import type { NostrEvent } from "../types";
 
 interface MobileHeaderProps {
@@ -7,14 +6,61 @@ interface MobileHeaderProps {
   searchText: string;
   onSearch: (value: string) => void;
   zoomedGeohash: string | null;
-  // Content header props
   nostrEnabled?: boolean;
   filteredEventsCount?: number;
   totalEventsCount?: number;
   hierarchicalCounts?: { direct: number; total: number };
-  allStoredEvents?: NostrEvent[]; // for channels sidebar (g and d tags)
+  allStoredEvents?: NostrEvent[];
   onLoginClick?: () => void;
+  theme?: "matrix" | "material";
 }
+
+const styles = {
+  matrix: {
+    header:
+      "bg-black/95 backdrop-blur flex flex-col items-center font-mono flex-shrink-0 p-2 text-[#00ff00]",
+    logoText:
+      "text-[#00ff00] text-lg font-bold uppercase tracking-wider drop-shadow-[0_0_10px_rgba(0,255,0,0.5)]",
+    navButtonBase:
+      "flex-1 px-3 py-2 border font-bold uppercase text-sm font-mono transition-colors text-center",
+    navButtonActive:
+      "bg-[#00ff00] text-black shadow-[0_0_10px_rgba(0,255,0,0.5)] border-[#00ff00]",
+    navButtonInactive:
+      "bg-black/70 text-[#00ff00] border-[#00ff00] hover:bg-[#00ff00]/10 hover:shadow-[0_0_5px_rgba(0,255,0,0.3)]",
+    searchIcon: "stroke-[#00aa00]",
+    searchInput:
+      "flex-1 pl-9 pr-3 py-2 bg-black/80 text-[#00ff00] border border-[#00ff00] rounded outline-none focus:shadow-[0_0_5px_rgba(0,255,0,0.5)]",
+    clearButton:
+      "px-3 py-2 bg-green-900/80 text-[#00ff00] border border-[#00ff00] rounded text-xs font-mono uppercase hover:bg-green-900",
+    separator:
+      "w-full h-0.5 bg-gradient-to-r from-transparent via-[#00ff00] to-transparent shadow-[0_0_4px_rgba(0,255,0,0.5)]",
+    subheader:
+      "w-full bg-black/95 px-5 py-3 text-[#00aa00] font-bold backdrop-blur",
+    subheaderTitle:
+      "mb-1 text-lg uppercase tracking-wider drop-shadow-[0_0_10px_rgba(0,255,0,0.5)]",
+    statsBadge:
+      "text-xs text-[#00ff00] bg-[#00ff00]/10 px-1.5 py-1 rounded border border-[#00ff00]/30",
+  },
+  material: {
+    header:
+      "bg-white text-gray-800 flex flex-col items-center font-sans flex-shrink-0 p-2",
+    logoText: "text-blue-600 text-lg font-bold",
+    navButtonBase:
+      "flex-1 px-3 py-2 border font-bold uppercase text-sm transition-colors text-center",
+    navButtonActive: "bg-blue-600 text-white border-blue-600",
+    navButtonInactive: "bg-white text-blue-600 border-blue-600 hover:bg-blue-50",
+    searchIcon: "stroke-blue-600",
+    searchInput:
+      "flex-1 pl-9 pr-3 py-2 bg-white text-gray-800 border border-blue-600 rounded outline-none focus:ring-2 focus:ring-blue-600",
+    clearButton:
+      "px-3 py-2 bg-blue-100 text-blue-600 border border-blue-600 rounded text-xs uppercase hover:bg-blue-200",
+    separator: "w-full h-0.5 bg-blue-600",
+    subheader: "w-full bg-white px-5 py-3 text-blue-600 font-bold",
+    subheaderTitle: "mb-1 text-lg uppercase tracking-wider",
+    statsBadge:
+      "text-xs text-blue-600 bg-blue-50 px-1.5 py-1 rounded border border-blue-200",
+  },
+} as const;
 
 export function MobileHeader({
   activeView,
@@ -28,278 +74,68 @@ export function MobileHeader({
   hierarchicalCounts = { direct: 0, total: 0 },
   allStoredEvents = [],
   onLoginClick,
+  theme = "matrix",
 }: MobileHeaderProps) {
+  // avoid unused warnings for props not yet used
+  void zoomedGeohash;
+  void hierarchicalCounts;
+  void allStoredEvents;
+
+  const t = styles[theme];
+
   return (
-    <header
-      style={{
-        backgroundColor: "rgba(0, 0, 0, 0.95)",
-        backdropFilter: "blur(10px)",
-        border: "none",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        fontFamily: "Courier New, monospace",
-        flexShrink: 0,
-        padding: "8px 16px 10px 16px",
-      }}
-    >
-      {/* Brand Logo */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          marginBottom: "0px",
-        }}
-      >
-        <img
-          src="/favicon.webp"
-          alt="bitchat.land"
-          style={{ width: "48px", height: "48px", marginLeft: "-12px" }}
-        />
-        <div
-          style={{
-            color: "#00ff00",
-            fontSize: "18px",
-            fontWeight: "bold",
-            textTransform: "uppercase",
-            letterSpacing: "1px",
-            textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-            marginLeft: "-8px",
-          }}
-        >
-          bitchat.land
-        </div>
+    <header className={t.header}>
+      <div className="flex items-center gap-2 mb-0">
+        <img src="/favicon.webp" alt="bitchat.land" className="w-12 h-12 -ml-3" />
+        <div className={t.logoText}>bitchat.land</div>
       </div>
 
-      {/* Navigation Toggles */}
-      <div
-        style={{
-          display: "flex",
-          gap: "6px",
-          justifyContent: "center",
-          width: "100%",
-          maxWidth: "400px",
-        }}
-      >
-        {/* Menu Button (Panel) */}
+      <div className="flex gap-1 justify-center w-full max-w-md">
         <button
           onClick={() => onViewChange("panel")}
-          style={{
-            flex: 1,
-            padding: "8px 12px",
-            background:
-              activeView === "panel" ? "#00ff00" : "rgba(0, 0, 0, 0.7)",
-            color: activeView === "panel" ? "#000000" : "#00ff00",
-            border: "1px solid #00ff00",
-            borderRadius: "0",
-            cursor: "pointer",
-            fontSize: "14px",
-            fontFamily: "Courier New, monospace",
-            textTransform: "uppercase",
-            fontWeight: "bold",
-            transition: "all 0.2s ease",
-            textAlign: "center",
-            boxShadow:
-              activeView === "panel" ? "0 0 10px rgba(0, 255, 0, 0.5)" : "none",
-          }}
-          onMouseEnter={(e) => {
-            if (activeView !== "panel") {
-              e.currentTarget.style.background = "rgba(0, 255, 0, 0.1)";
-              e.currentTarget.style.boxShadow = "0 0 5px rgba(0, 255, 0, 0.3)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (activeView !== "panel") {
-              e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
-              e.currentTarget.style.boxShadow = "none";
-            }
-          }}
+          className={`${t.navButtonBase} ${activeView === "panel" ? t.navButtonActive : t.navButtonInactive}`}
         >
           menu
         </button>
-
-        {/* Map Button */}
         <button
           onClick={() => onViewChange("map")}
-          style={{
-            flex: 1,
-            padding: "8px 12px",
-            background: activeView === "map" ? "#00ff00" : "rgba(0, 0, 0, 0.7)",
-            color: activeView === "map" ? "#000000" : "#00ff00",
-            border: "1px solid #00ff00",
-            borderRadius: "0",
-            cursor: "pointer",
-            fontSize: "14px",
-            fontFamily: "Courier New, monospace",
-            textTransform: "uppercase",
-            fontWeight: "bold",
-            transition: "all 0.2s ease",
-            textAlign: "center",
-            boxShadow:
-              activeView === "map" ? "0 0 10px rgba(0, 255, 0, 0.5)" : "none",
-          }}
-          onMouseEnter={(e) => {
-            if (activeView !== "map") {
-              e.currentTarget.style.background = "rgba(0, 255, 0, 0.1)";
-              e.currentTarget.style.boxShadow = "0 0 5px rgba(0, 255, 0, 0.3)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (activeView !== "map") {
-              e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
-              e.currentTarget.style.boxShadow = "none";
-            }
-          }}
+          className={`${t.navButtonBase} ${activeView === "map" ? t.navButtonActive : t.navButtonInactive}`}
         >
           map
         </button>
-
-        {/* Chat Button */}
         <button
           onClick={() => onViewChange("chat")}
-          style={{
-            flex: 1,
-            padding: "8px 12px",
-            background:
-              activeView === "chat" ? "#00ff00" : "rgba(0, 0, 0, 0.7)",
-            color: activeView === "chat" ? "#000000" : "#00ff00",
-            border: "1px solid #00ff00",
-            borderRadius: "0",
-            cursor: "pointer",
-            fontSize: "14px",
-            fontFamily: "Courier New, monospace",
-            textTransform: "uppercase",
-            fontWeight: "bold",
-            transition: "all 0.2s ease",
-            textAlign: "center",
-            boxShadow:
-              activeView === "chat" ? "0 0 10px rgba(0, 255, 0, 0.5)" : "none",
-          }}
-          onMouseEnter={(e) => {
-            if (activeView !== "chat") {
-              e.currentTarget.style.background = "rgba(0, 255, 0, 0.1)";
-              e.currentTarget.style.boxShadow = "0 0 5px rgba(0, 255, 0, 0.3)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (activeView !== "chat") {
-              e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
-              e.currentTarget.style.boxShadow = "none";
-            }
-          }}
+          className={`${t.navButtonBase} ${activeView === "chat" ? t.navButtonActive : t.navButtonInactive}`}
         >
           chat
         </button>
-
-        {/* Login Button */}
         <button
           onClick={onLoginClick}
-          style={{
-            flex: 1,
-            padding: "8px 12px",
-            background: "rgba(0, 0, 0, 0.7)",
-            color: "#00ff00",
-            border: "1px solid #00ff00",
-            borderRadius: "0",
-            cursor: "pointer",
-            fontSize: "14px",
-            fontFamily: "Courier New, monospace",
-            textTransform: "uppercase",
-            fontWeight: "bold",
-            transition: "all 0.2s ease",
-            textAlign: "center",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(0, 255, 0, 0.1)";
-            e.currentTarget.style.boxShadow = "0 0 5px rgba(0, 255, 0, 0.3)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
-            e.currentTarget.style.boxShadow = "none";
-          }}
+          className={`${t.navButtonBase} ${t.navButtonInactive}`}
         >
           login
         </button>
-
-        {/* Download Button */}
         <a
           href="https://bitchat.free/"
           target="_blank"
           rel="noopener noreferrer"
-          style={{
-            flex: 1,
-            padding: "8px 12px",
-            background: "rgba(0, 0, 0, 0.7)",
-            color: "#00ff00",
-            border: "1px solid #00ff00",
-            borderRadius: "0",
-            cursor: "pointer",
-            fontSize: "14px",
-            fontFamily: "Courier New, monospace",
-            textTransform: "uppercase",
-            fontWeight: "bold",
-            transition: "all 0.2s ease",
-            textAlign: "center",
-            textDecoration: "none",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(0, 255, 0, 0.1)";
-            e.currentTarget.style.boxShadow = "0 0 5px rgba(0, 255, 0, 0.3)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
-            e.currentTarget.style.boxShadow = "none";
-          }}
+          className={`${t.navButtonBase} ${t.navButtonInactive}`}
         >
           download
         </a>
       </div>
 
-      {/* Search Section */}
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "400px",
-          marginTop: "8px",
-          marginBottom: "16px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            gap: "8px",
-            alignItems: "center",
-          }}
-        >
-          <div style={{
-            position: "relative",
-            flex: 1,
-            display: "flex",
-            alignItems: "center"
-          }}>
-            {/* Search Icon */}
-            <div style={{
-              position: "absolute",
-              left: "12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 1,
-              pointerEvents: "none",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center"
-            }}>
+      <div className="w-full max-w-md mt-2 mb-4">
+        <div className="flex gap-2 items-center">
+          <div className="relative flex-1">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
               <svg
                 width="16"
                 height="16"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#00aa00"
-                strokeWidth="2"
+                className={t.searchIcon}
+                strokeWidth={2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
@@ -307,125 +143,41 @@ export function MobileHeader({
                 <path d="m21 21-4.35-4.35" />
               </svg>
             </div>
-            
             <input
               type="text"
               value={searchText}
               onChange={(e) => onSearch(e.target.value)}
               placeholder="hello in:nyc from:@jack"
-              style={{
-                flex: 1,
-                padding: "8px 12px 8px 36px", // Add left padding for icon
-                background: "rgba(0, 0, 0, 0.8)",
-                color: "#00ff00",
-                border: "1px solid #00ff00",
-                borderRadius: "4px",
-              fontSize: "14px",
-              fontFamily: "Courier New, monospace",
-              outline: "none",
-              minHeight: "36px",
-            }}
-            onFocus={(e) => {
-              e.target.style.boxShadow = "0 0 5px rgba(0, 255, 0, 0.5)";
-            }}
-            onBlur={(e) => {
-              e.target.style.boxShadow = "none";
-            }}
+              className={t.searchInput}
             />
           </div>
           {searchText && (
-            <button
-              onClick={() => onSearch("")}
-              style={{
-                padding: "8px 12px",
-                background: "rgba(0, 50, 0, 0.8)",
-                color: "#00ff00",
-                border: "1px solid #00ff00",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "12px",
-                fontFamily: "Courier New, monospace",
-                textTransform: "uppercase",
-                minHeight: "36px",
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(0, 100, 0, 0.8)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "rgba(0, 50, 0, 0.8)";
-              }}
-            >
+            <button onClick={() => onSearch("")} className={t.clearButton}>
               ✕
             </button>
           )}
         </div>
       </div>
 
-      {/* Separator Bar - Only show if there's sub header content */}
       {((activeView === "chat" && nostrEnabled) || activeView === "panel") && (
-        <div
-          style={{
-            width: "100%",
-            height: "2px",
-            background:
-              "linear-gradient(90deg, transparent 0%, #00ff00 20%, #00ff00 80%, transparent 100%)",
-            boxShadow: "0 0 4px rgba(0, 255, 0, 0.5)",
-          }}
-        />
+        <div className={t.separator} />
       )}
 
-      {/* Content sub header (panel only). The chat sub header is rendered next to the channels in App layout. */}
       {activeView === "panel" && (
-        <div
-          style={{
-            width: "100%",
-            backgroundColor: "rgba(0, 0, 0, 0.98)",
-            padding: "12px 20px",
-            color: "#00aa00",
-            fontWeight: "bold",
-            backdropFilter: "blur(10px)",
-          }}
-        >
-          <div
-            style={{
-              marginBottom: "6px",
-              fontSize: "16px",
-              textTransform: "uppercase",
-              letterSpacing: "1px",
-              textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-            }}
-          >
+        <div className={t.subheader}>
+          <div className={t.subheaderTitle}>
             {searchText ? `SEARCH RESULTS FOR "${searchText}"` : "ALL GEOHASH REGIONS"}
           </div>
-          <div
-            style={{
-              fontSize: "11px",
-              color: "#00ff00",
-              background: "rgba(0, 255, 0, 0.1)",
-              padding: "3px 6px",
-              borderRadius: "4px",
-              border: "1px solid rgba(0, 255, 0, 0.3)",
-              display: "inline-block",
-            }}
-          >
-            {searchText ? `FOUND: ${filteredEventsCount} MATCHING EVENTS` : `TOTAL: ${totalEventsCount} EVENTS`}
+          <div className={t.statsBadge}>
+            {searchText
+              ? `FOUND: ${filteredEventsCount} MATCHING EVENTS`
+              : `TOTAL: ${totalEventsCount} EVENTS`}
           </div>
         </div>
       )}
 
-      {/* Bottom Separator Bar - Only show if there's sub header content */}
-      {/* {((activeView === 'chat' && nostrEnabled) || activeView === 'panel') && ( */}
-      <div
-        style={{
-          width: "100%",
-          height: "2px",
-          background:
-            "linear-gradient(90deg, transparent 0%, #00ff00 20%, #00ff00 80%, transparent 100%)",
-          boxShadow: "0 0 4px rgba(0, 255, 0, 0.5)",
-        }}
-      />
-      {/* )} */}
+      <div className={t.separator} />
     </header>
   );
 }
+

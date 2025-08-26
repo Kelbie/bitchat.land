@@ -11,7 +11,6 @@ import { GeoMercatorProps } from "./types";
 import { useDrag } from "./hooks/useDrag";
 import { useZoom } from "./hooks/useZoom";
 import { useNostr } from "./hooks/useNostr";
-import { SearchPanel } from "./components/SearchPanel";
 import { EventHierarchy } from "./components/EventHierarchy";
 import { RecentEvents } from "./components/RecentEvents";
 import { Map } from "./components/Map";
@@ -179,8 +178,7 @@ export default function App({
   // Theme state for simple Tailwind-based theming
   const [theme] = useState<"matrix" | "material">("matrix");
 
-  // Mobile view state
-  const [isMobile, setIsMobile] = useState(true);
+  // View state
   const [activeView, setActiveView] = useState<"map" | "chat" | "panel">("map");
 
   // Profile state using React state with localStorage initialization
@@ -204,7 +202,7 @@ export default function App({
   const headerHeight = 182.2;
 
   // Calculate available map dimensions accounting for header
-  const availableHeight = isMobile ? height - headerHeight : height;
+  const availableHeight = height - headerHeight;
 
   // Map positioning constants
   const mapWidth = width;
@@ -328,12 +326,10 @@ export default function App({
     const replyText = `@${username}#${pubkeyHash} `;
     setReplyPrefillText(replyText);
 
-    // Switch to chat view on mobile with a small delay to ensure state updates
-    if (isMobile) {
-      setTimeout(() => {
-        setActiveView("chat");
-      }, 50);
-    }
+    // Switch to chat view with a small delay to ensure state updates
+    setTimeout(() => {
+      setActiveView("chat");
+    }, 50);
   };
 
   // Handle message sent - clear reply prefill
@@ -574,21 +570,20 @@ export default function App({
       {/* eSIM Marquee Banner */}
       <MarqueeBanner />
       {/* Mobile Header */}
-      {isMobile && (
-        <MobileHeader
-          activeView={activeView}
-          onViewChange={setActiveView}
-          searchText={searchText}
-          onSearch={handleTextSearch}
-          zoomedGeohash={zoomedGeohash}
-          nostrEnabled={nostrEnabled}
-          filteredEventsCount={filteredEvents.length}
-          totalEventsCount={totalEventsCount}
-          hierarchicalCounts={hierarchicalCounts}
-          allStoredEvents={allStoredEvents}
-          onLoginClick={() => setShowProfileModal(true)}
-        />
-      )}
+      <MobileHeader
+        activeView={activeView}
+        onViewChange={setActiveView}
+        searchText={searchText}
+        onSearch={handleTextSearch}
+        zoomedGeohash={zoomedGeohash}
+        nostrEnabled={nostrEnabled}
+        filteredEventsCount={filteredEvents.length}
+        totalEventsCount={totalEventsCount}
+        hierarchicalCounts={hierarchicalCounts}
+        allStoredEvents={allStoredEvents}
+        onLoginClick={() => setShowProfileModal(true)}
+        theme={theme}
+      />
 
       {/* Main Content Area */}
       <div
@@ -604,7 +599,7 @@ export default function App({
           style={{
             width: "100%",
             height: "100%",
-            display: isMobile && activeView !== "map" ? "none" : "block",
+            display: activeView !== "map" ? "none" : "block",
           }}
         >
           <Map
@@ -634,36 +629,8 @@ export default function App({
           />
         </div>
 
-        {/* Desktop Layout - Show all panels */}
-        {!isMobile && (
-          <>
-            <SearchPanel
-              searchText={searchText}
-              onSearch={handleTextSearch}
-              zoomedGeohash={zoomedGeohash}
-              theme={theme}
-            />
-
-            <EventHierarchy
-              searchText={searchText}
-              allEventsByGeohash={allEventsByGeohash}
-              onSearch={handleTextSearch}
-            />
-
-            <RecentEvents
-              nostrEnabled={nostrEnabled}
-              searchText={searchText}
-              allStoredEvents={allStoredEvents}
-              recentEvents={recentEvents}
-              onSearch={handleTextSearch}
-              onReply={handleReply}
-            />
-          </>
-        )}
-
         {/* Mobile Layout - Show panels based on activeView */}
-        {isMobile && (
-          <>
+        <>
             {/* Chat View */}
             {activeView === "chat" && (
               <div
@@ -945,7 +912,6 @@ export default function App({
               </div>
             )}
           </>
-        )}
       </div>
 
       {/* Nostr Watermark */}
