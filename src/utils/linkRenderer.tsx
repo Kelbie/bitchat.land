@@ -18,11 +18,13 @@ const MENTION_PATTERN = '@[^\s#]+#[0-9a-f]{4}';
 
 // Regexes used for classification
 const HASHTAG_REGEX = new RegExp(`^${HASHTAG_PATTERN}$`);
-const MENTION_REGEX = new RegExp(`^${MENTION_PATTERN}$`);
+// Allow uppercase discriminator letters by using case-insensitive flag
+const MENTION_REGEX = new RegExp(`^${MENTION_PATTERN}$`, 'i');
 
-// Combined regex to detect URLs, hashtags and mentions
+// Combined regex to detect URLs, mentions and hashtags
+// Mention pattern is placed first to avoid partial hashtag matches
 const TOKEN_REGEX = new RegExp(
-  `${URL_REGEX.source}|${MENTION_PATTERN}|${HASHTAG_PATTERN}`,
+  `${MENTION_PATTERN}|${URL_REGEX.source}|${HASHTAG_PATTERN}`,
   'gi'
 );
 
@@ -143,6 +145,21 @@ export function renderTextWithLinks(
       } else {
         parts.push(token);
       }
+    } else if (MENTION_REGEX.test(token)) {
+      parts.push(
+        <span
+          key={`mention-${matchIndex}`}
+          style={{
+            backgroundColor: '#333',
+            color: '#fff',
+            borderRadius: '4px',
+            padding: '0 2px',
+            display: 'inline-block',
+          }}
+        >
+          {token}
+        </span>
+      );
     } else if (HASHTAG_REGEX.test(token)) {
       const tag = token.slice(1);
       parts.push(
@@ -164,21 +181,6 @@ export function renderTextWithLinks(
         >
           {token}
         </button>
-      );
-    } else if (MENTION_REGEX.test(token)) {
-      parts.push(
-        <span
-          key={`mention-${matchIndex}`}
-          style={{
-            backgroundColor: '#333',
-            color: '#fff',
-            borderRadius: '4px',
-            padding: '0 2px',
-            display: 'inline-block',
-          }}
-        >
-          {token}
-        </span>
       );
     } else {
       parts.push(token);
