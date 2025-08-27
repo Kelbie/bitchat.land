@@ -1,14 +1,7 @@
 import React from 'react';
 
-// More inclusive URL regex that handles YouTube URLs and other common patterns
-// Test cases this should match:
-// - https://www.youtube.com/watch?v=dQw4w9WgXcQ
-// - https://youtu.be/dQw4w9WgXcQ
-// - https://www.youtube.com/channel/UC-9-kyTW8ZkZNDHQJ6FgpwQ
-// - https://www.youtube.com/user/username
-// - https://example.com/path-with-hyphens
-// - https://sub-domain.example.com/path/to/page
-const URL_REGEX = /https?:\/\/(?:[-\w.])+(?:[:\d]+)?(?:\/(?:[\w\/_.-])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?/gi;
+
+const URL_REGEX = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi;
 
 /**
  * Validates if a string is a safe URL

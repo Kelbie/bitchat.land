@@ -26,7 +26,7 @@ const styles = {
       "text-[#00ff00] text-lg font-bold uppercase tracking-wider drop-shadow-[0_0_10px_rgba(0,255,0,0.5)]",
     searchIcon: "stroke-[#00aa00]",
     clearButton:
-      "px-3 py-2 bg-green-900/80 text-[#00ff00] border border-[#00ff00] rounded text-xs font-mono uppercase hover:bg-green-900",
+      "px-3 py-3 bg-green-900/80 text-[#00ff00] border border-[#00ff00] rounded text-xs font-mono uppercase hover:bg-green-900",
     separator:
       "w-full h-0.5 bg-gradient-to-r from-transparent via-[#00ff00] to-transparent shadow-[0_0_4px_rgba(0,255,0,0.5)]",
     subheader:
@@ -42,7 +42,7 @@ const styles = {
     logoText: "text-blue-600 text-lg font-bold",
     searchIcon: "stroke-blue-600",
     clearButton:
-      "px-3 py-2 bg-blue-100 text-blue-600 border border-blue-600 rounded text-xs uppercase hover:bg-blue-200",
+      "px-3 py-3 bg-blue-100 text-blue-600 border border-blue-600 rounded text-xs uppercase hover:bg-blue-200",
     separator: "w-full h-0.5 bg-blue-600",
     subheader: "w-full bg-white px-5 py-3 text-blue-600 font-bold",
     subheaderTitle: "mb-1 text-lg uppercase tracking-wider",
@@ -81,14 +81,14 @@ export function MobileHeader({
       </div>
 
       <div className="flex gap-1 justify-center w-full max-w-md">
-        <ThemedButton
+        {/* <ThemedButton
           onClick={() => onViewChange("panel")}
           active={activeView === "panel"}
           theme={theme}
           className="flex-1 px-3 py-2 text-sm text-center"
         >
           menu
-        </ThemedButton>
+        </ThemedButton> */}
         <ThemedButton
           onClick={() => onViewChange("map")}
           active={activeView === "map"}

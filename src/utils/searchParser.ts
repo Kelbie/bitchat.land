@@ -4,6 +4,7 @@ export interface ParsedSearch {
   users: string[];
   clients: string[]; // New field for client filters
   colors: string[]; // Hex color filters
+  has: string[]; // Content filters
 }
 
 /**
@@ -14,13 +15,14 @@ export interface ParsedSearch {
  */
 export function parseSearchQuery(query: string): ParsedSearch {
   if (!query.trim()) {
-    return { text: "", geohashes: [], users: [], clients: [], colors: [] };
+    return { text: "", geohashes: [], users: [], clients: [], colors: [], has: [] };
   }
 
   const geohashes: string[] = [];
   const users: string[] = [];
   const clients: string[] = [];
   const colors: string[] = [];
+  const has: string[] = [];
   let text = query;
 
   // Extract "in:" terms (any string)
@@ -71,10 +73,20 @@ export function parseSearchQuery(query: string): ParsedSearch {
     text = text.replace(match[0], ' ');
   }
 
+  // Extract "has:" terms
+  const hasPattern = /\s*has:(\S+)\s*/gi;
+  while ((match = hasPattern.exec(query)) !== null) {
+    const hasFilter = match[1].toLowerCase();
+    if (!has.includes(hasFilter)) {
+      has.push(hasFilter);
+    }
+    text = text.replace(match[0], ' ');
+  }
+
   // Clean up the remaining text
   text = text.replace(/\s+/g, ' ').trim();
 
-  return { text, geohashes, users, clients, colors };
+  return { text, geohashes, users, clients, colors, has };
 }
 
 /**
@@ -101,6 +113,11 @@ export function buildSearchQuery(parsed: ParsedSearch): string {
   // Add color terms
   for (const color of parsed.colors) {
     query += ` color:${color}`;
+  }
+
+  // Add has terms
+  for (const hasItem of parsed.has) {
+    query += ` has:${hasItem}`;
   }
 
   return query.trim();

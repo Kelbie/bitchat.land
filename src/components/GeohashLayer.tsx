@@ -141,7 +141,7 @@ export function GeohashLayer({
                 y={centerPoint[1]}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                className={isAnimating ? "fill-white" : t.text}
+                className={`${isAnimating ? "fill-white" : t.text} tracking-[1px]`}
                 fontSize={
                   effectivePrecision === 1
                     ? "16"
@@ -159,7 +159,6 @@ export function GeohashLayer({
                 }
                 pointerEvents="none"
                 style={{
-                  letterSpacing: "1px",
                   filter: isAnimating
                     ? `drop-shadow(0 0 5px rgb(${t.base}))`
                     : "none",

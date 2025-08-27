@@ -48,6 +48,21 @@ const styles = {
       "bg-[#001100] border-2 border-[#00ff00] rounded-[15px] p-6 mb-5 shadow-[0_0_20px_rgba(0,255,0,0.2)]",
     previewUsername: "text-[#00ff00] text-[20px] font-bold",
     previewHighlight: "bg-yellow-300 text-black px-1 rounded",
+    privateContainer: "bg-[#110000] border border-[#ff3300] rounded mb-5",
+    privateToggle:
+      "p-3 cursor-pointer flex items-center justify-between hover:bg-[#220000]",
+    privateToggleOpen: "border-b border-[#ff3300]",
+    privateToggleText:
+      "text-[12px] text-[#ff6666] uppercase font-bold flex items-center gap-2",
+    privateToggleIcon: "text-[#ff6666] transition-transform",
+    privateContent: "p-4",
+    privateItem: "mb-4",
+    privateLabel: "text-[11px] text-[#ff9999] mb-1",
+    privateValue:
+      "bg-black p-2 rounded text-[11px] break-all flex justify-between items-center gap-2 border border-[#330000]",
+    privateValueText: "text-[#ff9999]",
+    copyButton:
+      "bg-[#330000] text-[#ff6666] border border-[#ff3300] px-2 py-1 text-[10px] rounded cursor-pointer flex-shrink-0",
   },
   material: {
     overlay:
@@ -64,6 +79,21 @@ const styles = {
       "bg-white border-2 border-blue-600 rounded-[15px] p-6 mb-5 shadow-md",
     previewUsername: "text-blue-600 text-[20px] font-bold",
     previewHighlight: "bg-yellow-200 text-black px-1 rounded",
+    privateContainer: "bg-red-50 border border-red-400 rounded mb-5",
+    privateToggle:
+      "p-3 cursor-pointer flex items-center justify-between hover:bg-red-100",
+    privateToggleOpen: "border-b border-red-400",
+    privateToggleText:
+      "text-[12px] text-red-600 uppercase font-bold flex items-center gap-2",
+    privateToggleIcon: "text-red-600 transition-transform",
+    privateContent: "p-4",
+    privateItem: "mb-4",
+    privateLabel: "text-[11px] text-red-500 mb-1",
+    privateValue:
+      "bg-white p-2 rounded text-[11px] break-all flex justify-between items-center gap-2 border border-red-200",
+    privateValueText: "text-red-500",
+    copyButton:
+      "bg-red-200 text-red-700 border border-red-400 px-2 py-1 text-[10px] rounded cursor-pointer flex-shrink-0",
   },
 } as const;
 
@@ -278,13 +308,7 @@ export function ProfileGenerationModal({
           <>
             {generatedProfiles.length === 0 ? (
               <>
-                <p
-                  style={{
-                    marginBottom: "20px",
-                    fontSize: "14px",
-                    lineHeight: "1.4",
-                  }}
-                >
+                <p className="mb-5 text-sm leading-snug">
                   Enter your desired username. Optionally add{" "}
                   <strong>#XXXX</strong> to generate a public key ending with
                   those 4 hex characters. We'll generate 64 profiles for you to
@@ -418,93 +442,36 @@ export function ProfileGenerationModal({
             </div>
 
             {/* Private Keys Section - Collapsible */}
-            <div
-              style={{
-                backgroundColor: "#110000",
-                border: "1px solid #ff3300",
-                borderRadius: "8px",
-                marginBottom: "20px",
-              }}
-            >
+            <div className={t.privateContainer}>
               <div
                 onClick={() => setShowPrivateKeys(!showPrivateKeys)}
-                style={{
-                  padding: "12px 15px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  borderBottom: showPrivateKeys ? "1px solid #ff3300" : "none",
-                }}
+                className={`${t.privateToggle} ${
+                  showPrivateKeys ? t.privateToggleOpen : ""
+                }`}
               >
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: "#ff6666",
-                    textTransform: "uppercase",
-                    fontWeight: "bold",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
+                <div className={t.privateToggleText}>
                   🔐 Private Keys (Keep Secret!)
                 </div>
                 <div
-                  style={{
-                    fontSize: "16px",
-                    color: "#ff6666",
-                    transform: showPrivateKeys
-                      ? "rotate(180deg)"
-                      : "rotate(0deg)",
-                    transition: "transform 0.2s ease",
-                  }}
+                  className={`${t.privateToggleIcon} ${
+                    showPrivateKeys ? "rotate-180" : ""
+                  }`}
                 >
                   ▼
                 </div>
               </div>
 
               {showPrivateKeys && (
-                <div style={{ padding: "15px" }}>
-                  <div style={{ marginBottom: "15px" }}>
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        color: "#ff9999",
-                        marginBottom: "5px",
-                      }}
-                    >
-                      Private Key (nsec):
-                    </div>
-                    <div
-                      style={{
-                        backgroundColor: "#000",
-                        padding: "8px",
-                        borderRadius: "3px",
-                        fontSize: "11px",
-                        wordBreak: "break-all" as const,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: "10px",
-                        border: "1px solid #330000",
-                      }}
-                    >
-                      <span style={{ color: "#ff9999" }}>
+                <div className={t.privateContent}>
+                  <div className={t.privateItem}>
+                    <div className={t.privateLabel}>Private Key (nsec):</div>
+                    <div className={t.privateValue}>
+                      <span className={t.privateValueText}>
                         {generatedProfile.nsec}
                       </span>
                       <button
                         onClick={() => copyToClipboard(generatedProfile.nsec)}
-                        style={{
-                          background: "#330000",
-                          color: "#ff6666",
-                          border: "1px solid #ff3300",
-                          padding: "4px 8px",
-                          fontSize: "10px",
-                          borderRadius: "3px",
-                          cursor: "pointer",
-                          flexShrink: 0,
-                        }}
+                        className={t.copyButton}
                       >
                         Copy
                       </button>

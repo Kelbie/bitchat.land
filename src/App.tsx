@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-// import { scaleQuantize } from "@visx/scale"; // Currently unused
-// import { generateSampleHeatmapData } from "./utils/geohash"; // Currently unused
+
 import {
   generateGeohashes,
   generateLocalizedGeohashes,
@@ -26,7 +25,8 @@ import {
   parseSearchQuery,
   buildSearchQuery,
 } from "./utils/searchParser";
-import { colorForPeerSeed } from "./utils/userColor";
+
+import { hasImageUrl } from "./utils/imageUtils";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -59,19 +59,6 @@ const styles = {
     subHeaderTitle: "text-base uppercase tracking-wider",
   },
 } as const;
-
-// Matrix-themed heatmap color scale (currently unused but may be needed for future features)
-// const heatmapColor = scaleQuantize({
-//   domain: [0, 100],
-//   range: [
-//     "rgba(0, 20, 0, 0.1)", // Very dark green - low values
-//     "rgba(0, 50, 0, 0.3)", // Dark green
-//     "rgba(0, 100, 0, 0.4)", // Medium dark green
-//     "rgba(0, 150, 0, 0.5)", // Medium green
-//     "rgba(0, 200, 0, 0.6)", // Bright green
-//     "rgba(0, 255, 0, 0.8)", // Full green - high values
-//   ],
-// });
 
 // Add array prototype extensions
 declare global {
@@ -444,7 +431,9 @@ export default function App({
     parsedSearch.text ||
     parsedSearch.geohashes.length > 0 ||
     parsedSearch.users.length > 0 ||
-    parsedSearch.colors.length > 0;
+    parsedSearch.clients.length > 0 ||
+    parsedSearch.colors.length > 0 ||
+    parsedSearch.has.length > 0;
   const eventsToShow = hasSearchTerms ? allStoredEvents : recentEvents;
   const filteredEvents = eventsToShow.filter((event) => {
     if (!hasSearchTerms) return true;
@@ -456,6 +445,7 @@ export default function App({
     const geoTag = event.tags.find((tag: any) => tag[0] === "g");
     const eventGeohash = (geoTag ? geoTag[1] : "").toLowerCase();
     const pubkeyHash = event.pubkey.slice(-4).toLowerCase();
+    const hasFilters = parsedSearch.has;
 
     // Check for invalid geohash and log it
     if (eventGeohash && !VALID_GEOHASH_CHARS.test(eventGeohash)) {
@@ -513,6 +503,18 @@ export default function App({
         }
       });
       if (!userMatch) matches = false;
+    }
+
+    // Check has: filters
+    if (hasFilters.length > 0 && matches) {
+      for (const filter of hasFilters) {
+        if (filter === "image") {
+          if (!hasImageUrl(event.content)) {
+            matches = false;
+            break;
+          }
+        }
+      }
     }
 
     return matches;
