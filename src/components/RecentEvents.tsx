@@ -509,9 +509,7 @@ export function RecentEvents({
           atBottomStateChange={handleAtBottomStateChange}
           rangeChanged={handleRangeChanged}
           itemContent={(index) => <EventItem index={index} />}
-          style={{
-            height: "100%",
-          }}
+          className="h-full"
           computeItemKey={(index) => sortedEvents[index]?.id || index}
         />
 
