@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
-// import { scaleQuantize } from "@visx/scale"; // Currently unused
-// import { generateSampleHeatmapData } from "./utils/geohash"; // Currently unused
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+
 import {
   generateGeohashes,
   generateLocalizedGeohashes,
@@ -11,142 +10,55 @@ import { GeoMercatorProps } from "./types";
 import { useDrag } from "./hooks/useDrag";
 import { useZoom } from "./hooks/useZoom";
 import { useNostr } from "./hooks/useNostr";
-import { SearchPanel } from "./components/SearchPanel";
 import { EventHierarchy } from "./components/EventHierarchy";
 import { RecentEvents } from "./components/RecentEvents";
 import { Map } from "./components/Map";
 import { MobileHeader } from "./components/MobileHeader";
 import { ProfileGenerationModal } from "./components/ProfileGenerationModal";
 import { ChatInput } from "./components/ChatInput";
+import { ProjectionSelector } from "./components/ProjectionSelector";
+import { MarqueeBanner } from "./components/MarqueeBanner";
+import { CornerOverlay } from "./components/CornerOverlay";
+import { ChannelList, ChannelMeta } from "./components/ChannelList";
 import {
   addGeohashToSearch,
   parseSearchQuery,
   buildSearchQuery,
 } from "./utils/searchParser";
-import { colorForPeerSeed } from "./utils/userColor";
-import { PROJECTIONS } from "./constants/projections";
+
+import { hasImageUrl } from "./utils/imageUtils";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
 
-// Marquee Banner Component
-function MarqueeBanner() {
-  const marqueeRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState(0);
-  const animationRef = useRef<number>();
-  const lastTimeRef = useRef<number>(0);
-
-  useEffect(() => {
-    const animate = (currentTime: number) => {
-      // Calculate delta time for consistent speed regardless of frame rate
-      if (lastTimeRef.current !== 0) {
-        const deltaTime = currentTime - lastTimeRef.current;
-        const speed = 0.002; // Much slower speed for comfortable reading
-
-        setPosition((prev) => {
-          const newPos = prev - speed * deltaTime;
-          // Reset position when content moves completely off screen
-          // Reset to 100vw to start from right edge again
-          return newPos <= -100 ? 100 : newPos;
-        });
-      }
-      lastTimeRef.current = currentTime;
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    animationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, []);
-
-  const handleMarqueeClick = () => {
-    window.open("https://sovran.money/esims", "_blank", "noopener,noreferrer");
-  };
-
-  return (
-    <div
-      onClick={handleMarqueeClick}
-      style={{
-        backgroundColor: "rgba(0, 25, 0",
-        border: "1px solid #00aa00",
-        borderLeft: "none",
-        borderRight: "none",
-        height: "30px",
-        display: "flex",
-        alignItems: "center",
-        overflow: "hidden",
-        position: "relative",
-        zIndex: 1000,
-        cursor: "pointer",
-        transition: "backgroundColor 0.2s ease",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = "#002200";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "#001100";
-      }}
-    >
-      <div
-        ref={marqueeRef}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          whiteSpace: "nowrap",
-          fontSize: "12px",
-          fontWeight: "bold",
-          color: "#00ff00",
-          textShadow: "0 0 5px rgba(0, 255, 0, 0.5)",
-          transform: `translateX(${position}vw)`, // Use viewport width for better control
-          willChange: "transform", // Optimize for animations
-        }}
-      >
-        {/* Repeat content multiple times for seamless loop */}
-        {Array(4)
-          .fill(null)
-          .map((_, index) => (
-            <span
-              key={index}
-              style={{ paddingRight: "50px", minWidth: "max-content" }}
-            >
-              🌍 GET GLOBAL eSIMS FOR BITCOIN • PRIVACY • NO KYC • INSTANT
-              ACTIVATION •{" "}
-              <span
-                style={{
-                  color: "#ffaa00",
-                  fontWeight: "bold",
-                  textShadow: "0 0 5px rgba(255, 170, 0, 0.5)",
-                }}
-              >
-                SOVRAN.MONEY/ESIMS
-              </span>{" "}
-              • STAY CONNECTED WORLDWIDE • PAY WITH BITCOIN ₿ • TRAVEL WITHOUT
-              LIMITS • ANONYMOUS CONNECTIVITY •{" "}
-            </span>
-          ))}
-      </div>
-    </div>
-  );
-}
 
 export const background = "#000000";
 
-// Matrix-themed heatmap color scale (currently unused but may be needed for future features)
-// const heatmapColor = scaleQuantize({
-//   domain: [0, 100],
-//   range: [
-//     "rgba(0, 20, 0, 0.1)", // Very dark green - low values
-//     "rgba(0, 50, 0, 0.3)", // Dark green
-//     "rgba(0, 100, 0, 0.4)", // Medium dark green
-//     "rgba(0, 150, 0, 0.5)", // Medium green
-//     "rgba(0, 200, 0, 0.6)", // Bright green
-//     "rgba(0, 255, 0, 0.8)", // Full green - high values
-//   ],
-// });
+const styles = {
+  matrix: {
+    appContainer:
+      "flex flex-col w-screen h-screen overflow-hidden bg-black text-[#00ff00] font-mono",
+    mainArea: "flex-1 relative w-full overflow-hidden",
+    chatViewContainer:
+      "absolute inset-0 w-full h-full bg-black flex flex-row overflow-hidden",
+    chatColumn: "flex-1 flex flex-col",
+    subHeader:
+      "bg-black/95 text-[#00aa00] px-4 py-3 border-b border-[#003300]",
+    subHeaderTitle:
+      "text-base uppercase tracking-wider [text-shadow:0_0_10px_rgba(0,255,0,0.5)]",
+  },
+  material: {
+    appContainer:
+      "flex flex-col w-screen h-screen overflow-hidden bg-white text-gray-800 font-sans",
+    mainArea: "flex-1 relative w-full overflow-hidden",
+    chatViewContainer:
+      "absolute inset-0 w-full h-full bg-white flex flex-row overflow-hidden",
+    chatColumn: "flex-1 flex flex-col",
+    subHeader:
+      "bg-white text-blue-600 px-4 py-3 border-b border-blue-200",
+    subHeaderTitle: "text-base uppercase tracking-wider",
+  },
+} as const;
 
 // Add array prototype extensions
 declare global {
@@ -159,7 +71,6 @@ declare global {
 Array.prototype.max = function () {
   return Math.max.apply(null, this);
 };
-
 Array.prototype.min = function () {
   return Math.min.apply(null, this);
 };
@@ -176,8 +87,11 @@ export default function App({
   const [geohashDisplayPrecision] = useState(1);
   const [showGeohashText] = useState(true);
 
-  // Mobile view state
-  const [isMobile, setIsMobile] = useState(true);
+  // Theme state for simple Tailwind-based theming
+  const [theme, setTheme] = useState<"matrix" | "material">("matrix");
+  const t = styles[theme];
+
+  // View state
   const [activeView, setActiveView] = useState<"map" | "chat" | "panel">("map");
 
   // Profile state using React state with localStorage initialization
@@ -201,7 +115,7 @@ export default function App({
   const headerHeight = 182.2;
 
   // Calculate available map dimensions accounting for header
-  const availableHeight = isMobile ? height - headerHeight : height;
+  const availableHeight = height - headerHeight;
 
   // Map positioning constants
   const mapWidth = width;
@@ -325,12 +239,10 @@ export default function App({
     const replyText = `@${username}#${pubkeyHash} `;
     setReplyPrefillText(replyText);
 
-    // Switch to chat view on mobile with a small delay to ensure state updates
-    if (isMobile) {
-      setTimeout(() => {
-        setActiveView("chat");
-      }, 50);
-    }
+    // Switch to chat view with a small delay to ensure state updates
+    setTimeout(() => {
+      setActiveView("chat");
+    }, 50);
   };
 
   // Handle message sent - clear reply prefill
@@ -383,6 +295,64 @@ export default function App({
     }
     return latest;
   }, [allStoredEvents]);
+
+  const unreadCountByChannel = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const ev of allStoredEvents) {
+      const g = ev.tags.find((t: any) => t[0] === "g");
+      const d = ev.tags.find((t: any) => t[0] === "d");
+      const gv = g && typeof g[1] === "string" ? g[1].toLowerCase() : "";
+      const dv = d && typeof d[1] === "string" ? d[1].toLowerCase() : "";
+      const createdAt = ev.created_at || 0;
+      if (gv) {
+        const key = `#${gv}`;
+        if (createdAt > (channelLastReadMap[key] || 0)) {
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      }
+      if (dv) {
+        const key = `#${dv}`;
+        if (createdAt > (channelLastReadMap[key] || 0)) {
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      }
+    }
+    return counts;
+  }, [allStoredEvents, channelLastReadMap]);
+
+  const channelSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const key of Object.keys(latestEventTimestampByChannel)) {
+      set.add(key);
+    }
+    return set;
+  }, [latestEventTimestampByChannel]);
+
+  const channels = useMemo<ChannelMeta[]>(() => {
+    const pinnedChannels = ["#bitchat.land", "#21m"];
+    const allChannels = Array.from(channelSet).sort();
+    const pinned = pinnedChannels;
+    const unpinned = allChannels.filter((ch) => !pinnedChannels.includes(ch));
+    return [...pinned, ...unpinned].map((ch) => ({
+      key: ch,
+      isPinned: pinnedChannels.includes(ch),
+      hasMessages: channelSet.has(ch),
+    }));
+  }, [channelSet]);
+
+  const handleOpenChannel = useCallback(
+    (ch: string) => {
+      const channelValue = ch.slice(1).toLowerCase();
+      handleTextSearch(`in:${channelValue}`);
+      const nowSec = Math.floor(Date.now() / 1000);
+      setChannelLastReadMap((prev) => {
+        const next = { ...prev, [ch]: nowSec };
+        persistChannelLastRead(next);
+        return next;
+      });
+    },
+    [handleTextSearch, persistChannelLastRead]
+  );
 
   // When selected channel changes, mark the previous channel as read at switch-away time
   useEffect(() => {
@@ -461,7 +431,9 @@ export default function App({
     parsedSearch.text ||
     parsedSearch.geohashes.length > 0 ||
     parsedSearch.users.length > 0 ||
-    parsedSearch.colors.length > 0;
+    parsedSearch.clients.length > 0 ||
+    parsedSearch.colors.length > 0 ||
+    parsedSearch.has.length > 0;
   const eventsToShow = hasSearchTerms ? allStoredEvents : recentEvents;
   const filteredEvents = eventsToShow.filter((event) => {
     if (!hasSearchTerms) return true;
@@ -473,6 +445,7 @@ export default function App({
     const geoTag = event.tags.find((tag: any) => tag[0] === "g");
     const eventGeohash = (geoTag ? geoTag[1] : "").toLowerCase();
     const pubkeyHash = event.pubkey.slice(-4).toLowerCase();
+    const hasFilters = parsedSearch.has;
 
     // Check for invalid geohash and log it
     if (eventGeohash && !VALID_GEOHASH_CHARS.test(eventGeohash)) {
@@ -532,6 +505,18 @@ export default function App({
       if (!userMatch) matches = false;
     }
 
+    // Check has: filters
+    if (hasFilters.length > 0 && matches) {
+      for (const filter of hasFilters) {
+        if (filter === "image") {
+          if (!hasImageUrl(event.content)) {
+            matches = false;
+            break;
+          }
+        }
+      }
+    }
+
     return matches;
   });
 
@@ -556,53 +541,31 @@ export default function App({
     : { direct: 0, total: 0 };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        width: "100vw",
-        height: "100vh",
-        backgroundColor: "#000000",
-        color: "#00ff00",
-        fontFamily: "Courier New, monospace",
-        overflow: "hidden",
-      }}
-    >
+    <div className={t.appContainer}>
       {/* eSIM Marquee Banner */}
-      <MarqueeBanner />
+      <MarqueeBanner theme={theme} />
       {/* Mobile Header */}
-      {isMobile && (
-        <MobileHeader
-          activeView={activeView}
-          onViewChange={setActiveView}
-          searchText={searchText}
-          onSearch={handleTextSearch}
-          zoomedGeohash={zoomedGeohash}
-          nostrEnabled={nostrEnabled}
-          filteredEventsCount={filteredEvents.length}
-          totalEventsCount={totalEventsCount}
-          hierarchicalCounts={hierarchicalCounts}
-          allStoredEvents={allStoredEvents}
-          onLoginClick={() => setShowProfileModal(true)}
-        />
-      )}
+      <MobileHeader
+        activeView={activeView}
+        onViewChange={setActiveView}
+        searchText={searchText}
+        onSearch={handleTextSearch}
+        zoomedGeohash={zoomedGeohash}
+        nostrEnabled={nostrEnabled}
+        filteredEventsCount={filteredEvents.length}
+        totalEventsCount={totalEventsCount}
+        hierarchicalCounts={hierarchicalCounts}
+        allStoredEvents={allStoredEvents}
+        onLoginClick={() => setShowProfileModal(true)}
+        theme={theme}
+        onThemeChange={setTheme}
+      />
 
       {/* Main Content Area */}
-      <div
-        style={{
-          flex: 1,
-          position: "relative",
-          width: "100%",
-          overflow: "hidden",
-        }}
-      >
+      <div className={t.mainArea}>
         {/* Map - Always rendered, but might be hidden on mobile */}
         <div
-          style={{
-            width: "100%",
-            height: "100%",
-            display: isMobile && activeView !== "map" ? "none" : "block",
-          }}
+          className={`${activeView !== "map" ? "hidden" : "block"} w-full h-full`}
         >
           <Map
             width={mapWidth}
@@ -628,278 +591,43 @@ export default function App({
             shouldShowLocalizedPrecision={!!shouldShowLocalizedPrecision}
             searchText={searchText}
             onGeohashClick={handleGeohashClickForSearch}
+            theme={theme}
           />
         </div>
 
-        {/* Desktop Layout - Show all panels */}
-        {!isMobile && (
-          <>
-            <SearchPanel
-              searchText={searchText}
-              onSearch={handleTextSearch}
-              zoomedGeohash={zoomedGeohash}
-            />
-
-            <EventHierarchy
-              searchText={searchText}
-              allEventsByGeohash={allEventsByGeohash}
-              onSearch={handleTextSearch}
-            />
-
-            <RecentEvents
-              nostrEnabled={nostrEnabled}
-              searchText={searchText}
-              allStoredEvents={allStoredEvents}
-              recentEvents={recentEvents}
-              onSearch={handleTextSearch}
-              onReply={handleReply}
-            />
-          </>
-        )}
-
         {/* Mobile Layout - Show panels based on activeView */}
-        {isMobile && (
-          <>
+        <>
             {/* Chat View */}
             {activeView === "chat" && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  backgroundColor: "#000000",
-                  display: "flex",
-                  flexDirection: "row",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Left rail channels (persistent beside sub header and content) */}
-                <div
-                  style={{
-                    width: "160px",
-                    minWidth: "160px",
-                    borderRight: "1px solid #003300",
-                    background: "rgba(0, 0, 0, 0.9)",
-                    color: "#00ff00",
-                    display: "flex",
-                    flexDirection: "column",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      backgroundColor: "rgba(0, 0, 0, 0.98)",
-                      color: "#00aa00",
-                      padding: "12px",
-                      borderBottom: "1px solid #003300",
-                      position: "sticky",
-                      top: 0,
-                      zIndex: 2,
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: "16px",
-                        textTransform: "uppercase",
-                        letterSpacing: "1px",
-                        textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-                      }}
-                    >
-                      CHANNELS
-                    </div>
-                  </div>
-                  <div
-                    style={{ overflowY: "auto", padding: "10px 8px", flex: 1 }}
-                  >
-                    {(() => {
-                      const channelSet = new Set<string>();
-                      allStoredEvents.forEach((ev) => {
-                        const g = ev.tags.find((t: any) => t[0] === "g");
-                        const d = ev.tags.find((t: any) => t[0] === "d");
-                        const gv =
-                          g && typeof g[1] === "string"
-                            ? g[1].toLowerCase()
-                            : "";
-                        const dv =
-                          d && typeof d[1] === "string"
-                            ? d[1].toLowerCase()
-                            : "";
-                        if (gv) channelSet.add(`#${gv}`);
-                        if (dv) channelSet.add(`#${dv}`);
-                      });
-
-                      // Hardcoded pinned channels
-                      const pinnedChannels = ["#bitchat.land", "#21m"];
-                      const allChannels = Array.from(channelSet).sort();
-
-                      // Separate pinned and unpinned channels
-                      // Force show all pinned channels even if they have no messages
-                      const pinned = pinnedChannels; // Show all pinned channels regardless
-                      const unpinned = allChannels.filter(
-                        (ch) => !pinnedChannels.includes(ch)
-                      );
-
-                      // Combine: pinned first, then unpinned
-                      const channels = [...pinned, ...unpinned];
-                      if (channels.length === 0) {
-                        return (
-                          <div style={{ fontSize: "10px", opacity: 0.7 }}>
-                            no channels
-                          </div>
-                        );
-                      }
-                      return channels.map((ch) => {
-                        const channelValue = ch.slice(1).toLowerCase();
-                        const isSelected = parsedSearch.geohashes.some(
-                          (gh) => gh.toLowerCase() === channelValue
-                        );
-                        const latestTs = latestEventTimestampByChannel[ch] || 0;
-                        const lastReadTs = channelLastReadMap[ch] || 0;
-                        const hasUnread = latestTs > lastReadTs;
-                        const showUnreadDot = hasUnread && !isSelected;
-                        const isPinned = pinnedChannels.includes(ch);
-                        const hasMessages = channelSet.has(ch); // Check if channel actually has messages
-
-                        const handleOpenChannel = () => {
-                          // Update search
-                          handleTextSearch(`in:${channelValue}`);
-                          // Mark channel as read now
-                          const nowSec = Math.floor(Date.now() / 1000);
-                          setChannelLastReadMap((prev) => {
-                            const next = { ...prev, [ch]: nowSec };
-                            persistChannelLastRead(next);
-                            return next;
-                          });
-                        };
-
-                        return (
-                          <button
-                            key={ch}
-                            onClick={handleOpenChannel}
-                            style={{
-                              width: "100%",
-                              textAlign: "left",
-                              background: isSelected
-                                ? "rgba(0, 255, 0, 0.08)"
-                                : isPinned
-                                ? "rgba(255, 255, 0, 0.05)"
-                                : "transparent",
-                              color: isSelected
-                                ? "#00ff00"
-                                : isPinned
-                                ? hasMessages
-                                  ? "#ffff00"
-                                  : "#ffcc66"
-                                : "#00ff00",
-                              border: `1px solid ${
-                                isSelected
-                                  ? "#00ff00"
-                                  : isPinned
-                                  ? "#ffcc00"
-                                  : "#003300"
-                              }`,
-                              boxShadow: isSelected
-                                ? "0 0 10px rgba(0,255,0,0.15) inset"
-                                : isPinned
-                                ? "0 0 8px rgba(255,255,0,0.1) inset"
-                                : "none",
-                              borderRadius: "4px",
-                              padding: "8px 8px",
-                              fontSize: "13px",
-                              cursor: "pointer",
-                              transition: "all 0.2s ease",
-                              marginBottom: isPinned ? "12px" : "8px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              gap: "8px",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background =
-                                "rgba(0, 255, 0, 0.10)";
-                              e.currentTarget.style.borderColor = "#00ff00";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = isSelected
-                                ? "rgba(0, 255, 0, 0.08)"
-                                : isPinned
-                                ? "rgba(255, 255, 0, 0.05)"
-                                : "transparent";
-                              e.currentTarget.style.borderColor = isSelected
-                                ? "#00ff00"
-                                : isPinned
-                                ? "#ffcc00"
-                                : "#003300";
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontWeight: isSelected
-                                  ? ("bold" as const)
-                                  : ("normal" as const),
-                              }}
-                            >
-                              {isPinned && "📌 "}
-                              {ch}
-                              {isPinned && !hasMessages && " (empty)"}
-                            </span>
-                            {showUnreadDot && (
-                              <span
-                                style={{
-                                  width: "8px",
-                                  height: "8px",
-                                  backgroundColor: "#ff0033",
-                                  borderRadius: "50%",
-                                  boxShadow: "0 0 6px rgba(255,0,51,0.6)",
-                                }}
-                                title="Unread messages"
-                              />
-                            )}
-                          </button>
-                        );
-                      });
-                    })()}
-                  </div>
-                </div>
+              <div className={t.chatViewContainer}>
+                <ChannelList
+                  channels={channels}
+                  selectedChannel={selectedChannelKey}
+                  unreadCounts={unreadCountByChannel}
+                  onOpenChannel={handleOpenChannel}
+                  theme={theme}
+                />
 
                 {/* Chat column */}
-                <div
-                  style={{ flex: 1, display: "flex", flexDirection: "column" }}
-                >
+                <div className={t.chatColumn}>
                   {/* Sub header (chat) to align next to channels */}
-                  <div
-                    style={{
-                      backgroundColor: "rgba(0, 0, 0, 0.98)",
-                      color: "#00aa00",
-                      padding: "12px 16px",
-                      borderBottom: "1px solid #003300",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: "16px",
-                        textTransform: "uppercase",
-                        letterSpacing: "1px",
-                        textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-                      }}
-                    >
+                  <div className={t.subHeader}>
+                    <div className={t.subHeaderTitle}>
                       RECENT NOSTR EVENTS{" "}
                       {searchText ? `MATCHING "${searchText}"` : ""}
                     </div>
                   </div>
 
                   {/* Messages area */}
-                  <div style={{ flex: 1, overflow: "hidden" }}>
+                  <div className="flex-1 overflow-hidden">
                     <RecentEvents
                       nostrEnabled={nostrEnabled}
                       searchText={searchText}
                       allStoredEvents={allStoredEvents}
                       recentEvents={recentEvents}
-                      isMobileView={true}
                       onSearch={handleTextSearch}
                       onReply={handleReply}
+                      theme={theme}
                     />
                   </div>
 
@@ -914,6 +642,7 @@ export default function App({
                     onOpenProfileModal={() => setShowProfileModal(true)}
                     prefillText={replyPrefillText}
                     savedProfile={savedProfile}
+                    theme={theme}
                   />
                 </div>
               </div>
@@ -921,137 +650,37 @@ export default function App({
 
             {/* Panel View */}
             {activeView === "panel" && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  backgroundColor: "#000000",
-                  overflow: "hidden",
-                }}
-              >
+              <div className="absolute inset-0 w-full h-full bg-black overflow-hidden">
                 <EventHierarchy
                   searchText={searchText}
                   allEventsByGeohash={allEventsByGeohash}
                   onSearch={handleTextSearch}
-                  isMobileView={true}
+                  theme={theme}
                 />
               </div>
             )}
           </>
-        )}
       </div>
 
       {/* Nostr Watermark */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: "10px",
-          right: "10px",
-          zIndex: 9999,
-          fontSize: "16px",
-          fontFamily: "Courier New, monospace",
-          opacity: 0.7,
-          transition: "opacity 0.2s ease",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.opacity = "1";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.opacity = "0.7";
-        }}
-      >
+      <CornerOverlay position="bottom-right" theme={theme}>
         <a
           href="https://primal.net/p/nprofile1qqsvvullpd0j9rltp2a3qqvgy9udf3vgh389p7zhzu65fd258dz5lqg9ryan5"
           target="_blank"
           rel="noopener noreferrer"
-          style={{
-            color: "#00aa00",
-            textDecoration: "none",
-            textShadow: "0 0 3px rgba(0, 255, 0, 0.3)",
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-          }}
+          className="flex items-center gap-1 no-underline"
         >
           Follow me on Nostr
         </a>
-      </div>
+      </CornerOverlay>
 
       {/* Projection Selector - Only show on map view */}
       {activeView === "map" && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "10px",
-            left: "10px",
-            zIndex: 9999,
-            fontSize: "16px",
-            fontFamily: "Courier New, monospace",
-            opacity: 0.7,
-            transition: "opacity 0.2s ease",
-            display: "flex",
-            flexDirection: "column",
-            gap: "4px",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = "1";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = "0.7";
-          }}
-        >
-          <div
-            style={{
-              color: "#00aa00",
-              fontSize: "12px",
-              marginBottom: "2px",
-              textShadow: "0 0 3px rgba(0, 255, 0, 0.3)",
-            }}
-          >
-            PROJECTION:
-          </div>
-          {Object.keys(PROJECTIONS).map((projName) => (
-            <button
-              key={projName}
-              onClick={() => setProjection(projName)}
-              style={{
-                background:
-                  projection === projName ? "#003300" : "rgba(0, 0, 0, 0.8)",
-                color: projection === projName ? "#00ff00" : "#00aa00",
-                border: `1px solid ${
-                  projection === projName ? "#00ff00" : "#00aa00"
-                }`,
-                borderRadius: "2px",
-                padding: "2px 6px",
-                fontSize: "10px",
-                fontFamily: "Courier New, monospace",
-                cursor: "pointer",
-                textTransform: "uppercase",
-                textShadow: "0 0 3px rgba(0, 255, 0, 0.3)",
-                transition: "all 0.2s ease",
-                minWidth: "80px",
-                textAlign: "left",
-              }}
-              onMouseEnter={(e) => {
-                if (projection !== projName) {
-                  e.currentTarget.style.background = "rgba(0, 51, 0, 0.6)";
-                  e.currentTarget.style.borderColor = "#00ff00";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (projection !== projName) {
-                  e.currentTarget.style.background = "rgba(0, 0, 0, 0.8)";
-                  e.currentTarget.style.borderColor = "#00aa00";
-                }
-              }}
-            >
-              {projName.replace(/_/g, " ")}
-            </button>
-          ))}
-        </div>
+        <ProjectionSelector
+          projection={projection}
+          onSelect={setProjection}
+          theme={theme}
+        />
       )}
 
       {/* Profile Generation Modal */}
@@ -1059,6 +688,7 @@ export default function App({
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
         onProfileSaved={handleProfileSaved}
+        theme={theme}
       />
     </div>
   );

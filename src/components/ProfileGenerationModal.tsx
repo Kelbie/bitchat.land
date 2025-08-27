@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
 import { colorForPeerSeed } from "../utils/userColor";
+import { ThemedInput } from "./ThemedInput";
+import { ThemedButton } from "./ThemedButton";
+import { ThemedProgressBar } from "./ThemedProgressBar";
 
 interface SavedProfile {
   username: string;
@@ -16,6 +19,7 @@ interface ProfileGenerationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onProfileSaved?: (profile: SavedProfile) => void;
+  theme?: "matrix" | "material";
 }
 
 interface GeneratedProfile {
@@ -28,10 +32,76 @@ interface GeneratedProfile {
   hue: number;
 }
 
+const styles = {
+  matrix: {
+    overlay:
+      "fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[10000] p-5",
+    container:
+      "bg-[#111] border-2 border-[#00ff00] rounded-lg p-6 max-w-[500px] w-full max-h-[90vh] overflow-y-auto font-mono text-[#00ff00] shadow-[0_0_20px_rgba(0,255,0,0.3)]",
+    historyButton:
+      "px-2 py-1 bg-black text-[#00ff00] border border-[#00ff00] rounded text-xs font-mono",
+    error:
+      "bg-[#330000] border border-[#ff0000] text-[#ff6666] p-2 rounded mb-5 text-sm",
+    progressText: "text-center text-xs text-[#888]",
+    profileOption: "border-[#00ff00]",
+    previewCard:
+      "bg-[#001100] border-2 border-[#00ff00] rounded-[15px] p-6 mb-5 shadow-[0_0_20px_rgba(0,255,0,0.2)]",
+    previewUsername: "text-[#00ff00] text-[20px] font-bold",
+    previewHighlight: "bg-yellow-300 text-black px-1 rounded",
+    privateContainer: "bg-[#110000] border border-[#ff3300] rounded mb-5",
+    privateToggle:
+      "p-3 cursor-pointer flex items-center justify-between hover:bg-[#220000]",
+    privateToggleOpen: "border-b border-[#ff3300]",
+    privateToggleText:
+      "text-[12px] text-[#ff6666] uppercase font-bold flex items-center gap-2",
+    privateToggleIcon: "text-[#ff6666] transition-transform",
+    privateContent: "p-4",
+    privateItem: "mb-4",
+    privateLabel: "text-[11px] text-[#ff9999] mb-1",
+    privateValue:
+      "bg-black p-2 rounded text-[11px] break-all flex justify-between items-center gap-2 border border-[#330000]",
+    privateValueText: "text-[#ff9999]",
+    copyButton:
+      "bg-[#330000] text-[#ff6666] border border-[#ff3300] px-2 py-1 text-[10px] rounded cursor-pointer flex-shrink-0",
+  },
+  material: {
+    overlay:
+      "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000] p-5",
+    container:
+      "bg-white border-2 border-blue-600 rounded-lg p-6 max-w-[500px] w-full max-h-[90vh] overflow-y-auto font-sans text-gray-800 shadow-xl",
+    historyButton:
+      "px-2 py-1 bg-white text-blue-600 border border-blue-600 rounded text-xs",
+    error:
+      "bg-red-50 border border-red-400 text-red-600 p-2 rounded mb-5 text-sm",
+    progressText: "text-center text-xs text-gray-500",
+    profileOption: "border-blue-600",
+    previewCard:
+      "bg-white border-2 border-blue-600 rounded-[15px] p-6 mb-5 shadow-md",
+    previewUsername: "text-blue-600 text-[20px] font-bold",
+    previewHighlight: "bg-yellow-200 text-black px-1 rounded",
+    privateContainer: "bg-red-50 border border-red-400 rounded mb-5",
+    privateToggle:
+      "p-3 cursor-pointer flex items-center justify-between hover:bg-red-100",
+    privateToggleOpen: "border-b border-red-400",
+    privateToggleText:
+      "text-[12px] text-red-600 uppercase font-bold flex items-center gap-2",
+    privateToggleIcon: "text-red-600 transition-transform",
+    privateContent: "p-4",
+    privateItem: "mb-4",
+    privateLabel: "text-[11px] text-red-500 mb-1",
+    privateValue:
+      "bg-white p-2 rounded text-[11px] break-all flex justify-between items-center gap-2 border border-red-200",
+    privateValueText: "text-red-500",
+    copyButton:
+      "bg-red-200 text-red-700 border border-red-400 px-2 py-1 text-[10px] rounded cursor-pointer flex-shrink-0",
+  },
+} as const;
+
 export function ProfileGenerationModal({
   isOpen,
   onClose,
   onProfileSaved,
+  theme = "matrix",
 }: ProfileGenerationModalProps) {
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -45,6 +115,7 @@ export function ProfileGenerationModal({
   const [showPrivateKeys, setShowPrivateKeys] = useState(false);
   const [recentIdentities, setRecentIdentities] = useState<string[]>([]);
   const cancelRef = useRef(false);
+  const t = styles[theme];
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -140,7 +211,7 @@ export function ProfileGenerationModal({
         const publicKey = getPublicKey(privateKey);
         if (!targetSuffix || publicKey.endsWith(targetSuffix)) {
           if (!profiles.some((p) => p.publicKeyHex === publicKey)) {
-            const color = colorForPeerSeed('nostr' + publicKey, true);
+            const color = colorForPeerSeed('nostr' + publicKey, false);
             const hue = color.hsv.h;
             const npub = nip19.npubEncode(publicKey);
             const nsec = nip19.nsecEncode(privateKey);
@@ -216,88 +287,28 @@ export function ProfileGenerationModal({
 
   return (
     <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
-        backdropFilter: "blur(5px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 10000,
-        padding: "20px",
-      }}
+      className={t.overlay}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
-        style={{
-          backgroundColor: "#111",
-          border: "2px solid #00ff00",
-          borderRadius: "10px",
-          padding: "30px",
-          maxWidth: "500px",
-          width: "100%",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          fontFamily: "Courier New, monospace",
-          color: "#00ff00",
-          boxShadow: "0 0 20px rgba(0, 255, 0, 0.3)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "20px",
-          }}
-        >
-          <h2
-            style={{
-              margin: 0,
-              color: "#00ff00",
-              textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-              fontSize: "20px",
-            }}
-          >
-            🔐 CREATE NOSTR PROFILE
-          </h2>
-          <button
+      <div className={t.container}>
+        <div className="flex justify-between items-center mb-5">
+          <h2 className="m-0 text-lg">🔐 CREATE NOSTR PROFILE</h2>
+          <ThemedButton
             onClick={onClose}
-            style={{
-              background: "none",
-              border: "1px solid #00ff00",
-              color: "#00ff00",
-              fontSize: "18px",
-              width: "30px",
-              height: "30px",
-              borderRadius: "50%",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+            theme={theme}
+            className="w-8 h-8 rounded-full p-0 text-xl flex items-center justify-center"
           >
             ✕
-          </button>
+          </ThemedButton>
         </div>
 
         {!generatedProfile ? (
           <>
             {generatedProfiles.length === 0 ? (
               <>
-                <p
-                  style={{
-                    marginBottom: "20px",
-                    fontSize: "14px",
-                    lineHeight: "1.4",
-                  }}
-                >
+                <p className="mb-5 text-sm leading-snug">
                   Enter your desired username. Optionally add{" "}
                   <strong>#XXXX</strong> to generate a public key ending with
                   those 4 hex characters. We'll generate 64 profiles for you to
@@ -305,36 +316,14 @@ export function ProfileGenerationModal({
                 </p>
 
                 {recentIdentities.length > 0 && (
-                  <div style={{ marginBottom: "20px" }}>
-                    <div
-                      style={{
-                        fontSize: "12px",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      Previous identities:
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "8px",
-                      }}
-                    >
+                  <div className="mb-5">
+                    <div className="text-xs mb-2">Previous identities:</div>
+                    <div className="flex flex-wrap gap-2">
                       {recentIdentities.map((id) => (
                         <button
                           key={id}
                           onClick={() => generateKeys(id)}
-                          style={{
-                            padding: "6px 10px",
-                            backgroundColor: "#000",
-                            color: "#00ff00",
-                            border: "1px solid #00ff00",
-                            borderRadius: "5px",
-                            fontFamily: "Courier New, monospace",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                          }}
+                          className={t.historyButton}
                         >
                           {id}
                         </button>
@@ -343,24 +332,18 @@ export function ProfileGenerationModal({
                   </div>
                 )}
 
-                <div style={{ marginBottom: "20px" }}>
-                  <input
-                    type="text"
+                <div className="mb-5">
+                  <ThemedInput
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    onChange={(e) => setInput((e.target as HTMLInputElement).value)}
                     placeholder="username#1999"
                     disabled={isGenerating}
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      backgroundColor: "#000",
-                      color: "#00ff00",
-                      border: "1px solid #00ff00",
-                      borderRadius: "5px",
-                      fontSize: "16px",
-                      fontFamily: "Courier New, monospace",
-                      outline: "none",
-                    }}
+                    theme={theme}
+                    className={`w-full p-3 text-base ${
+                      theme === "matrix"
+                        ? "focus:shadow-[0_0_5px_rgba(0,255,0,0.5)]"
+                        : "focus:ring-2 focus:ring-blue-600"
+                    }`}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !isGenerating) {
                         generateKeys();
@@ -369,53 +352,15 @@ export function ProfileGenerationModal({
                   />
                 </div>
 
-                {error && (
-                  <div
-                    style={{
-                      backgroundColor: "#330000",
-                      border: "1px solid #ff0000",
-                      color: "#ff6666",
-                      padding: "10px",
-                      borderRadius: "5px",
-                      marginBottom: "20px",
-                      fontSize: "14px",
-                    }}
-                  >
-                    {error}
-                  </div>
-                )}
+                {error && <div className={t.error}>{error}</div>}
 
                 {isGenerating && (
-                  <div style={{ marginBottom: "20px" }}>
-                    <div
-                      style={{
-                        backgroundColor: "#333",
-                        height: "10px",
-                        borderRadius: "5px",
-                        overflow: "hidden",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          backgroundColor: "#00ff00",
-                          height: "100%",
-                          width: `${progress}%`,
-                          transition: "width 0.3s ease",
-                          borderRadius: "5px",
-                        }}
-                      />
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "12px",
-                        textAlign: "center",
-                        color: "#888",
-                      }}
-                    >
+                  <div className="mb-5">
+                    <ThemedProgressBar progress={progress} theme={theme} />
+                    <div className={t.progressText}>
                       Generating keys... {Math.round(progress)}%
                       {input.includes("#") && (
-                        <div style={{ marginTop: "5px" }}>
+                        <div className="mt-1">
                           This may take a while for longer suffixes
                         </div>
                       )}
@@ -423,176 +368,72 @@ export function ProfileGenerationModal({
                   </div>
                 )}
 
-                <button
+                <ThemedButton
                   onClick={() => generateKeys()}
                   disabled={isGenerating || !input.trim()}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    backgroundColor:
-                      isGenerating || !input.trim() ? "#333" : "#000",
-                    color: isGenerating || !input.trim() ? "#666" : "#00ff00",
-                    border: `1px solid ${
-                      isGenerating || !input.trim() ? "#666" : "#00ff00"
-                    }`,
-                    borderRadius: "5px",
-                    fontSize: "16px",
-                    fontFamily: "Courier New, monospace",
-                    cursor:
-                      isGenerating || !input.trim() ? "not-allowed" : "pointer",
-                    textTransform: "uppercase",
-                    fontWeight: "bold",
-                  }}
+                  theme={theme}
+                  className="w-full py-3 text-base mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isGenerating ? "GENERATING..." : "GENERATE PROFILES"}
-                </button>
+                </ThemedButton>
               </>
             ) : (
               <>
                 {isGenerating && generatedProfiles.length < 64 && (
-                  <div style={{ marginBottom: "20px" }}>
-                    <div
-                      style={{
-                        backgroundColor: "#333",
-                        height: "10px",
-                        borderRadius: "5px",
-                        overflow: "hidden",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          backgroundColor: "#00ff00",
-                          height: "100%",
-                          width: `${progress}%`,
-                          transition: "width 0.3s ease",
-                          borderRadius: "5px",
-                        }}
-                      />
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "12px",
-                        textAlign: "center",
-                        color: "#888",
-                      }}
-                    >
+                  <div className="mb-5">
+                    <ThemedProgressBar progress={progress} theme={theme} />
+                    <div className={t.progressText}>
                       Found {generatedProfiles.length} profile
                       {generatedProfiles.length !== 1 ? "s" : ""}... searching
                       for more
                     </div>
                   </div>
                 )}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(8, 1fr)",
-                    gridAutoRows: "1fr", // make rows flexible too
-                    gap: "12px",
-                    marginBottom: "20px",
-                  }}
-                >
+                <div className="grid grid-cols-8 auto-rows-fr gap-3 mb-5">
                   {generatedProfiles.map((profile, idx) => (
                     <button
                       key={idx}
                       onClick={() => setGeneratedProfile(profile)}
-                      style={{
-                        width: "40px",
-                        height: "40px",
-                        backgroundColor: profile.color,
-                        border: "1px solid #00ff00",
-                        cursor: "pointer",
-                        borderRadius: "50%",
-                      }}
+                      className={`w-10 h-10 rounded-full border ${t.profileOption}`}
+                      style={{ backgroundColor: profile.color }}
                       title={profile.publicKeyHex.slice(-4)}
                     />
                   ))}
                 </div>
-                <button
+                <ThemedButton
                   onClick={() => {
                     setGeneratedProfiles([]);
                     setProgress(0);
                   }}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    backgroundColor: "#333",
-                    color: "#fff",
-                    border: "1px solid #555",
-                    borderRadius: "5px",
-                    fontSize: "14px",
-                    fontFamily: "Courier New, monospace",
-                    cursor: "pointer",
-                    textTransform: "uppercase",
-                  }}
+                  theme={theme}
+                  className="w-full py-3 text-sm mt-2"
                 >
                   Change Name
-                </button>
+                </ThemedButton>
               </>
             )}
           </>
         ) : (
           <>
             {/* Profile Card Preview */}
-            <div
-              style={{
-                backgroundColor: "#001100",
-                border: "2px solid #00ff00",
-                borderRadius: "15px",
-                padding: "25px",
-                marginBottom: "20px",
-                boxShadow: "0 0 20px rgba(0, 255, 0, 0.2)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "15px",
-                  marginBottom: "20px",
-                }}
-              >
+            <div className={t.previewCard}>
+              <div className="flex items-center gap-4 mb-5">
                 {/* Avatar */}
                 <div
+                  className="w-[60px] h-[60px] rounded-full flex items-center justify-center text-2xl font-bold text-black"
                   style={{
-                    width: "60px",
-                    height: "60px",
-                    borderRadius: "50%",
                     backgroundColor: generatedProfile.color,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "24px",
-                    fontWeight: "bold",
-                    color: "#000",
-                    textShadow: "none",
                     border: `2px solid ${generatedProfile.color}`,
-                    boxShadow: "0 0 15px rgba(0, 255, 0, 0.3)",
                   }}
                 >
                   {generatedProfile.username.charAt(0).toUpperCase()}
                 </div>
 
                 {/* Profile Info */}
-                <div style={{ flex: 1 }}>
-                  <h3
-                    style={{
-                      margin: "0",
-                      color: "#00ff00",
-                      fontSize: "20px",
-                      textShadow: "0 0 10px rgba(0, 255, 0, 0.5)",
-                    }}
-                  >
+                <div className="flex-1">
+                  <h3 className={t.previewUsername}>
                     @{generatedProfile.username}#
-                    <span
-                      style={{
-                        backgroundColor: "#ffff00",
-                        color: "#000",
-                        padding: "2px 4px",
-                        borderRadius: "3px",
-                        fontWeight: "bold",
-                      }}
-                    >
+                    <span className={t.previewHighlight}>
                       {generatedProfile.publicKeyHex.slice(-4)}
                     </span>
                   </h3>
@@ -601,93 +442,36 @@ export function ProfileGenerationModal({
             </div>
 
             {/* Private Keys Section - Collapsible */}
-            <div
-              style={{
-                backgroundColor: "#110000",
-                border: "1px solid #ff3300",
-                borderRadius: "8px",
-                marginBottom: "20px",
-              }}
-            >
+            <div className={t.privateContainer}>
               <div
                 onClick={() => setShowPrivateKeys(!showPrivateKeys)}
-                style={{
-                  padding: "12px 15px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  borderBottom: showPrivateKeys ? "1px solid #ff3300" : "none",
-                }}
+                className={`${t.privateToggle} ${
+                  showPrivateKeys ? t.privateToggleOpen : ""
+                }`}
               >
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: "#ff6666",
-                    textTransform: "uppercase",
-                    fontWeight: "bold",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
+                <div className={t.privateToggleText}>
                   🔐 Private Keys (Keep Secret!)
                 </div>
                 <div
-                  style={{
-                    fontSize: "16px",
-                    color: "#ff6666",
-                    transform: showPrivateKeys
-                      ? "rotate(180deg)"
-                      : "rotate(0deg)",
-                    transition: "transform 0.2s ease",
-                  }}
+                  className={`${t.privateToggleIcon} ${
+                    showPrivateKeys ? "rotate-180" : ""
+                  }`}
                 >
                   ▼
                 </div>
               </div>
 
               {showPrivateKeys && (
-                <div style={{ padding: "15px" }}>
-                  <div style={{ marginBottom: "15px" }}>
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        color: "#ff9999",
-                        marginBottom: "5px",
-                      }}
-                    >
-                      Private Key (nsec):
-                    </div>
-                    <div
-                      style={{
-                        backgroundColor: "#000",
-                        padding: "8px",
-                        borderRadius: "3px",
-                        fontSize: "11px",
-                        wordBreak: "break-all" as const,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: "10px",
-                        border: "1px solid #330000",
-                      }}
-                    >
-                      <span style={{ color: "#ff9999" }}>
+                <div className={t.privateContent}>
+                  <div className={t.privateItem}>
+                    <div className={t.privateLabel}>Private Key (nsec):</div>
+                    <div className={t.privateValue}>
+                      <span className={t.privateValueText}>
                         {generatedProfile.nsec}
                       </span>
                       <button
                         onClick={() => copyToClipboard(generatedProfile.nsec)}
-                        style={{
-                          background: "#330000",
-                          color: "#ff6666",
-                          border: "1px solid #ff3300",
-                          padding: "4px 8px",
-                          fontSize: "10px",
-                          borderRadius: "3px",
-                          cursor: "pointer",
-                          flexShrink: 0,
-                        }}
+                        className={t.copyButton}
                       >
                         Copy
                       </button>
@@ -697,42 +481,21 @@ export function ProfileGenerationModal({
               )}
             </div>
 
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button
+            <div className="flex gap-2">
+              <ThemedButton
                 onClick={() => setGeneratedProfile(null)}
-                style={{
-                  flex: 1,
-                  padding: "12px",
-                  backgroundColor: "#333",
-                  color: "#fff",
-                  border: "1px solid #555",
-                  borderRadius: "5px",
-                  fontSize: "14px",
-                  fontFamily: "Courier New, monospace",
-                  cursor: "pointer",
-                  textTransform: "uppercase",
-                }}
+                theme={theme}
+                className="flex-1 py-3 text-sm"
               >
                 Change Color
-              </button>
-              <button
+              </ThemedButton>
+              <ThemedButton
                 onClick={saveProfile}
-                style={{
-                  flex: 1,
-                  padding: "12px",
-                  backgroundColor: "#003300",
-                  color: "#00ff00",
-                  border: "1px solid #00ff00",
-                  borderRadius: "5px",
-                  fontSize: "14px",
-                  fontFamily: "Courier New, monospace",
-                  cursor: "pointer",
-                  textTransform: "uppercase",
-                  fontWeight: "bold",
-                }}
+                theme={theme}
+                className="flex-1 py-3 text-sm"
               >
                 Save Profile
-              </button>
+              </ThemedButton>
             </div>
           </>
         )}

@@ -1,14 +1,7 @@
 import React from 'react';
 
-// More inclusive URL regex that handles YouTube URLs and other common patterns
-// Test cases this should match:
-// - https://www.youtube.com/watch?v=dQw4w9WgXcQ
-// - https://youtu.be/dQw4w9WgXcQ
-// - https://www.youtube.com/channel/UC-9-kyTW8ZkZNDHQJ6FgpwQ
-// - https://www.youtube.com/user/username
-// - https://example.com/path-with-hyphens
-// - https://sub-domain.example.com/path/to/page
-const URL_REGEX = /https?:\/\/(?:[-\w.])+(?:[:\d]+)?(?:\/(?:[\w\/_.-])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?/gi;
+
+const URL_REGEX = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi;
 
 /**
  * Validates if a string is a safe URL
@@ -64,13 +57,22 @@ function sanitizeUrlText(url: string): string {
   return url;
 }
 
+const styles = {
+  matrix: "text-[#00ff00] underline cursor-pointer break-all",
+  material: "text-blue-600 underline cursor-pointer break-all",
+} as const;
+
 /**
  * Renders text with clickable links while keeping everything else as plain text
  * @param text - The text content to process
+ * @param theme - Active theme for styling
  * @returns Array of text and link elements
  */
-export function renderTextWithLinks(text: string): (string | JSX.Element)[] {
-  if (!text || typeof text !== 'string') return [];
+export function renderTextWithLinks(
+  text: string,
+  theme: "matrix" | "material" = "matrix"
+): (string | JSX.Element)[] {
+  if (!text || typeof text !== "string") return [];
   
   const parts: (string | JSX.Element)[] = [];
   let lastIndex = 0;
@@ -98,12 +100,7 @@ export function renderTextWithLinks(text: string): (string | JSX.Element)[] {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          style={{
-            color: '#00ff00',
-            textDecoration: 'underline',
-            cursor: 'pointer',
-            wordBreak: 'break-all',
-          }}
+          className={styles[theme]}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();

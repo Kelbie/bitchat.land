@@ -1,6 +1,5 @@
 import React from "react";
 import { CustomProjection } from "@visx/geo";
-import { scaleQuantize } from "@visx/scale";
 import * as topojson from "topojson-client";
 import topology from "../data/world-topo.json";
 import { FeatureShape } from "../types";
@@ -44,7 +43,25 @@ interface MapProps {
   shouldShowLocalizedPrecision: boolean;
   searchText: string;
   onGeohashClick: (geohash: string) => void;
+  theme?: "matrix" | "material";
 }
+
+const styles = {
+  matrix: {
+    svg: "absolute top-0 left-0",
+    rectFill: "url(#matrixLines)",
+    pathFill: "#001100",
+    timezoneStroke: "rgba(0,255,0,0.05)",
+    regionStroke: "rgba(0,255,0,0.1)",
+  },
+  material: {
+    svg: "absolute top-0 left-0",
+    rectFill: "#f1f5f9",
+    pathFill: "#e5e7eb",
+    timezoneStroke: "rgba(59,130,246,0.2)",
+    regionStroke: "rgba(59,130,246,0.3)",
+  },
+} as const;
 
 export function Map({
   width,
@@ -70,17 +87,14 @@ export function Map({
   shouldShowLocalizedPrecision,
   searchText,
   onGeohashClick,
+  theme = "matrix",
 }: MapProps) {
+  const t = styles[theme];
   return (
     <svg
       width={width}
       height={height}
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        cursor: isDragging ? "grabbing" : "grab",
-      }}
+      className={`${t.svg} ${isDragging ? "cursor-grabbing" : "cursor-grab"}`}
       onClick={(e) => {
         // Only handle click if it's on the svg background (not on any child elements)
         if (e.target === e.currentTarget && !hasDragged) {
@@ -134,7 +148,7 @@ export function Map({
         y={0}
         width={width}
         height={height}
-        fill="url(#matrixLines)"
+        fill={t.rectFill}
         rx={0}
         onClick={(e) => {
           if (!hasDragged) {
@@ -142,7 +156,7 @@ export function Map({
             onMapClick();
           }
         }}
-        style={{ cursor: isDragging ? "grabbing" : "grab" }}
+        className={isDragging ? "cursor-grabbing" : "cursor-grab"}
       />
       
       <CustomProjection<FeatureShape>
@@ -159,14 +173,14 @@ export function Map({
                   id={feature.properties.name}
                   key={`map-feature-${i}`}
                   d={path || ""}
-                  fill={"#001100"}
+                  fill={t.pathFill}
                   strokeLinecap="butt"
                   strokeLinejoin="round"
                   strokeDasharray="2,2"
                   stroke={
                     (feature.properties as any).featurecla === "Timezone"
-                      ? "rgba(0,255,0,0.05)"
-                      : "rgba(0,255,0,0.1)"
+                      ? t.timezoneStroke
+                      : t.regionStroke
                   }
                   strokeWidth={Number(feature.id) ? "0.25" : "0.75"}
                   filter="url(#matrixGlow)"
@@ -195,6 +209,7 @@ export function Map({
               shouldShowLocalizedPrecision={shouldShowLocalizedPrecision}
               searchText={searchText}
               onGeohashClick={onGeohashClick}
+              theme={theme}
             />
           </g>
         )}
