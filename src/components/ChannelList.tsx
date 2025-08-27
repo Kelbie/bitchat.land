@@ -25,7 +25,7 @@ const styles = {
     list: "overflow-y-auto px-2 py-2 flex-1",
     empty: "text-[10px] opacity-70",
     buttonBase:
-      "w-full text-left border rounded px-2 py-2 text-sm mb-2 flex items-center justify-between gap-2 transition",
+      "w-full text-left border border-[#003300] rounded px-2 py-2 text-sm mb-2 flex items-center justify-between gap-2 transition",
     selected:
       "bg-[#00ff00]/10 border-[#00ff00] text-[#00ff00] font-bold shadow-inner shadow-[#00ff00]/15",
     pinned: "bg-yellow-400/5 border-yellow-400 text-yellow-300",

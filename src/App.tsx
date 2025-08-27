@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-// import { scaleQuantize } from "@visx/scale"; // Currently unused
-// import { generateSampleHeatmapData } from "./utils/geohash"; // Currently unused
+
 import {
   generateGeohashes,
   generateLocalizedGeohashes,
@@ -26,7 +25,7 @@ import {
   parseSearchQuery,
   buildSearchQuery,
 } from "./utils/searchParser";
-import { colorForPeerSeed } from "./utils/userColor";
+
 import { hasImageUrl } from "./utils/imageUtils";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
@@ -60,19 +59,6 @@ const styles = {
     subHeaderTitle: "text-base uppercase tracking-wider",
   },
 } as const;
-
-// Matrix-themed heatmap color scale (currently unused but may be needed for future features)
-// const heatmapColor = scaleQuantize({
-//   domain: [0, 100],
-//   range: [
-//     "rgba(0, 20, 0, 0.1)", // Very dark green - low values
-//     "rgba(0, 50, 0, 0.3)", // Dark green
-//     "rgba(0, 100, 0, 0.4)", // Medium dark green
-//     "rgba(0, 150, 0, 0.5)", // Medium green
-//     "rgba(0, 200, 0, 0.6)", // Bright green
-//     "rgba(0, 255, 0, 0.8)", // Full green - high values
-//   ],
-// });
 
 // Add array prototype extensions
 declare global {
