@@ -27,6 +27,7 @@ import {
   buildSearchQuery,
 } from "./utils/searchParser";
 import { colorForPeerSeed } from "./utils/userColor";
+import { hasImageUrl } from "./utils/imageUtils";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -444,7 +445,9 @@ export default function App({
     parsedSearch.text ||
     parsedSearch.geohashes.length > 0 ||
     parsedSearch.users.length > 0 ||
-    parsedSearch.colors.length > 0;
+    parsedSearch.clients.length > 0 ||
+    parsedSearch.colors.length > 0 ||
+    parsedSearch.has.length > 0;
   const eventsToShow = hasSearchTerms ? allStoredEvents : recentEvents;
   const filteredEvents = eventsToShow.filter((event) => {
     if (!hasSearchTerms) return true;
@@ -456,6 +459,7 @@ export default function App({
     const geoTag = event.tags.find((tag: any) => tag[0] === "g");
     const eventGeohash = (geoTag ? geoTag[1] : "").toLowerCase();
     const pubkeyHash = event.pubkey.slice(-4).toLowerCase();
+    const hasFilters = parsedSearch.has;
 
     // Check for invalid geohash and log it
     if (eventGeohash && !VALID_GEOHASH_CHARS.test(eventGeohash)) {
@@ -513,6 +517,18 @@ export default function App({
         }
       });
       if (!userMatch) matches = false;
+    }
+
+    // Check has: filters
+    if (hasFilters.length > 0 && matches) {
+      for (const filter of hasFilters) {
+        if (filter === "image") {
+          if (!hasImageUrl(event.content)) {
+            matches = false;
+            break;
+          }
+        }
+      }
     }
 
     return matches;

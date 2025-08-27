@@ -8,6 +8,7 @@ import {
 } from "../utils/searchParser";
 import { renderTextWithLinks } from "../utils/linkRenderer";
 import { colorForPeerSeed } from "../utils/userColor";
+import { hasImageUrl, extractImageUrl } from "../utils/imageUtils";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -80,7 +81,8 @@ export function RecentEvents({
     parsedSearch.geohashes.length > 0 ||
     parsedSearch.users.length > 0 ||
     parsedSearch.clients.length > 0 ||
-    parsedSearch.colors.length > 0;
+    parsedSearch.colors.length > 0 ||
+    parsedSearch.has.length > 0;
 
   // Use all stored events when searching, recent events when not searching
   const eventsToShow = hasSearchTerms ? allStoredEvents : recentEvents;
@@ -99,6 +101,7 @@ export function RecentEvents({
     const pubkeyHash = event.pubkey.slice(-4).toLowerCase();
     const clientTag = event.tags.find((tag: any) => tag[0] === "client");
     const eventClient = (clientTag ? clientTag[1] : "").toLowerCase();
+    const hasFilters = parsedSearch.has;
 
     // Check for invalid geohash and log it
     if (eventGeohash && !VALID_GEOHASH_CHARS.test(eventGeohash)) {
@@ -174,6 +177,18 @@ export function RecentEvents({
       }
     }
 
+    // Check has: filters
+    if (hasFilters.length > 0 && matches) {
+      for (const filter of hasFilters) {
+        if (filter === "image") {
+          if (!hasImageUrl(event.content)) {
+            matches = false;
+            break;
+          }
+        }
+      }
+    }
+
     return matches;
   });
 
@@ -181,6 +196,8 @@ export function RecentEvents({
   const sortedEvents = filteredEvents.sort(
     (a, b) => a.created_at - b.created_at
   );
+
+  const hasImageFilter = parsedSearch.has.includes("image");
 
   // Handle scroll state changes for Virtuoso
   const handleAtBottomStateChange = useCallback((atBottom: boolean) => {
@@ -420,7 +437,43 @@ export function RecentEvents({
     };
   }, []);
 
-  // Always render the component container, even if no events match
+  // Image grid view when has:image filter is active
+  if (hasImageFilter) {
+    if (sortedEvents.length === 0) {
+      return (
+        <div className={styles[theme].noEvents}>
+          <div>
+            <div className={styles[theme].noEventsMessage}>NO EVENTS FOUND</div>
+            {searchText && (
+              <div className="text-xs opacity-70">
+                No events matching: "{searchText}"
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className={styles[theme].container}>
+        <div className="overflow-y-auto h-full p-3">
+          <div className="columns-3 gap-3">
+            {sortedEvents.map((event) => {
+              const url = extractImageUrl(event.content);
+              if (!url) return null;
+              return (
+                <div key={event.id} className="mb-3 break-inside-avoid">
+                  <img src={url} alt="" className="w-full h-auto rounded" />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Default chat view
   if (sortedEvents.length === 0) {
     return (
       <div className={styles[theme].noEvents}>
