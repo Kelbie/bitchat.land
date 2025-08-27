@@ -153,6 +153,9 @@ export function RecentEvents({
   // Handle scroll state changes for Virtuoso
   const handleAtBottomStateChange = useCallback((atBottom: boolean) => {
     setIsAtBottom(atBottom);
+    if (atBottom) {
+      setUserScrolled(false);
+    }
   }, []);
 
   const handleRangeChanged = useCallback(
@@ -627,14 +630,8 @@ export function RecentEvents({
           data={sortedEvents}
           overscan={200}
           increaseViewportBy={{ top: 1000, bottom: 1000 }}
-          alignToBottom
-          followOutput={(isAtBottom) => {
-            // Only follow output if user hasn't manually scrolled up
-            if (isAtBottom || !userScrolled) {
-              return "smooth";
-            }
-            return false;
-          }}
+          atBottomThreshold={20}
+          followOutput={(isAtBottom) => (isAtBottom ? "smooth" : false)}
           atBottomStateChange={handleAtBottomStateChange}
           rangeChanged={handleRangeChanged}
           itemContent={(index) => <EventItem index={index} />}
