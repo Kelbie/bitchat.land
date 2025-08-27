@@ -9,6 +9,7 @@ import React from 'react';
 // - https://example.com/path-with-hyphens
 // - https://sub-domain.example.com/path/to/page
 const URL_REGEX = /https?:\/\/(?:[-\w.])+(?:[:\d]+)?(?:\/(?:[\w\/_.-])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?/gi;
+const IMAGE_EXTENSIONS = /\.(?:gif|jpe?g|tiff?|png|webp|bmp|svg)$/i;
 
 /**
  * Validates if a string is a safe URL
@@ -88,45 +89,79 @@ export function renderTextWithLinks(text: string): (string | JSX.Element)[] {
       parts.push(text.slice(lastIndex, matchIndex));
     }
     
-    // Only render as link if URL is valid and safe
+    // Only render as link or image if URL is valid and safe
     if (isValidUrl(url)) {
       const sanitizedUrl = sanitizeUrlText(url);
-      
-      parts.push(
-        <a
-          key={`link-${matchIndex}`}
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: '#00ff00',
-            textDecoration: 'underline',
-            cursor: 'pointer',
-            wordBreak: 'break-all',
-          }}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Additional security check before opening
-            if (isValidUrl(url)) {
-              try {
-                window.open(url, '_blank', 'noopener,noreferrer');
-              } catch (error) {
-                console.warn('Failed to open URL:', error);
+      const plainUrl = url.split('?')[0].split('#')[0];
+
+      if (IMAGE_EXTENSIONS.test(plainUrl)) {
+        parts.push(
+          <a
+            key={`img-${matchIndex}`}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: 'block', marginTop: '8px' }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (isValidUrl(url)) {
+                try {
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                } catch (error) {
+                  console.warn('Failed to open URL:', error);
+                }
               }
-            }
-          }}
-          onMouseEnter={(e) => {
-            // Show full URL in tooltip for truncated URLs
-            if (url.length > 100) {
-              e.currentTarget.title = url;
-            }
-          }}
-        >
-          {sanitizedUrl}
-        </a>
-      );
+            }}
+          >
+            <img
+              src={url}
+              alt={sanitizedUrl}
+              style={{
+                maxWidth: '100%',
+                borderRadius: '4px',
+                display: 'block',
+              }}
+            />
+          </a>
+        );
+      } else {
+        parts.push(
+          <a
+            key={`link-${matchIndex}`}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: '#00ff00',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              wordBreak: 'break-all',
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+
+              // Additional security check before opening
+              if (isValidUrl(url)) {
+                try {
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                } catch (error) {
+                  console.warn('Failed to open URL:', error);
+                }
+              }
+            }}
+            onMouseEnter={(e) => {
+              // Show full URL in tooltip for truncated URLs
+              if (url.length > 100) {
+                e.currentTarget.title = url;
+              }
+            }}
+          >
+            {sanitizedUrl}
+          </a>
+        );
+      }
     } else {
       // If URL is not safe, just render as plain text
       parts.push(url);
