@@ -81,14 +81,14 @@ export function MobileHeader({
       </div>
 
       <div className="flex gap-1 justify-center w-full max-w-md">
-        <ThemedButton
+        {/* <ThemedButton
           onClick={() => onViewChange("panel")}
           active={activeView === "panel"}
           theme={theme}
           className="flex-1 px-3 py-2 text-sm text-center"
         >
           menu
-        </ThemedButton>
+        </ThemedButton> */}
         <ThemedButton
           onClick={() => onViewChange("map")}
           active={activeView === "map"}
