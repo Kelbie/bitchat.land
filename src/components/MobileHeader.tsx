@@ -39,7 +39,7 @@ const styles = {
   material: {
     header:
       "bg-white text-gray-800 flex flex-col items-center font-sans flex-shrink-0 p-2",
-    logoText: "text-blue-600 text-lg font-bold",
+    logoText: "text-blue-600 text-lg font-bold text-lg font-bold uppercase tracking-wider",
     searchIcon: "stroke-blue-600",
     clearButton:
       "px-3 py-3 bg-blue-100 text-blue-600 border border-blue-600 rounded text-xs uppercase hover:bg-blue-200",
@@ -76,7 +76,7 @@ export function MobileHeader({
   return (
     <header className={t.header}>
       <div className="flex items-center gap-2 mb-0">
-        <img src="/favicon.webp" alt="bitchat.land" className="w-12 h-12 -ml-3" />
+        <img src={`/favicon${theme === "matrix" ? ".webp" : `_${theme}.webp`}`} alt="bitchat.land" className="w-12 h-12 -ml-3" />
         <div className={t.logoText}>bitchat.land</div>
       </div>
 

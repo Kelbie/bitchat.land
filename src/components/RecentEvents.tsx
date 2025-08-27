@@ -5,10 +5,15 @@ import {
   parseSearchQuery,
   addGeohashToSearch,
   addUserToSearch,
+  ParsedSearch,
 } from "../utils/searchParser";
 import { renderTextWithLinks } from "../utils/linkRenderer";
 import { colorForPeerSeed } from "../utils/userColor";
 import { hasImageUrl, extractImageUrl } from "../utils/imageUtils";
+import { Image } from "./Image";
+import { getFavorites, addToFavorites, removeFromFavorites } from "../utils/favorites";
+
+
 
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
 
@@ -68,8 +73,10 @@ export function RecentEvents({
   theme,
 }: RecentEventsProps) {
   const parentRef = useRef<HTMLDivElement>(null);
-  const [isUserAtBottom, setIsUserAtBottom] = useState(true);
   const [lastSeenEventId, setLastSeenEventId] = useState<string | null>(null);
+  const [isUserAtBottom, setIsUserAtBottom] = useState(true);
+  const [favoritesVersion, setFavoritesVersion] = useState(0); // To trigger re-renders when favourites change
+
   const prevEventsLengthRef = useRef(0);
   const measurementCache = useRef<Map<number, number>>(new Map());
 
@@ -77,8 +84,18 @@ export function RecentEvents({
 
   if (!nostrEnabled) return null;
 
+  // Listen for storage changes to trigger re-renders when favourites change
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setFavoritesVersion(prev => prev + 1);
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Parse search and filter events
-  const parsedSearch = parseSearchQuery(searchText);
+  const parsedSearch: ParsedSearch = parseSearchQuery(searchText);
   const hasSearchTerms =
     parsedSearch.text ||
     parsedSearch.geohashes.length > 0 ||
@@ -112,14 +129,28 @@ export function RecentEvents({
     if (parsedSearch.geohashes.length > 0 && matches) {
       if (!eventLocationTag) {
         matches = false;
-      } else if (eventGeohash && VALID_GEOHASH_CHARS.test(eventGeohash)) {
-        matches = parsedSearch.geohashes.some((searchGeohash) =>
-          eventGeohash.startsWith(searchGeohash.toLowerCase())
-        );
       } else {
-        matches = parsedSearch.geohashes.some((searchGeohash) =>
-          eventLocationTag.startsWith(searchGeohash.toLowerCase())
-        );
+        matches = parsedSearch.geohashes.some((searchGeohash, index) => {
+          const includeChildren: boolean = parsedSearch.includeChildren[index] ?? false;
+          
+          if (eventGeohash && VALID_GEOHASH_CHARS.test(eventGeohash)) {
+            if (includeChildren) {
+              // With + suffix: allow child regions (starts with)
+              return eventGeohash.startsWith(searchGeohash.toLowerCase());
+            } else {
+              // Without + suffix: exact match only
+              return eventGeohash === searchGeohash.toLowerCase();
+            }
+          } else {
+            if (includeChildren) {
+              // With + suffix: allow child regions (starts with)
+              return eventLocationTag.startsWith(searchGeohash.toLowerCase());
+            } else {
+              // Without + suffix: exact match only
+              return eventLocationTag === searchGeohash.toLowerCase();
+            }
+          }
+        });
       }
     }
 
@@ -136,15 +167,15 @@ export function RecentEvents({
       });
     }
 
-    if (parsedSearch.clients.length > 0 && matches) {
+    if (parsedSearch.clients?.length > 0 && matches) {
       matches =
         eventClient &&
-        parsedSearch.clients.some((searchClient) =>
+        parsedSearch.clients?.some((searchClient) =>
           eventClient.includes(searchClient.toLowerCase())
         );
     }
 
-    if (parsedSearch.has.length > 0 && matches) {
+    if (parsedSearch.has?.length > 0 && matches) {
       for (const filter of parsedSearch.has) {
         if (filter === "image" && !hasImageUrl(event.content)) {
           matches = false;
@@ -159,7 +190,7 @@ export function RecentEvents({
   const sortedEvents = filteredEvents.sort(
     (a, b) => a.created_at - b.created_at
   );
-  const hasImageFilter = parsedSearch.has.includes("image");
+  const hasImageFilter = parsedSearch.has?.includes("image") || false;
 
   // Calculate unread count
   const unreadCount = useMemo(() => {
@@ -268,6 +299,8 @@ export function RecentEvents({
     element.addEventListener("scroll", handleScroll, { passive: true });
     return () => element.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
+
+
 
   // Event item renderer
   const EventItem = useCallback(
@@ -432,7 +465,46 @@ export function RecentEvents({
                   style={{ color: userColors.hex }}
                 >
                   {event.content
-                    ? renderTextWithLinks(event.content, theme)
+                    ? (() => {
+                        if (hasImageUrl(event.content)) {
+                          // Find the image URL and its position
+                          const imageUrl = extractImageUrl(event.content);
+                          if (imageUrl) {
+                            // Split content around the image URL to preserve position
+                            const parts = event.content.split(imageUrl);
+                            return (
+                              <>
+                                {parts[0] && (
+                                  <span>
+                                    {renderTextWithLinks(parts[0], theme)}
+                                  </span>
+                                )}
+                                <br />
+                                <div className="block my-2">
+                                  <Image
+                                    src={imageUrl}
+                                    alt=""
+                                    theme={theme}
+                                    showControls={true}
+                                    maxWidth="200px"
+                                    maxHeight="200px"
+                                    className="max-w-[200px] h-auto rounded-lg shadow-sm"
+                                    tags={[]}
+                                    showTags={false}
+                                  />
+                                </div>
+                                <br />
+                                {parts[1] && (
+                                  <span>
+                                    {renderTextWithLinks(parts[1], theme)}
+                                  </span>
+                                )}
+                              </>
+                            );
+                          }
+                        }
+                        return renderTextWithLinks(event.content, theme);
+                      })()
                     : "[No content]"}
                 </span>
 
@@ -503,59 +575,61 @@ export function RecentEvents({
   const items = virtualizer.getVirtualItems();
 
   return (
-    <div className={styles[theme].container}>
-      <div className="flex-1 relative">
-        <div
-          ref={parentRef}
-          className="h-full overflow-auto"
-          style={{ contain: "strict", overflowAnchor: "none" }}
-        >
+    <>
+      <div className={styles[theme].container}>
+        <div className="flex-1 relative">
           <div
-            style={{
-              height: `${virtualizer.getTotalSize()}px`,
-              width: "100%",
-              position: "relative",
-            }}
+            ref={parentRef}
+            className="h-full overflow-auto"
+            style={{ contain: "strict", overflowAnchor: "none" }}
           >
-            {items.map((virtualItem) => (
-              <div
-                key={virtualItem.key}
-                data-index={virtualItem.index}
-                ref={virtualizer.measureElement}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-              >
-                <EventItem index={virtualItem.index} />
-              </div>
-            ))}
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: "100%",
+                position: "relative",
+              }}
+            >
+              {items.map((virtualItem) => (
+                <div
+                  key={virtualItem.key}
+                  data-index={virtualItem.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
+                  <EventItem index={virtualItem.index} />
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {!isUserAtBottom && (
-          <button
-            onClick={scrollToBottom}
-            className={
-              unreadCount > 0 ? t.scrollButtonWithCount : t.scrollButton
-            }
-          >
-            {unreadCount > 0 ? (
-              <span className="flex items-center gap-1">
-                <span className="text-xs">
-                  {unreadCount > 99 ? "99+" : unreadCount}
+          {!isUserAtBottom && (
+            <button
+              onClick={scrollToBottom}
+              className={
+                unreadCount > 0 ? t.scrollButtonWithCount : t.scrollButton
+              }
+            >
+              {unreadCount > 0 ? (
+                <span className="flex items-center gap-1">
+                  <span className="text-xs">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                  <span>↓</span>
                 </span>
-                <span>↓</span>
-              </span>
-            ) : (
-              "↓"
-            )}
-          </button>
-        )}
+              ) : (
+                "↓"
+              )}
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

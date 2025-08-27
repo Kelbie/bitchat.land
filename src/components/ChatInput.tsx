@@ -1,11 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
 import { SimplePool } from "nostr-tools/pool";
 import { finalizeEvent, validateEvent, verifyEvent } from "nostr-tools/pure";
-import { NOSTR_RELAYS } from "../constants/projections";
-import { hexToBytes, bytesToHex } from "nostr-tools/utils";
+import { NOSTR_RELAYS, DEFAULT_RELAYS } from "../constants/projections";
 import { generateSecretKey, getPublicKey } from "nostr-tools";
 import { sha256 } from "@noble/hashes/sha256";
 import { ThemedInput } from "./ThemedInput";
+import { GeoRelayDirectory } from "../utils/geoRelayDirectory";
+
+// Extend Window interface to include our custom method
+declare global {
+  interface Window {
+    openFavoritesModal?: () => void;
+    onInsertImage?: (imageUrl: string, cursorPosition?: number, currentValue?: string) => void;
+    updateChatInputValue?: (value: string, cursorPos: number) => void;
+    getChatInputCursorPosition?: () => number;
+    getChatInputValue?: () => string;
+  }
+}
 
 interface RollRange {
   min: number;
@@ -40,6 +51,7 @@ interface ChatInputProps {
   prefillText?: string;
   savedProfile?: any; // Profile data passed from parent
   theme?: "matrix" | "material";
+  onInsertImage?: (imageUrl: string) => void;
 }
 
 interface SavedProfile {
@@ -104,6 +116,7 @@ export function ChatInput({
   prefillText,
   savedProfile,
   theme = "matrix",
+  onInsertImage,
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -125,6 +138,47 @@ export function ChatInput({
       }
     }
   }, [prefillText]); // Only depend on prefillText
+
+  // Set up the onInsertImage callback for the favorites modal
+  useEffect(() => {
+    if (onInsertImage) {
+      window.onInsertImage = handleInsertImage;
+    }
+    
+    // Expose functions for getting cursor position and input value
+    window.getChatInputCursorPosition = () => {
+      // Use a ref to get the specific textarea for this component
+      const textarea = document.querySelector('textarea[data-chat-input="true"]') as HTMLTextAreaElement;
+      const cursorPos = textarea ? textarea.selectionStart : 0;
+      return cursorPos;
+    };
+    
+    window.getChatInputValue = () => {
+      return message;
+    };
+    
+    // Expose function for updating input value
+    window.updateChatInputValue = (newValue: string, newCursorPos: number) => {
+      setMessage(newValue);
+      // Set cursor position after the component re-renders
+      setTimeout(() => {
+        const textarea = document.querySelector('textarea[data-chat-input="true"]') as HTMLTextAreaElement;
+        if (textarea) {
+          // Ensure cursor position is within bounds
+          const safeCursorPos = Math.min(Math.max(0, newCursorPos), newValue.length);
+          textarea.setSelectionRange(safeCursorPos, safeCursorPos);
+          textarea.focus();
+        }
+      }, 0);
+    };
+    
+    return () => {
+      delete window.onInsertImage;
+      delete window.getChatInputCursorPosition;
+      delete window.getChatInputValue;
+      delete window.updateChatInputValue;
+    };
+  }, [onInsertImage, message]);
 
   const t = styles[theme];
 
@@ -281,14 +335,50 @@ export function ChatInput({
   
       console.log("✅ Event validated successfully");
   
+      // Get ALL available relays for maximum distribution
+      let allRelays = [...DEFAULT_RELAYS]; // Start with default relays
+      
+      // Add georelay relays if available
+      try {
+        if (isGeohash) {
+          // For geohash channels, get relays closest to that geohash
+          const geoRelays = GeoRelayDirectory.shared.closestRelays(currentChannel, 10);
+          if (geoRelays.length > 0) {
+            allRelays = [...new Set([...allRelays, ...geoRelays])];
+            console.log(`🌍 Added ${geoRelays.length} georelay relays for geohash ${currentChannel}`);
+          }
+        } else {
+          // For group channels, get relays closest to current location (if available)
+          try {
+            const geoRelays = GeoRelayDirectory.shared.closestRelays("u", 5); // Use global fallback
+            if (geoRelays.length > 0) {
+              allRelays = [...new Set([...allRelays, ...geoRelays])];
+              console.log(`🌍 Added ${geoRelays.length} georelay relays for current location`);
+            }
+          } catch (geoError) {
+            console.warn("Could not get georelay relays for current location:", geoError);
+          }
+        }
+      } catch (geoError) {
+        console.warn("Could not get georelay relays:", geoError);
+      }
+      
+      // Remove duplicates and ensure we have valid relay URLs
+      allRelays = [...new Set(allRelays)].filter(relay => 
+        relay && relay.startsWith('wss://') && relay.length > 0
+      );
+      
+      console.log(`📡 Total relays for publishing: ${allRelays.length}`);
+      console.log("📡 Relays:", allRelays);
+  
       // Create pool and publish
       const pool = new SimplePool();
   
       try {
-        console.log("Attempting to publish event to relays:", NOSTR_RELAYS);
+        console.log("Attempting to publish event to ALL relays:", allRelays);
   
-        // Publish to relays - pool.publish returns an array of promises
-        const publishPromises = pool.publish(NOSTR_RELAYS, signedEvent);
+        // Publish to ALL relays - pool.publish returns an array of promises
+        const publishPromises = pool.publish(allRelays, signedEvent);
   
         console.log("Publish promises created:", publishPromises.length);
   
@@ -328,7 +418,7 @@ export function ChatInput({
   
       } finally {
         // Always close the pool
-        pool.close(NOSTR_RELAYS);
+        pool.close(allRelays);
       }
       
     } catch (err) {
@@ -346,6 +436,20 @@ export function ChatInput({
     }
   };
 
+  // Handle inserting image URL into input
+  const handleInsertImage = (imageUrl: string) => {
+    const currentMessage = message;
+    const newMessage = currentMessage + (currentMessage ? " " : "") + imageUrl;
+    setMessage(newMessage);
+    
+    // Focus the textarea and move cursor to end
+    const textarea = document.querySelector('textarea');
+    if (textarea) {
+      textarea.focus();
+      textarea.setSelectionRange(newMessage.length, newMessage.length);
+    }
+  };
+
   if (!savedProfile) {
     return (
       <div className={t.noProfileContainer}>
@@ -357,9 +461,9 @@ export function ChatInput({
   }
 
   return (
-    <div className={t.container}>
+    <section aria-label="Chat Input and Message Composition" className={t.container}>
       {/* Channel indicator */}
-      <div className={t.channelInfo}>
+      <div className={t.channelInfo} role="status" aria-live="polite">
         <span>Sending to:</span>
         <span className={t.channelPill}>
           {currentChannel === "global" ? "Select Channel" : `#${currentChannel}`}
@@ -387,6 +491,7 @@ export function ChatInput({
             }
             disabled={isSending}
             theme={theme}
+            data-chat-input="true"
             className={`w-full min-h-[36px] max-h-[120px] p-2 resize-vertical ${
               theme === "matrix"
                 ? "focus:shadow-[0_0_8px_rgba(0,255,0,0.3)]"
@@ -401,6 +506,37 @@ export function ChatInput({
             {message.length}/280
           </div>
         </div>
+        
+        {/* Favorites button */}
+        <button
+          onClick={() => {
+            if (window.openFavoritesModal) {
+              window.openFavoritesModal();
+            }
+          }}
+          className={`px-3 py-2 rounded text-xs font-bold transition-colors ${
+            theme === "matrix"
+              ? "bg-[#003300] text-[#00ff00] border border-[#00ff00] hover:bg-[#004400] hover:shadow-[0_0_8px_rgba(0,255,0,0.3)]"
+              : "bg-blue-600 text-white border border-blue-600 hover:bg-blue-700"
+          }`}
+          title="Open favorite images"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="9" cy="9" r="2" />
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+          </svg>
+        </button>
+        
         <button
           onClick={sendMessage}
           disabled={sendDisabled}
@@ -415,6 +551,20 @@ export function ChatInput({
       <div className={t.hint}>
         Press Enter to send, Shift+Enter for new line
       </div>
-    </div>
+    </section>
   );
+}
+
+// Helper function to convert hex string to Uint8Array
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+  }
+  return bytes;
+}
+
+// Helper function to convert Uint8Array to hex string
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
 }

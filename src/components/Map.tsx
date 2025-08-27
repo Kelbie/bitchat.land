@@ -91,13 +91,16 @@ export function Map({
 }: MapProps) {
   const t = styles[theme];
   return (
-    <svg
-      width={width}
-      height={height}
-      className={`${t.svg} ${isDragging ? "cursor-grabbing" : "cursor-grab"}`}
-      onClick={(e) => {
-        // Only handle click if it's on the svg background (not on any child elements)
-        if (e.target === e.currentTarget && !hasDragged) {
+    <section aria-label="Interactive World Map with Geohash Heatmap">
+      <svg
+        width={width}
+        height={height}
+        className={`${t.svg} ${isDragging ? "cursor-grabbing" : "cursor-grab"}`}
+        role="img"
+        aria-label="World map with geohash-based chat activity heatmap"
+        onClick={(e) => {
+          // Only handle click if it's on the svg background (not on any child elements)
+          if (e.target === e.currentTarget && !hasDragged) {
           onMapClick();
         }
       }}
@@ -215,5 +218,6 @@ export function Map({
         )}
       </CustomProjection>
     </svg>
+    </section>
   );
 }

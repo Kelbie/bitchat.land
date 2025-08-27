@@ -30,6 +30,15 @@ export const NOSTR_RELAYS = [
   "wss://nostr21.com",
 ];
 
+// Default relays for fallback when georelays are not available
+export const DEFAULT_RELAYS = [
+  "wss://relay.damus.io",
+  "wss://nos.lol",
+  "wss://relay.primal.net",
+  "wss://offchain.pub",
+  "wss://nostr21.com"
+];
+
 export const BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
 
 export const background = "#000000";

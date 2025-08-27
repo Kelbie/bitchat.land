@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 interface CornerOverlayProps {
-  position: "bottom-left" | "bottom-right";
+  position: "bottom-left" | "bottom-right" | "top-left";
   theme?: "matrix" | "material";
   children: ReactNode;
 }
@@ -22,7 +22,10 @@ export function CornerOverlay({
   theme = "matrix",
   children,
 }: CornerOverlayProps) {
-  const posClass = position === "bottom-left" ? "bottom-2 left-2" : "bottom-2 right-2";
+  const posClass = 
+    position === "bottom-left" ? "bottom-2 left-2" : 
+    position === "bottom-right" ? "bottom-2 right-2" : 
+    "top-2 left-2";
   return <div className={`${styles[theme].base} ${posClass}`}>{children}</div>;
 }
 

@@ -1,11 +1,16 @@
 {
-  "name": "bitchat.land",
-  "short_name": "bitchat",
-  "description": "Decentralized geohash-based messaging platform",
+  "name": "Bitchat.land - Decentralized Geohash-Based Chat & Heatmap Platform",
+  "short_name": "Bitchat",
+  "description": "Desktop chat client with real-time geohash-based messaging, interactive heatmaps, and decentralized communication. Join the future of location-aware chat.",
+  "keywords": ["bitchat", "desktop", "heatmap", "chat", "client", "geohash", "messaging", "decentralized", "nostr", "real-time", "location-based", "communication"],
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#00ff00",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["communication", "social", "utilities"],
   "icons": [
     {
       "src": "/favicon.webp",

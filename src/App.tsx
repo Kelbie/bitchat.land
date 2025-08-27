@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 
 import {
   generateGeohashes,
@@ -20,6 +26,9 @@ import { ProjectionSelector } from "./components/ProjectionSelector";
 import { MarqueeBanner } from "./components/MarqueeBanner";
 import { CornerOverlay } from "./components/CornerOverlay";
 import { ChannelList, ChannelMeta } from "./components/ChannelList";
+import { Connections } from "./components/Connections";
+import { NostrImageSearch } from "./components/NostrImageSearch";
+import { FavoritesModal } from "./components/FavoritesModal";
 import {
   addGeohashToSearch,
   parseSearchQuery,
@@ -27,10 +36,10 @@ import {
 } from "./utils/searchParser";
 
 import { hasImageUrl } from "./utils/imageUtils";
+import { getFavorites, addToFavorites, removeFromFavorites } from "./utils/favorites";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
-
 
 export const background = "#000000";
 
@@ -42,8 +51,7 @@ const styles = {
     chatViewContainer:
       "absolute inset-0 w-full h-full bg-black flex flex-row overflow-hidden",
     chatColumn: "flex-1 flex flex-col",
-    subHeader:
-      "bg-black/95 text-[#00aa00] px-4 py-3 border-b border-[#003300]",
+    subHeader: "bg-black/95 text-[#00aa00] px-4 py-3 border-b border-[#003300]",
     subHeaderTitle:
       "text-base uppercase tracking-wider [text-shadow:0_0_10px_rgba(0,255,0,0.5)]",
   },
@@ -54,8 +62,7 @@ const styles = {
     chatViewContainer:
       "absolute inset-0 w-full h-full bg-white flex flex-row overflow-hidden",
     chatColumn: "flex-1 flex flex-col",
-    subHeader:
-      "bg-white text-blue-600 px-4 py-3 border-b border-blue-200",
+    subHeader: "bg-white text-blue-600 px-4 py-3 border-b border-blue-200",
     subHeaderTitle: "text-base uppercase tracking-wider",
   },
 } as const;
@@ -97,6 +104,8 @@ export default function App({
   // Profile state using React state with localStorage initialization
   const [savedProfile, setSavedProfile] = useState<any>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showFavoritesModal, setShowFavoritesModal] = useState(false);
+
 
   // Search and zoom state
   const [searchText, setSearchText] = useState("");
@@ -219,11 +228,17 @@ export default function App({
 
   // Initialize Nostr with animation callback
   const {
+    connectedRelays,
     recentEvents,
     geohashActivity,
     nostrEnabled,
+    connectionStatus,
     allStoredEvents,
     allEventsByGeohash,
+    toggleNostr,
+    getGeorelayRelays,
+    connectToGeoRelays,
+    disconnectFromGeoRelays,
   } = useNostr(searchGeohash, currentGeohashes, animateGeohash);
 
   // Generate heatmap data (currently unused but may be needed for future features)
@@ -268,6 +283,50 @@ export default function App({
     // Directly update the profile state for immediate UI update
     setSavedProfile(profile);
   };
+
+  // Favorites modal functionality
+  const openFavoritesModal = useCallback(() => {
+    setShowFavoritesModal(true);
+  }, []);
+
+
+
+  // Handle inserting images into chat input
+  const handleInsertImage = useCallback((imageUrl: string, cursorPosition?: number, currentValue?: string) => {
+    // Insert the image URL into the chat input at the specified position
+    const imageText = imageUrl;
+    
+    if (cursorPosition !== undefined && currentValue !== undefined) {
+      // Insert at cursor position
+      const beforeCursor = currentValue.slice(0, cursorPosition);
+      const afterCursor = currentValue.slice(cursorPosition);
+      const newValue = beforeCursor + imageText + afterCursor;
+      
+      // Update the chat input value directly
+      if (window.updateChatInputValue) {
+        window.updateChatInputValue(newValue, cursorPosition + imageText.length);
+      }
+    } else {
+      // Fallback: append to reply prefill
+      setReplyPrefillText(prev => prev + (prev ? ' ' : '') + imageText);
+    }
+  }, []);
+
+  // Expose openFavoritesModal globally for ChatInput to use
+  useEffect(() => {
+    (window as any).openFavoritesModal = openFavoritesModal;
+    (window as any).addToFavorites = addToFavorites;
+    (window as any).removeFromFavorites = removeFromFavorites;
+    (window as any).getFavorites = getFavorites;
+    (window as any).onInsertImage = handleInsertImage; // Expose the new function
+    return () => {
+      delete (window as any).openFavoritesModal;
+      delete (window as any).addToFavorites;
+      delete (window as any).removeFromFavorites;
+      delete (window as any).getFavorites;
+      delete (window as any).onInsertImage; // Clean up the new function
+    };
+  }, [openFavoritesModal, addToFavorites, removeFromFavorites, getFavorites, handleInsertImage]);
 
   // Handle geohash clicks from map - add to text search
   const handleGeohashClickForSearch = (geohash: string) => {
@@ -449,16 +508,16 @@ export default function App({
 
     // Check for invalid geohash and log it
     if (eventGeohash && !VALID_GEOHASH_CHARS.test(eventGeohash)) {
-      console.log(
-        `Invalid geohash detected in message: "${eventGeohash}" from user ${
-          username || "anonymous"
-        } (${pubkeyHash})`
-      );
-      console.log(
-        `Message content: "${event.content?.slice(0, 100)}${
-          event.content && event.content.length > 100 ? "..." : ""
-        }"`
-      );
+      // console.log(
+      //   `Invalid geohash detected in message: "${eventGeohash}" from user ${
+      //     username || "anonymous"
+      //   } (${pubkeyHash})`
+      // );
+      // console.log(
+      //   `Message content: "${event.content?.slice(0, 100)}${
+      //     event.content && event.content.length > 100 ? "..." : ""
+      //   }"`
+      // );
     }
 
     let matches = true;
@@ -478,9 +537,17 @@ export default function App({
       if (!eventGeohash) {
         matches = false;
       } else if (VALID_GEOHASH_CHARS.test(eventGeohash)) {
-        const geohashMatch = parsedSearch.geohashes.some((searchGeohash) =>
-          eventGeohash.startsWith(searchGeohash.toLowerCase())
-        );
+        const geohashMatch = parsedSearch.geohashes.some((searchGeohash, index) => {
+          const includeChildren = parsedSearch.includeChildren[index] ?? false;
+          
+          if (includeChildren) {
+            // With + suffix: allow child regions (starts with)
+            return eventGeohash.startsWith(searchGeohash.toLowerCase());
+          } else {
+            // Without + suffix: exact match only
+            return eventGeohash === searchGeohash.toLowerCase();
+          }
+        });
         if (!geohashMatch) matches = false;
       } else {
         // Invalid geohash present -> include regardless of match
@@ -521,9 +588,9 @@ export default function App({
   });
 
   // Debug logging for header updates
-  console.log(
-    `Header update: search="${searchText}", filteredCount=${filteredEvents.length}, totalStored=${allStoredEvents.length}, recent=${recentEvents.length}`
-  );
+  // console.log(
+  //   `Header update: search="${searchText}", filteredCount=${filteredEvents.length}, totalStored=${allStoredEvents.length}, recent=${recentEvents.length}`
+  // );
 
   const topLevelCounts: { [key: string]: number } = {};
   for (const [geohash, count] of allEventsByGeohash.entries()) {
@@ -544,29 +611,35 @@ export default function App({
     <div className={t.appContainer}>
       {/* eSIM Marquee Banner */}
       <MarqueeBanner theme={theme} />
+      
       {/* Mobile Header */}
-      <MobileHeader
-        activeView={activeView}
-        onViewChange={setActiveView}
-        searchText={searchText}
-        onSearch={handleTextSearch}
-        zoomedGeohash={zoomedGeohash}
-        nostrEnabled={nostrEnabled}
-        filteredEventsCount={filteredEvents.length}
-        totalEventsCount={totalEventsCount}
-        hierarchicalCounts={hierarchicalCounts}
-        allStoredEvents={allStoredEvents}
-        onLoginClick={() => setShowProfileModal(true)}
-        theme={theme}
-        onThemeChange={setTheme}
-      />
+      <header>
+        <MobileHeader
+          activeView={activeView}
+          onViewChange={setActiveView}
+          searchText={searchText}
+          onSearch={handleTextSearch}
+          zoomedGeohash={zoomedGeohash}
+          nostrEnabled={nostrEnabled}
+          filteredEventsCount={filteredEvents.length}
+          totalEventsCount={totalEventsCount}
+          hierarchicalCounts={hierarchicalCounts}
+          allStoredEvents={allStoredEvents}
+          onLoginClick={() => setShowProfileModal(true)}
+          theme={theme}
+          onThemeChange={setTheme}
+        />
+      </header>
 
       {/* Main Content Area */}
-      <div className={t.mainArea}>
-        {/* Map - Always rendered, but might be hidden on mobile */}
-        <div
-          className={`${activeView !== "map" ? "hidden" : "block"} w-full h-full`}
-        >
+      <main className={t.mainArea}>
+              {/* Map - Always rendered, but might be hidden on mobile */}
+      <section
+        aria-label="Interactive World Map with Geohash Heatmap"
+        className={`${
+          activeView !== "map" ? "hidden" : "block"
+        } w-full h-full`}
+      >
           <Map
             width={mapWidth}
             height={mapHeight}
@@ -593,86 +666,89 @@ export default function App({
             onGeohashClick={handleGeohashClickForSearch}
             theme={theme}
           />
-        </div>
+        </section>
 
         {/* Mobile Layout - Show panels based on activeView */}
         <>
-            {/* Chat View */}
-            {activeView === "chat" && (
-              <div className={t.chatViewContainer}>
-                <ChannelList
-                  channels={channels}
-                  selectedChannel={selectedChannelKey}
-                  unreadCounts={unreadCountByChannel}
-                  onOpenChannel={handleOpenChannel}
-                  theme={theme}
-                />
+          {/* Chat View */}
+          {activeView === "chat" && (
+            <div className={t.chatViewContainer}>
+              <ChannelList
+                channels={channels}
+                selectedChannel={selectedChannelKey}
+                unreadCounts={unreadCountByChannel}
+                onOpenChannel={handleOpenChannel}
+                theme={theme}
+              />
 
-                {/* Chat column */}
-                <div className={t.chatColumn}>
-                  {/* Sub header (chat) to align next to channels */}
-                  <div className={t.subHeader}>
-                    <div className={t.subHeaderTitle}>
-                      RECENT NOSTR EVENTS{" "}
-                      {searchText ? `MATCHING "${searchText}"` : ""}
-                    </div>
+              {/* Chat column */}
+              <div className={t.chatColumn}>
+                {/* Sub header (chat) to align next to channels */}
+                <div className={t.subHeader}>
+                  <div className={t.subHeaderTitle}>
+                    RECENT NOSTR EVENTS{" "}
+                    {searchText ? `MATCHING "${searchText}"` : ""}
                   </div>
+                </div>
 
-                  {/* Messages area */}
-                  <div className="flex-1 overflow-hidden">
-                    <RecentEvents
-                      nostrEnabled={nostrEnabled}
-                      searchText={searchText}
-                      allStoredEvents={allStoredEvents}
-                      recentEvents={recentEvents}
-                      onSearch={handleTextSearch}
-                      onReply={handleReply}
-                      theme={theme}
-                    />
-                  </div>
-
-                  {/* Chat input */}
-                  <ChatInput
-                    currentChannel={
-                      selectedChannelKey
-                        ? selectedChannelKey.slice(1)
-                        : "global"
-                    } // Use global if no specific channel
-                    onMessageSent={handleMessageSent}
-                    onOpenProfileModal={() => setShowProfileModal(true)}
-                    prefillText={replyPrefillText}
-                    savedProfile={savedProfile}
+                {/* Messages area */}
+                <div className="flex-1 overflow-hidden">
+                  <RecentEvents
+                    nostrEnabled={nostrEnabled}
+                    searchText={searchText}
+                    allStoredEvents={allStoredEvents}
+                    recentEvents={recentEvents}
+                    onSearch={handleTextSearch}
+                    onReply={handleReply}
                     theme={theme}
                   />
                 </div>
-              </div>
-            )}
 
-            {/* Panel View */}
-            {activeView === "panel" && (
-              <div className="absolute inset-0 w-full h-full bg-black overflow-hidden">
-                <EventHierarchy
-                  searchText={searchText}
-                  allEventsByGeohash={allEventsByGeohash}
-                  onSearch={handleTextSearch}
+                {/* Chat input */}
+                <ChatInput
+                  currentChannel={
+                    selectedChannelKey ? selectedChannelKey.slice(1) : "global"
+                  } // Use global if no specific channel
+                  onMessageSent={handleMessageSent}
+                  onOpenProfileModal={() => setShowProfileModal(true)}
+                  prefillText={replyPrefillText}
+                  savedProfile={savedProfile}
                   theme={theme}
+                  onInsertImage={handleInsertImage}
                 />
               </div>
-            )}
-          </>
-      </div>
+            </div>
+          )}
 
-      {/* Nostr Watermark */}
-      <CornerOverlay position="bottom-right" theme={theme}>
-        <a
-          href="https://primal.net/p/nprofile1qqsvvullpd0j9rltp2a3qqvgy9udf3vgh389p7zhzu65fd258dz5lqg9ryan5"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 no-underline"
-        >
-          Follow me on Nostr
-        </a>
-      </CornerOverlay>
+          {/* Panel View */}
+          {activeView === "panel" && (
+            <div className="absolute inset-0 w-full h-full bg-black overflow-hidden">
+              <EventHierarchy
+                searchText={searchText}
+                allEventsByGeohash={allEventsByGeohash}
+                onSearch={handleTextSearch}
+                theme={theme}
+              />
+            </div>
+          )}
+        </>
+      </main>
+
+      {/* Connections Panel - Top left on map view */}
+      {activeView === "map" && (
+        <CornerOverlay position="bottom-right" theme={theme}>
+          <Connections
+            theme={theme}
+            connectedRelays={connectedRelays}
+            connectionStatus={connectionStatus}
+            onToggleNostr={toggleNostr}
+            nostrEnabled={nostrEnabled}
+            getGeorelayRelays={getGeorelayRelays}
+            connectToGeoRelays={connectToGeoRelays}
+            disconnectFromGeoRelays={disconnectFromGeoRelays}
+          />
+        </CornerOverlay>
+      )}
 
       {/* Projection Selector - Only show on map view */}
       {activeView === "map" && (
@@ -689,6 +765,23 @@ export default function App({
         onClose={() => setShowProfileModal(false)}
         onProfileSaved={handleProfileSaved}
         theme={theme}
+      />
+
+      {/* Favorites Modal */}
+      <FavoritesModal
+        isOpen={showFavoritesModal}
+        onClose={() => setShowFavoritesModal(false)}
+        theme={theme}
+        onImageSelect={(imageUrl) => {
+          // Insert the image URL into the chat input
+          if (window.onInsertImage) {
+            // Get current cursor position and value from ChatInput
+            const cursorPos = (window as any).getChatInputCursorPosition?.() || 0;
+            const currentValue = (window as any).getChatInputValue?.() || '';
+            window.onInsertImage(imageUrl, cursorPos, currentValue);
+          }
+          setShowFavoritesModal(false);
+        }}
       />
     </div>
   );

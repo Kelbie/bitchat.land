@@ -5,6 +5,7 @@ export interface ParsedSearch {
   clients: string[]; // New field for client filters
   colors: string[]; // Hex color filters
   has: string[]; // Content filters
+  includeChildren: boolean[]; // New field to track which geohashes should include child regions
 }
 
 /**
@@ -12,10 +13,11 @@ export interface ParsedSearch {
  * "hello world in:21m from:@jack client:bitchat.land"
  * "test in:#nyc in:london from:@alice#1234 client:amethyst"
  * in: can accept any string, not just geohashes
+ * in:9+ will include child regions, in:9 will only match exact
  */
 export function parseSearchQuery(query: string): ParsedSearch {
   if (!query.trim()) {
-    return { text: "", geohashes: [], users: [], clients: [], colors: [], has: [] };
+    return { text: "", geohashes: [], users: [], clients: [], colors: [], has: [], includeChildren: [] };
   }
 
   const geohashes: string[] = [];
@@ -23,15 +25,20 @@ export function parseSearchQuery(query: string): ParsedSearch {
   const clients: string[] = [];
   const colors: string[] = [];
   const has: string[] = [];
+  const includeChildren: boolean[] = [];
   let text = query;
 
-  // Extract "in:" terms (any string)
+  // Extract "in:" terms (any string) with support for + suffix
   const inPattern = /\s*in:(#?)(\S+)\s*/gi;
   let match;
   while ((match = inPattern.exec(query)) !== null) {
     const locationFilter = match[2].toLowerCase();
-    if (!geohashes.includes(locationFilter)) {
-      geohashes.push(locationFilter);
+    const hasPlusSuffix = locationFilter.endsWith('+');
+    const cleanLocation = hasPlusSuffix ? locationFilter.slice(0, -1) : locationFilter;
+    
+    if (!geohashes.includes(cleanLocation)) {
+      geohashes.push(cleanLocation);
+      includeChildren.push(hasPlusSuffix);
     }
     // Remove the matched "in:" term from text
     text = text.replace(match[0], ' ');
@@ -86,7 +93,7 @@ export function parseSearchQuery(query: string): ParsedSearch {
   // Clean up the remaining text
   text = text.replace(/\s+/g, ' ').trim();
 
-  return { text, geohashes, users, clients, colors, has };
+  return { text, geohashes, users, clients, colors, has, includeChildren };
 }
 
 /**
@@ -96,8 +103,10 @@ export function buildSearchQuery(parsed: ParsedSearch): string {
   let query = parsed.text;
   
   // Add geohash terms
-  for (const geohash of parsed.geohashes) {
-    query += ` in:${geohash}`;
+  for (let i = 0; i < parsed.geohashes.length; i++) {
+    const geohash = parsed.geohashes[i];
+    const includeChildren = parsed.includeChildren[i];
+    query += ` in:${geohash}${includeChildren ? '+' : ''}`;
   }
   
   // Add user terms
@@ -141,6 +150,7 @@ export function addGeohashToSearch(currentQuery: string, geohash: string): strin
   // If no existing geohashes, just add the new one
   if (parsed.geohashes.length === 0) {
     parsed.geohashes.push(newGeohash);
+    parsed.includeChildren.push(false); // Default to no child regions
     return buildSearchQuery(parsed);
   }
   
@@ -172,8 +182,10 @@ export function addGeohashToSearch(currentQuery: string, geohash: string): strin
   if (!foundExtension) {
     if (parsed.geohashes.length > 0) {
       parsed.geohashes[0] = newGeohash;
+      parsed.includeChildren[0] = false; // Default to no child regions for new primary
     } else {
       parsed.geohashes.push(newGeohash);
+      parsed.includeChildren.push(false); // Default to no child regions for new primary
     }
   }
   
@@ -185,7 +197,22 @@ export function addGeohashToSearch(currentQuery: string, geohash: string): strin
  */
 export function removeGeohashFromSearch(currentQuery: string, geohash: string): string {
   const parsed = parseSearchQuery(currentQuery);
-  parsed.geohashes = parsed.geohashes.filter(g => g !== geohash.toLowerCase());
+  const targetGeohash = geohash.toLowerCase();
+  
+  // Find indices to remove
+  const indicesToRemove: number[] = [];
+  parsed.geohashes.forEach((g, index) => {
+    if (g === targetGeohash) {
+      indicesToRemove.push(index);
+    }
+  });
+  
+  // Remove from both arrays in reverse order to maintain correct indices
+  indicesToRemove.reverse().forEach(index => {
+    parsed.geohashes.splice(index, 1);
+    parsed.includeChildren.splice(index, 1);
+  });
+  
   return buildSearchQuery(parsed);
 }
 
