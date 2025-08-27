@@ -25,24 +25,35 @@ interface RecentEventsProps {
 
 const styles = {
   matrix: {
-    container: "relative w-full h-full z-[1000] bg-black text-[14px] flex flex-col",
-    noEvents: "flex items-center justify-center h-full text-green-600 font-mono text-sm text-center p-5",
+    container:
+      "relative w-full h-full z-[1000] bg-black text-[14px] flex flex-col",
+    noEvents:
+      "flex items-center justify-center h-full text-green-600 font-mono text-sm text-center p-5",
     noEventsMessage: "mb-2",
-    scrollButton: "absolute bottom-[32px] right-[30px] bg-green-500 text-black rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,255,0,0.3)] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110 flex items-center justify-center",
-    scrollButtonWithCount: "absolute bottom-[32px] right-[30px] bg-green-500 text-black rounded-full min-w-[50px] h-[50px] px-2 cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,255,0,0.3)] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110 flex items-center justify-center",
+    scrollButton:
+      "absolute bottom-[32px] right-[30px] bg-green-500 text-black rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,255,0,0.3)] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110 flex items-center justify-center",
+    scrollButtonWithCount:
+      "absolute bottom-[32px] right-[30px] bg-green-500 text-black rounded-full min-w-[50px] h-[50px] px-2 cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,255,0,0.3)] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110 flex items-center justify-center",
     messageCard: "mx-3 px-3 py-2 bg-black/30 rounded-lg transition-all",
     hashTag: "text-gray-500 text-[10px] font-mono",
-    replyButton: "bg-transparent text-gray-500 rounded text-[10px] font-mono cursor-pointer transition-colors hover:bg-black/20 hover:text-gray-300",
+    replyButton:
+      "bg-transparent text-gray-500 rounded text-[10px] font-mono cursor-pointer transition-colors hover:bg-black/20 hover:text-gray-300",
   },
   material: {
-    container: "relative w-full h-full z-[1000] bg-white text-gray-900 text-[14px] flex flex-col",
-    noEvents: "flex items-center justify-center h-full text-gray-500 font-mono text-sm text-center p-5",
+    container:
+      "relative w-full h-full z-[1000] bg-white text-gray-900 text-[14px] flex flex-col",
+    noEvents:
+      "flex items-center justify-center h-full text-gray-500 font-mono text-sm text-center p-5",
     noEventsMessage: "mb-2",
-    scrollButton: "absolute bottom-[32px] right-[30px] bg-blue-500 text-white rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all duration-200 z-[1000] hover:bg-blue-600 hover:scale-110 flex items-center justify-center",
-    scrollButtonWithCount: "absolute bottom-[32px] right-[30px] bg-blue-500 text-white rounded-full min-w-[50px] h-[50px] px-2 cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all duration-200 z-[1000] hover:bg-blue-600 hover:scale-110 flex items-center justify-center",
-    messageCard: "mx-3 px-3 py-2 rounded-lg transition-all hover:bg-gray-200 hover:shadow-sm",
+    scrollButton:
+      "absolute bottom-[32px] right-[30px] bg-blue-500 text-white rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all duration-200 z-[1000] hover:bg-blue-600 hover:scale-110 flex items-center justify-center",
+    scrollButtonWithCount:
+      "absolute bottom-[32px] right-[30px] bg-blue-500 text-white rounded-full min-w-[50px] h-[50px] px-2 cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all duration-200 z-[1000] hover:bg-blue-600 hover:scale-110 flex items-center justify-center",
+    messageCard:
+      "mx-3 px-3 py-2 rounded-lg transition-all hover:bg-gray-200 hover:shadow-sm",
     hashTag: "text-gray-500 text-[10px] font-mono",
-    replyButton: "bg-transparent text-gray-500 rounded text-[10px] font-mono cursor-pointer transition-colors hover:bg-gray-200 hover:text-gray-700",
+    replyButton:
+      "bg-transparent text-gray-500 rounded text-[10px] font-mono cursor-pointer transition-colors hover:bg-gray-200 hover:text-gray-700",
   },
 } as const;
 
@@ -61,16 +72,20 @@ export function RecentEvents({
   const [lastSeenEventId, setLastSeenEventId] = useState<string | null>(null);
   const prevEventsLengthRef = useRef(0);
   const measurementCache = useRef<Map<number, number>>(new Map());
-  
+
   const t = styles[theme];
 
   if (!nostrEnabled) return null;
 
   // Parse search and filter events
   const parsedSearch = parseSearchQuery(searchText);
-  const hasSearchTerms = parsedSearch.text || parsedSearch.geohashes.length > 0 || 
-    parsedSearch.users.length > 0 || parsedSearch.clients.length > 0 || 
-    parsedSearch.colors.length > 0 || parsedSearch.has.length > 0;
+  const hasSearchTerms =
+    parsedSearch.text ||
+    parsedSearch.geohashes.length > 0 ||
+    parsedSearch.users.length > 0 ||
+    parsedSearch.clients.length > 0 ||
+    parsedSearch.colors.length > 0 ||
+    parsedSearch.has.length > 0;
 
   const eventsToShow = hasSearchTerms ? allStoredEvents : recentEvents;
   const filteredEvents = eventsToShow.filter((event) => {
@@ -112,17 +127,21 @@ export function RecentEvents({
       matches = parsedSearch.users.some((searchUser) => {
         if (searchUser.includes("#")) {
           const [searchUsername, searchHash] = searchUser.split("#");
-          return username === searchUsername.toLowerCase() && 
-                 pubkeyHash === searchHash.toLowerCase();
+          return (
+            username === searchUsername.toLowerCase() &&
+            pubkeyHash === searchHash.toLowerCase()
+          );
         }
         return username === searchUser.toLowerCase();
       });
     }
 
     if (parsedSearch.clients.length > 0 && matches) {
-      matches = eventClient && parsedSearch.clients.some((searchClient) =>
-        eventClient.includes(searchClient.toLowerCase())
-      );
+      matches =
+        eventClient &&
+        parsedSearch.clients.some((searchClient) =>
+          eventClient.includes(searchClient.toLowerCase())
+        );
     }
 
     if (parsedSearch.has.length > 0 && matches) {
@@ -137,16 +156,20 @@ export function RecentEvents({
     return matches;
   });
 
-  const sortedEvents = filteredEvents.sort((a, b) => a.created_at - b.created_at);
+  const sortedEvents = filteredEvents.sort(
+    (a, b) => a.created_at - b.created_at
+  );
   const hasImageFilter = parsedSearch.has.includes("image");
 
   // Calculate unread count
   const unreadCount = useMemo(() => {
     if (!lastSeenEventId || sortedEvents.length === 0) return 0;
-    
-    const lastSeenIndex = sortedEvents.findIndex(event => event.id === lastSeenEventId);
+
+    const lastSeenIndex = sortedEvents.findIndex(
+      (event) => event.id === lastSeenEventId
+    );
     if (lastSeenIndex === -1) return sortedEvents.length;
-    
+
     return sortedEvents.length - lastSeenIndex - 1;
   }, [sortedEvents, lastSeenEventId]);
 
@@ -161,21 +184,28 @@ export function RecentEvents({
   }, [isUserAtBottom, sortedEvents, lastSeenEventId]);
 
   // Custom measureElement function that prevents scroll jumps when scrolling up
-  const measureElement = useCallback((element: Element, entry: ResizeObserverEntry | undefined, instance: any) => {
-    const height = element.getBoundingClientRect().height;
-    const index = Number(element.getAttribute("data-index"));
-    
-    // Cache the measurement
-    measurementCache.current.set(index, height);
-    
-    // Critical fix: When scrolling backward, use cached measurements to prevent jumps
-    if (instance.scrollDirection === 'backward') {
-      const cachedHeight = measurementCache.current.get(index);
-      return cachedHeight || height;
-    }
-    
-    return height;
-  }, []);
+  const measureElement = useCallback(
+    (
+      element: Element,
+      entry: ResizeObserverEntry | undefined,
+      instance: any
+    ) => {
+      const height = element.getBoundingClientRect().height;
+      const index = Number(element.getAttribute("data-index"));
+
+      // Cache the measurement
+      measurementCache.current.set(index, height);
+
+      // Critical fix: When scrolling backward, use cached measurements to prevent jumps
+      if (instance.scrollDirection === "backward") {
+        const cachedHeight = measurementCache.current.get(index);
+        return cachedHeight || height;
+      }
+
+      return height;
+    },
+    []
+  );
 
   // TanStack Virtual setup with proper chat configuration
   const virtualizer = useVirtualizer({
@@ -206,7 +236,7 @@ export function RecentEvents({
 
     element.scrollTo({
       top: element.scrollHeight,
-      behavior: "smooth"
+      behavior: "smooth",
     });
   }, []);
 
@@ -240,80 +270,183 @@ export function RecentEvents({
   }, [handleScroll]);
 
   // Event item renderer
-  const EventItem = useCallback(({ index }: { index: number }) => {
-    const event = sortedEvents[index];
-    if (!event) return null;
+  const EventItem = useCallback(
+    ({ index }: { index: number }) => {
+      const event = sortedEvents[index];
+      if (!event) return null;
 
-    const geoTag = event.tags.find((tag: any) => tag[0] === "g");
-    const groupTag = event.tags.find((tag: any) => tag[0] === "d");
-    const nameTag = event.tags.find((tag: any) => tag[0] === "n");
-    const clientTag = event.tags.find((tag: any) => tag[0] === "client");
-    
-    const rawGeohash = geoTag && typeof geoTag[1] === "string" ? geoTag[1] : "";
-    const groupTagValue = groupTag && typeof groupTag[1] === "string" ? groupTag[1] : "";
-    const username = nameTag ? nameTag[1] : "Anonymous";
-    const clientName = clientTag ? clientTag[1] : null;
-    const pubkeyHash = event.pubkey.slice(-4);
-    const time = new Date(event.created_at * 1000).toLocaleTimeString();
-    const date = new Date(event.created_at * 1000).toLocaleDateString();
-    const isToday = new Date().toDateString() === new Date(event.created_at * 1000).toDateString();
-    const eventGeohash = (geoTag ? geoTag[1] : "").toLowerCase();
-    const userColors = colorForPeerSeed('nostr:' + event.pubkey, true);
+      const geoTag = event.tags.find((tag: any) => tag[0] === "g");
+      const groupTag = event.tags.find((tag: any) => tag[0] === "d");
+      const nameTag = event.tags.find((tag: any) => tag[0] === "n");
+      const clientTag = event.tags.find((tag: any) => tag[0] === "client");
 
-    return (
-      <div className="pb-4">
-        <div className={t.messageCard}>
-          <div className="flex justify-start items-center h-4">
-            <div className="flex items-center gap-2">
-              <span
-                className={`${t.hashTag} ${onSearch ? "cursor-pointer" : ""}`}
-                onClick={onSearch ? () => onSearch(addGeohashToSearch(searchText, rawGeohash.toLowerCase())) : undefined}
-              >
-                {eventGeohash ? `#${eventGeohash.toUpperCase()}` : `#${groupTagValue.toUpperCase()}`}
-              </span>
-              
-              {clientName && <span className={t.hashTag}>•</span>}
-              {clientName && <span className={t.hashTag}>via {clientName}</span>}
-              
-              {onReply && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onReply(username, pubkeyHash);
-                  }}
-                  className={t.replyButton}
-                >
-                  ↪ Reply
-                </button>
-              )}
+      const rawGeohash =
+        geoTag && typeof geoTag[1] === "string" ? geoTag[1] : "";
+      const groupTagValue =
+        groupTag && typeof groupTag[1] === "string" ? groupTag[1] : "";
+      const username = nameTag ? nameTag[1] : "Anonymous";
+      const clientName = clientTag ? clientTag[1] : null;
+      const pubkeyHash = event.pubkey.slice(-4);
+      const time = new Date(event.created_at * 1000).toLocaleTimeString();
+      const date = new Date(event.created_at * 1000).toLocaleDateString();
+      const isToday =
+        new Date().toDateString() ===
+        new Date(event.created_at * 1000).toDateString();
+      const eventGeohash = (geoTag ? geoTag[1] : "").toLowerCase();
+      const userColors = colorForPeerSeed("nostr:" + event.pubkey, true);
+
+      function isActionMessage(content: string): boolean {
+        // Check for asterisk wrapper pattern
+        const hasAsteriskWrapper =
+          content.startsWith("* ") && content.endsWith(" *");
+
+        if (!hasAsteriskWrapper) {
+          return false;
+        }
+
+        // Check for specific action indicators
+        const hasActionIndicators =
+          content.includes("🫂") || // hug emoji
+          content.includes("🐟") || // slap emoji
+          content.includes("took a screenshot");
+
+        return hasActionIndicators;
+      }
+
+      if (isActionMessage(event.content)) {
+        return (
+          <div className="pb-4">
+            <div className={t.messageCard}>
+              {/* Header with location/client info - same as regular messages */}
+              <div className="flex justify-start items-center h-4">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`${t.hashTag} ${onSearch ? "cursor-pointer" : ""}`}
+                    onClick={
+                      onSearch
+                        ? () =>
+                            onSearch(
+                              addGeohashToSearch(
+                                searchText,
+                                rawGeohash.toLowerCase()
+                              )
+                            )
+                        : undefined
+                    }
+                  >
+                    {eventGeohash
+                      ? `#${eventGeohash.toUpperCase()}`
+                      : `#${groupTagValue.toUpperCase()}`}
+                  </span>
+
+                  {clientName && <span className={t.hashTag}>•</span>}
+                  {clientName && (
+                    <span className={t.hashTag}>via {clientName}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* System message content */}
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0 leading-relaxed break-words whitespace-pre-wrap font-mono tracking-wide">
+                  <span className={`text-sm italic ${theme === 'matrix' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {event.content}
+                  </span>
+
+                  <span className="pl-2 text-[11px] font-mono text-gray-500">
+                    [{isToday ? time : `${date} ${time}`}]
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
+        );
+      }
 
-          <div className="flex items-start gap-2">
-            <div className="flex-1 min-w-0 leading-relaxed break-words whitespace-pre-wrap font-mono tracking-wide">
-              <span
-                className={`text-sm font-bold ${onSearch ? "cursor-pointer" : ""}`}
-                style={{ color: userColors.hex }}
-                onClick={onSearch ? () => onSearch(addUserToSearch(searchText, username, pubkeyHash)) : undefined}
-              >
-                &lt;@{username}#{pubkeyHash}&gt;
-              </span>
-              
-              <span className="pl-2 text-[15px]" style={{ color: userColors.hex }}>
-                {event.content ? renderTextWithLinks(event.content, theme) : "[No content]"}
-              </span>
-              
-              <span className="pl-2 text-[11px] font-mono text-gray-500">
-                [{isToday ? time : `${date} ${time}`}]
-              </span>
+      return (
+        <div className="pb-4">
+          <div className={t.messageCard}>
+            <div className="flex justify-start items-center h-4">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`${t.hashTag} ${onSearch ? "cursor-pointer" : ""}`}
+                  onClick={
+                    onSearch
+                      ? () =>
+                          onSearch(
+                            addGeohashToSearch(
+                              searchText,
+                              rawGeohash.toLowerCase()
+                            )
+                          )
+                      : undefined
+                  }
+                >
+                  {eventGeohash
+                    ? `#${eventGeohash.toUpperCase()}`
+                    : `#${groupTagValue.toUpperCase()}`}
+                </span>
+
+                {clientName && <span className={t.hashTag}>•</span>}
+                {clientName && (
+                  <span className={t.hashTag}>via {clientName}</span>
+                )}
+
+                {onReply && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onReply(username, pubkeyHash);
+                    }}
+                    className={t.replyButton}
+                  >
+                    ↪ Reply
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2">
+              <div className="flex-1 min-w-0 leading-relaxed break-words whitespace-pre-wrap font-mono tracking-wide">
+                <span
+                  className={`text-sm font-bold ${
+                    onSearch ? "cursor-pointer" : ""
+                  }`}
+                  style={{ color: userColors.hex }}
+                  onClick={
+                    onSearch
+                      ? () =>
+                          onSearch(
+                            addUserToSearch(searchText, username, pubkeyHash)
+                          )
+                      : undefined
+                  }
+                >
+                  &lt;@{username}#{pubkeyHash}&gt;
+                </span>
+
+                <span
+                  className="pl-2 text-[15px]"
+                  style={{ color: userColors.hex }}
+                >
+                  {event.content
+                    ? renderTextWithLinks(event.content, theme)
+                    : "[No content]"}
+                </span>
+
+                <span className="pl-2 text-[11px] font-mono text-gray-500">
+                  [{isToday ? time : `${date} ${time}`}]
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    );
-  }, [sortedEvents, onSearch, searchText, onReply, t, theme]);
+      );
+    },
+    [sortedEvents, onSearch, searchText, onReply, t, theme]
+  );
 
   // Image grid view
   if (hasImageFilter) {
@@ -322,7 +455,11 @@ export function RecentEvents({
         <div className={styles[theme].noEvents}>
           <div>
             <div className={styles[theme].noEventsMessage}>NO EVENTS FOUND</div>
-            {searchText && <div className="text-xs opacity-70">No events matching: "{searchText}"</div>}
+            {searchText && (
+              <div className="text-xs opacity-70">
+                No events matching: "{searchText}"
+              </div>
+            )}
           </div>
         </div>
       );
@@ -353,7 +490,11 @@ export function RecentEvents({
       <div className={styles[theme].noEvents}>
         <div>
           <div className={styles[theme].noEventsMessage}>NO EVENTS FOUND</div>
-          {searchText && <div className="text-xs opacity-70">No events matching: "{searchText}"</div>}
+          {searchText && (
+            <div className="text-xs opacity-70">
+              No events matching: "{searchText}"
+            </div>
+          )}
         </div>
       </div>
     );
@@ -396,17 +537,21 @@ export function RecentEvents({
         </div>
 
         {!isUserAtBottom && (
-          <button 
-            onClick={scrollToBottom} 
-            className={unreadCount > 0 ? t.scrollButtonWithCount : t.scrollButton}
+          <button
+            onClick={scrollToBottom}
+            className={
+              unreadCount > 0 ? t.scrollButtonWithCount : t.scrollButton
+            }
           >
             {unreadCount > 0 ? (
               <span className="flex items-center gap-1">
-                <span className="text-xs">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                <span className="text-xs">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
                 <span>↓</span>
               </span>
             ) : (
-              '↓'
+              "↓"
             )}
           </button>
         )}
