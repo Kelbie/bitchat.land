@@ -23,13 +23,6 @@ export function Connections({
   connectToGeoRelays: hookConnectToGeoRelays,
   disconnectFromGeoRelays: hookDisconnectFromGeoRelays,
 }: ConnectionsProps) {
-  const [locationPermission, setLocationPermission] = useState<
-    "granted" | "denied" | "prompting" | "unavailable"
-  >("unavailable");
-  const [currentLocation, setCurrentLocation] = useState<{
-    lat: number;
-    lon: number;
-  } | null>(null);
   const [geoRelayStatus, setGeoRelayStatus] = useState<string>("");
   const [isConnectingToGeoRelays, setIsConnectingToGeoRelays] = useState(false);
   // Determine if georelays are enabled by checking if connected relays include non-default relays
@@ -58,8 +51,7 @@ export function Connections({
       geoRelayButton:
         "w-full text-center px-3 py-2 text-xs font-bold",
       geoRelayButtonDisabled:
-        "w-full bg-gray-600 text-gray-400 px-3 py-2 rounded text-xs font-mono cursor-not-allowed font-bold",
-      locationInfo: "text-xs text-green-400 mt-2 text-center",
+        "w-full bg-gray-400 text-gray-600 px-3 py-2 rounded text-xs font-mono cursor-not-allowed font-bold",
     },
     material: {
       container:
@@ -81,7 +73,6 @@ export function Connections({
         "w-full bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-xs font-medium transition-colors font-bold",
       geoRelayButtonDisabled:
         "w-full bg-gray-400 text-gray-600 px-3 py-2 rounded text-xs font-medium cursor-not-allowed font-bold",
-      locationInfo: "text-xs text-gray-600 mt-2 text-center",
     },
   };
 
@@ -101,16 +92,10 @@ export function Connections({
       return;
     }
     lastClickTimeRef.current = now;
-    
-    if (!("geolocation" in navigator)) {
-      setGeoRelayStatus("Geolocation not supported");
-      return;
-    }
 
     // If georelay is already enabled, disable it
     if (isGeorelayEnabled) {
       setGeoRelayStatus("Disabling georelay...");
-      setLocationPermission("unavailable");
       
       // Call the hook to disconnect from georelays
       if (hookDisconnectFromGeoRelays) {
@@ -125,29 +110,32 @@ export function Connections({
     }
 
     // Enable georelay
-    setLocationPermission("prompting");
     setIsConnectingToGeoRelays(true);
-    setGeoRelayStatus("Getting location...");
+    setGeoRelayStatus("Connecting to georelays...");
 
     try {
       // Use the hook method to connect to georelays
       const geoRelays = await hookConnectToGeoRelays();
 
       if (geoRelays.length > 0) {
-        setLocationPermission("granted");
         setGeoRelayStatus(
-          `Connected to ${geoRelays.length} georelays near you`
+          `Connected to ${geoRelays.length} georelays for current channel`
         );
       } else {
-        setGeoRelayStatus("No georelays available");
-        setLocationPermission("unavailable");
+        setGeoRelayStatus("No georelays available for current channel");
       }
     } catch (error) {
-      setLocationPermission("denied");
-      setGeoRelayStatus(`Location error: ${error}`);
+      setGeoRelayStatus(`Connection error: ${error}`);
     } finally {
       setIsConnectingToGeoRelays(false);
     }
+  };
+
+  const truncate = (value: string, options: { length: number }): string => {
+    if (value.length > options.length) {
+      return value.slice(0, options.length) + "...";
+    }
+    return value;
   };
 
   return (
@@ -157,20 +145,26 @@ export function Connections({
       {/* Connected Relays List */}
       <div className="space-y-2 mb-4">
         {connectedRelays.map((relay, index) => {
-          // Hide georelay names for privacy - show generic labels
-          const isGeorelay = !DEFAULT_RELAYS.includes(relay);
-          const displayName = isGeorelay
-            ? `Georelay ${Math.abs(DEFAULT_RELAYS.length - index - 1)}`
-            : relay.replace(/^wss:\/\//, "");
+          // Show actual relay names for both default relays and georelays
+          const fullName = relay.replace(/^wss:\/\//, "");
+          // Truncate long relay names to keep the display clean
+          const displayName = truncate(fullName, { length: 12 });
 
           return (
             <div key={index} className="flex items-center gap-2 align-middle">
               <div className={`w-3 h-3 rounded-full ${nostrEnabled ? "bg-green-400" : "bg-red-400"}`}></div>
-              <span className={`text-xs font-mono ${t.status}`}>{index + 1}. {displayName}</span>
+              <span className={`text-xs font-mono ${t.status}`} title={fullName}>{index + 1}. {displayName}</span>
             </div>
           );
         })}
       </div>
+
+      {/* GeoRelay Status */}
+      {geoRelayStatus && (
+        <div className={`text-xs text-center mb-3 ${t.status}`}>
+          {geoRelayStatus}
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="space-y-2">
@@ -187,7 +181,7 @@ export function Connections({
           as="button"
           onClick={connectToGeoRelays}
           disabled={
-            isConnectingToGeoRelays || locationPermission === "prompting"
+            isConnectingToGeoRelays
           }
           className={isConnectingToGeoRelays ? t.actionButtonDisabled : t.geoRelayButton}
         >

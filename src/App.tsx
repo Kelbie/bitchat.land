@@ -243,7 +243,7 @@ export default function App({
     getGeorelayRelays,
     connectToGeoRelays,
     disconnectFromGeoRelays,
-  } = useNostr(searchGeohash, currentGeohashes, animateGeohash);
+  } = useNostr(searchGeohash, currentGeohashes, animateGeohash, selectedChannelKey);
 
   // Build users list from events - moved here after useNostr hook
   const users = useMemo<UserMeta[]>(() => {
