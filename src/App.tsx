@@ -26,6 +26,7 @@ import { ProjectionSelector } from "./components/ProjectionSelector";
 import { MarqueeBanner } from "./components/MarqueeBanner";
 import { CornerOverlay } from "./components/CornerOverlay";
 import { ChannelList, ChannelMeta } from "./components/ChannelList";
+import { UserList, UserMeta } from "./components/UserList";
 import { Connections } from "./components/Connections";
 import { NostrImageSearch } from "./components/NostrImageSearch";
 import { FavoritesModal } from "./components/FavoritesModal";
@@ -119,6 +120,9 @@ export default function App({
 
   // Reply state
   const [replyPrefillText, setReplyPrefillText] = useState("");
+
+  // User state
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
   // Header height constant - measured exact value
   const headerHeight = 182.2;
@@ -222,7 +226,7 @@ export default function App({
     : geohashDisplayPrecision;
 
   // Generate only localized geohashes when searching, otherwise use global precision
-  const currentGeohashes = shouldShowLocalizedPrecision
+  const currentGeohashes = shouldShowLocalizedPrecision && primarySearchGeohash
     ? generateLocalizedGeohashes(primarySearchGeohash.toLowerCase())
     : generateGeohashes(geohashDisplayPrecision, null);
 
@@ -240,6 +244,79 @@ export default function App({
     connectToGeoRelays,
     disconnectFromGeoRelays,
   } = useNostr(searchGeohash, currentGeohashes, animateGeohash);
+
+  // Build users list from events - moved here after useNostr hook
+  const users = useMemo<UserMeta[]>(() => {
+    // Guard against undefined allStoredEvents
+    if (!allStoredEvents || allStoredEvents.length === 0) {
+      return [];
+    }
+
+    interface UserData {
+      pubkey: string;
+      displayName: string;
+      hasMessages: boolean;
+      eventKind: number;
+      lastSeen: number;
+      messageCount: number;
+    }
+    
+    const userMap: Record<string, UserData> = {};
+
+    // Process events to build user information
+    for (const ev of allStoredEvents) {
+      // Guard against malformed events
+      if (!ev || !ev.pubkey || typeof ev.created_at !== 'number' || typeof ev.kind !== 'number') {
+        continue;
+      }
+
+      // If a channel is selected, only process events from that channel
+      if (selectedChannelKey) {
+        const g = ev.tags.find((t: any) => t[0] === "g");
+        const d = ev.tags.find((t: any) => t[0] === "d");
+        const gv = g && typeof g[1] === "string" ? g[1].toLowerCase() : "";
+        const dv = d && typeof d[1] === "string" ? d[1].toLowerCase() : "";
+        
+        const eventChannel = gv ? `#${gv}` : dv ? `#${dv}` : null;
+        
+        // Skip events that don't match the selected channel
+        if (eventChannel !== selectedChannelKey) {
+          continue;
+        }
+      }
+
+      const pubkey = ev.pubkey;
+      const existing = userMap[pubkey];
+      
+      if (existing) {
+        // Update existing user
+        existing.messageCount += 1;
+        existing.lastSeen = Math.max(existing.lastSeen, ev.created_at * 1000);
+        // Keep the highest event kind for this user
+        if (ev.kind > existing.eventKind) {
+          existing.eventKind = ev.kind;
+        }
+      } else {
+        // Create new user
+        userMap[pubkey] = {
+          pubkey,
+          displayName: ev.tags.find((t: any) => t[0] === "n")?.[1] || "", // Could be extracted from profile events in the future
+          hasMessages: true,
+          eventKind: ev.kind,
+          lastSeen: ev.created_at * 1000,
+          messageCount: 1,
+        };
+      }
+    }
+
+    // Convert to array and sort by last seen (most recent first)
+    return Object.values(userMap)
+      .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0))
+      .map(user => ({
+        ...user,
+        isPinned: false, // This is handled by the UserList component
+      }));
+  }, [allStoredEvents, selectedChannelKey]);
 
   // Generate heatmap data (currently unused but may be needed for future features)
   // const heatmapData = generateSampleHeatmapData(geohashPrecision);
@@ -388,16 +465,37 @@ export default function App({
   }, [latestEventTimestampByChannel]);
 
   const channels = useMemo<ChannelMeta[]>(() => {
-    const pinnedChannels = ["#bitchat.land", "#21m"];
     const allChannels = Array.from(channelSet).sort();
-    const pinned = pinnedChannels;
-    const unpinned = allChannels.filter((ch) => !pinnedChannels.includes(ch));
-    return [...pinned, ...unpinned].map((ch) => ({
+    
+    // Create a map of channel keys to their event kinds for proper categorization
+    const channelEventKinds: Record<string, number> = {};
+    
+    // Go through all events to determine the kind for each channel
+    for (const ev of allStoredEvents) {
+      const g = ev.tags.find((t: any) => t[0] === "g");
+      const d = ev.tags.find((t: any) => t[0] === "d");
+      const gv = g && typeof g[1] === "string" ? g[1].toLowerCase() : "";
+      const dv = d && typeof d[1] === "string" ? d[1].toLowerCase() : "";
+      
+      if (gv) {
+        const key = `#${gv}`;
+        // Use the actual event kind from the event
+        channelEventKinds[key] = ev.kind;
+      }
+      if (dv) {
+        const key = `#${dv}`;
+        // Use the actual event kind from the event
+        channelEventKinds[key] = ev.kind;
+      }
+    }
+    
+    return allChannels.map((ch) => ({
       key: ch,
-      isPinned: pinnedChannels.includes(ch),
+      isPinned: false, // This is now handled by the ChannelList component
       hasMessages: channelSet.has(ch),
+      eventKind: channelEventKinds[ch] || 23333, // Default to standard if unknown
     }));
-  }, [channelSet]);
+  }, [channelSet, allStoredEvents]);
 
   const handleOpenChannel = useCallback(
     (ch: string) => {
@@ -411,6 +509,15 @@ export default function App({
       });
     },
     [handleTextSearch, persistChannelLastRead]
+  );
+
+  const handleSelectUser = useCallback(
+    (pubkey: string) => {
+      setSelectedUser(pubkey);
+      // Could add user-specific search functionality here
+      console.log("Selected user:", pubkey);
+    },
+    []
   );
 
   // When selected channel changes, mark the previous channel as read at switch-away time
@@ -641,30 +748,30 @@ export default function App({
         } w-full h-full`}
       >
           <Map
-            width={mapWidth}
-            height={mapHeight}
-            projection={projection}
-            currentScale={currentScale}
-            centerX={centerX}
-            centerY={centerY}
-            isDragging={isDragging}
-            hasDragged={hasDragged}
+            width={mapWidth || 800}
+            height={mapHeight || 600}
+            projection={projection || "natural_earth"}
+            currentScale={currentScale || 1}
+            centerX={centerX || 0}
+            centerY={centerY || 0}
+            isDragging={isDragging || false}
+            hasDragged={hasDragged || false}
             events={!!events}
             onMapClick={handleMapClick}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMoveWithDrag}
             onMouseUp={handleMouseUp}
-            currentGeohashes={currentGeohashes}
-            geohashActivity={geohashActivity}
-            allEventsByGeohash={allEventsByGeohash}
-            animatingGeohashes={animatingGeohashes}
-            showSingleCharGeohashes={showSingleCharGeohashes}
-            showGeohashText={showGeohashText}
-            effectivePrecision={effectivePrecision}
+            currentGeohashes={currentGeohashes || []}
+            geohashActivity={geohashActivity || {}}
+            allEventsByGeohash={allEventsByGeohash || {}}
+            animatingGeohashes={animatingGeohashes || []}
+            showSingleCharGeohashes={showSingleCharGeohashes || false}
+            showGeohashText={showGeohashText || false}
+            effectivePrecision={effectivePrecision || 1}
             shouldShowLocalizedPrecision={!!shouldShowLocalizedPrecision}
-            searchText={searchText}
+            searchText={searchText || ""}
             onGeohashClick={handleGeohashClickForSearch}
-            theme={theme}
+            theme={theme || "matrix"}
           />
         </section>
 
@@ -717,6 +824,16 @@ export default function App({
                   onInsertImage={handleInsertImage}
                 />
               </div>
+
+              {/* User List on the right side */}
+              <UserList
+                users={users}
+                selectedUser={selectedUser}
+                onSelectUser={handleSelectUser}
+                searchText={searchText}
+                allStoredEvents={allStoredEvents}
+                theme={theme}
+              />
             </div>
           )}
 

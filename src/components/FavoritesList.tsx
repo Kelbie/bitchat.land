@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Image } from './Image';
-import { getFavorites } from '../utils/favorites';
+import { getFavorites, removeFromFavorites } from '../utils/favorites';
 
 interface FavoritesListProps {
   theme: "matrix" | "material";
@@ -149,9 +149,9 @@ const MasonryFavoriteImage: React.FC<{
 
   const handleHeartClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // This would typically remove from favorites
-    // For now, we'll just prevent the image selection
-    console.log('Heart clicked - would remove from favorites');
+    // Remove from favorites
+    removeFromFavorites(image.url);
+    // The favoritesUpdated event will trigger a re-render of the parent component
   };
 
   const handleLinkClick = (e: React.MouseEvent) => {

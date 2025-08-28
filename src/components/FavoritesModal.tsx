@@ -17,7 +17,7 @@ export function FavoritesModal({ isOpen, onClose, theme, onImageSelect }: Favori
   const styles = {
     matrix: {
       modal: "fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4",
-      content: "max-w-2xl w-full max-h-[80vh] overflow-y-auto rounded-lg shadow-xl bg-black border border-[#00ff00] text-[#00ff00]",
+      content: "max-w-2xl w-full max-h-[80vh] rounded-lg shadow-xl bg-black border border-[#00ff00] text-[#00ff00]",
       header: "p-4 border-b border-[#003300]",
       title: "text-lg font-bold text-[#00ff00]",
       closeButton: "p-2 rounded hover:bg-opacity-20 hover:bg-[#00ff00] text-[#00ff00]",
@@ -29,7 +29,7 @@ export function FavoritesModal({ isOpen, onClose, theme, onImageSelect }: Favori
     },
     material: {
       modal: "fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4",
-      content: "max-w-2xl w-full max-h-[80vh] overflow-y-auto rounded-lg shadow-xl bg-white border border-gray-200 text-gray-800",
+      content: "max-w-2xl w-full max-h-[80vh] rounded-lg shadow-xl bg-white border border-gray-200 text-gray-800",
       header: "p-4 border-b border-gray-200",
       title: "text-lg font-bold text-gray-800",
       closeButton: "p-2 rounded hover:bg-opacity-20 hover:bg-gray-100 text-gray-600",
