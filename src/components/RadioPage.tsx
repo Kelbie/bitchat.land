@@ -10,7 +10,16 @@ interface RadioPageProps {
   theme: "matrix" | "material";
 }
 
+// Simple cache for radio stations
+interface CachedRadioData {
+  stations: StationWithDistance[];
+  countries: Array<{countryCode: string, countryName: string, distance?: number}>;
+  timestamp: number;
+}
+
 const radioService = new RadioService();
+const radioCache = new Map<string, CachedRadioData>();
+const CACHE_EXPIRY_HOURS = 24; // Cache for 24 hours
 
 export function RadioPage({ searchText, theme }: RadioPageProps) {
   const [currentStation, setCurrentStation] =
@@ -22,7 +31,6 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
   const [geohash, setGeohash] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
-  const [countriesInRegion, setCountriesInRegion] = useState<Array<{countryCode: string, countryName: string, distance?: number}>>([]);
   const currentRequestRef = useRef<AbortController | null>(null);
 
   const audioPlayer = useAudioPlayer();
@@ -65,6 +73,14 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
   }, [searchText, geohash]);
 
   const fetchStationsForGeohash = async (geohash: string) => {
+    // Check cache first
+    const cached = radioCache.get(geohash);
+    if (cached && Date.now() - cached.timestamp < CACHE_EXPIRY_HOURS * 60 * 60 * 1000) {
+      setStations(cached.stations);
+      setCurrentStationIndex(0); // Reset index to first station in cached data
+      return;
+    }
+
     // Cancel any existing request
     if (currentRequestRef.current) {
       currentRequestRef.current.abort();
@@ -74,6 +90,9 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
     const abortController = new AbortController();
     currentRequestRef.current = abortController;
     
+    // Clear previous data when starting new search
+    setStations([]);
+    setCurrentStationIndex(0);
     setIsLoading(true);
     setError(null);
 
@@ -108,10 +127,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
         return;
       }
 
-      // Store the countries for display
-      if (!abortController.signal.aborted) {
-        setCountriesInRegion(countriesInRegion);
-      }
+      // Store the countries for display (no longer needed since we calculate from stations)
 
       // Check for cancellation
       if (abortController.signal.aborted) {
@@ -146,6 +162,14 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
         setStations(musicStations);
         setCurrentStationIndex(0);
       }
+
+      // Cache the results
+      radioCache.set(geohash, {
+        stations: musicStations,
+        countries: countriesInRegion,
+        timestamp: Date.now(),
+      });
+
     } catch (err) {
       // Only show error if request wasn't cancelled
       if (!abortController.signal.aborted) {
@@ -171,7 +195,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
         stations.findIndex((s) => s.id === station.id)
       );
       setError(null);
-    } catch (err) {
+    } catch {
       setError("Failed to play station");
     }
   };
@@ -250,13 +274,63 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
   };
 
   const filteredStations = stations.filter((station) => {
-    const matchesSelectedTags = selectedTags.size === 0 || selectedTags.has(station.tags[0] || "");
+    // Check if station matches any of the selected tags (case-insensitive)
+    const matchesSelectedTags = selectedTags.size === 0 || 
+      station.tags?.some(stationTag => 
+        Array.from(selectedTags).some(selectedTag => 
+          selectedTag.toLowerCase() === stationTag.toLowerCase()
+        )
+      );
+    
     const matchesSelectedCountries = selectedCountries.size === 0 || selectedCountries.has(station.countryCode);
     return matchesSelectedTags && matchesSelectedCountries;
   });
 
-  const allTags = Array.from(new Set(stations.flatMap(station => station.tags || [])));
-  const allCountries = Array.from(new Set(countriesInRegion.map(c => c.countryName)));
+  // Calculate tag popularity based on station votes and order by popularity
+  const tagPopularity = stations.reduce((acc, station) => {
+    if (station.tags && station.tags.length > 0) {
+      station.tags.forEach(tag => {
+        if (!acc[tag]) {
+          acc[tag] = {
+            tag,
+            totalVotes: 0,
+            stationCount: 0,
+            averageVotes: 0
+          };
+        }
+        acc[tag].totalVotes += station.votes || 0;
+        acc[tag].stationCount += 1;
+      });
+    }
+    return acc;
+  }, {} as Record<string, { tag: string; totalVotes: number; stationCount: number; averageVotes: number }>);
+
+  // Calculate average votes and sort by popularity (total votes first, then average votes)
+  const sortedTags = Object.values(tagPopularity)
+    .map(tagData => ({
+      ...tagData,
+      averageVotes: tagData.stationCount > 0 ? tagData.totalVotes / tagData.stationCount : 0
+    }))
+    .sort((a, b) => {
+      // Primary sort: total votes (descending)
+      if (b.totalVotes !== a.totalVotes) {
+        return b.totalVotes - a.totalVotes;
+      }
+      // Secondary sort: average votes (descending)
+      if (b.averageVotes !== a.averageVotes) {
+        return b.averageVotes - a.averageVotes;
+      }
+      // Tertiary sort: station count (descending)
+      return b.stationCount - a.stationCount;
+    })
+    .map(tagData => tagData.tag);
+
+  const allTags = sortedTags;
+  const allCountries = Array.from(new Set(
+    stations
+      .filter(station => station.countryCode && station.country)
+      .map(station => JSON.stringify({ countryCode: station.countryCode.toUpperCase(), countryName: station.country }))
+  )).map(countryStr => JSON.parse(countryStr));
 
   const t =
     theme === "matrix"
@@ -349,14 +423,14 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
         {/* Error State */}
         {error && <div className={t.error}>⚠️ {error}</div>}
 
-        {/* Tag Filter UI */}
-        {stations.length > 0 && allTags.length > 0 && (
+        {/* Tags Filter UI */}
+        {allTags.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className={`text-lg font-semibold ${
                 theme === "matrix" ? "text-[#00ff00]" : "text-gray-800"
               }`}>
-                Filter by Category
+                Filter by Tags
               </h3>
               {selectedTags.size > 0 && (
                 <button
@@ -371,95 +445,155 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                 </button>
               )}
             </div>
+            
+            {/* Tag popularity summary */}
+            <div className={`mb-3 text-sm ${
+              theme === "matrix" ? "text-[#00ff00]/70" : "text-gray-600"
+            }`}>
+              <span>Tags ordered by popularity • </span>
+              <span>Total votes: {Object.values(tagPopularity).reduce((sum, tag) => sum + tag.totalVotes, 0).toLocaleString()}</span>
+              <span> • </span>
+              <span>Total stations: {Object.values(tagPopularity).reduce((sum, tag) => sum + tag.stationCount, 0)}</span>
+            </div>
 
-            <div className="flex flex-wrap gap-2">
-              {allTags.slice(0, 10).map(tag => {
-                const isSelected = selectedTags.has(tag);
-                return (
-                  <button
-                    key={tag}
-                    onClick={() => handleTagToggle(tag)}
-                    className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
-                      isSelected
-                        ? theme === "matrix"
-                          ? "bg-[#00ff00] text-black border border-[#00ff00]"
-                          : "bg-blue-600 text-white border border-blue-600"
-                        : theme === "matrix"
-                        ? "bg-black/50 text-[#00ff00]/70 border border-[#00ff00]/30 hover:border-[#00ff00]/50 hover:text-[#00ff00]"
-                        : "bg-gray-100 text-gray-700 border border-gray-300 hover:border-gray-400 hover:text-gray-900"
-                    }`}
-                  >
-                    {tag.charAt(0).toUpperCase() + tag.slice(1)}
-                  </button>
-                );
-              })}
+            <div className="h-30 overflow-x-auto">
+              <div className="flex flex-col gap-2">
+                {/* Top row - first half of tags */}
+                <div className="flex gap-2">
+                                      {allTags.slice(0, Math.ceil(allTags.length / 2)).map(tag => {
+                      const isSelected = selectedTags.has(tag);
+                      const tagData = tagPopularity[tag];
+                      return (
+                        <button
+                          key={tag}
+                          onClick={() => handleTagToggle(tag)}
+                          className={`px-3 py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 flex items-center gap-2 ${
+                            isSelected
+                              ? theme === "matrix"
+                                ? "bg-[#00ff00] text-black border border-[#00ff00]"
+                                : "bg-blue-600 text-white border border-blue-600"
+                              : theme === "matrix"
+                              ? "bg-black/50 text-[#00ff00]/70 border border-[#00ff00]/30 hover:border-[#00ff00]/50 hover:text-[#00ff00]"
+                              : "bg-gray-100 text-gray-700 border border-gray-300 hover:border-gray-400 hover:text-gray-900"
+                          }`}
+                          title={`${tagData.totalVotes} total votes • ${tagData.stationCount} stations`}
+                        >
+                          <span>{tag.charAt(0).toUpperCase() + tag.slice(1)}</span>
+                          <div className={`text-xs px-1.5 py-0.5 rounded-full ${
+                            isSelected
+                              ? theme === "matrix"
+                                ? "bg-black/20 text-black"
+                                : "bg-white/20 text-white"
+                              : theme === "matrix"
+                              ? "bg-[#00ff00]/20 text-[#00ff00]"
+                              : "bg-gray-200 text-gray-600"
+                          }`}>
+                            {tagData.totalVotes}
+                          </div>
+                        </button>
+                      );
+                    })}
+                </div>
+                {/* Bottom row - second half of tags */}
+                <div className="flex gap-2">
+                                      {allTags.slice(Math.ceil(allTags.length / 2)).map(tag => {
+                      const isSelected = selectedTags.has(tag);
+                      const tagData = tagPopularity[tag];
+                      return (
+                        <button
+                          key={tag}
+                          onClick={() => handleTagToggle(tag)}
+                          className={`px-3 py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 flex items-center gap-2 ${
+                            isSelected
+                              ? theme === "matrix"
+                                ? "bg-[#00ff00] text-black border border-[#00ff00]"
+                                : "bg-blue-600 text-white border border-blue-600"
+                              : theme === "matrix"
+                              ? "bg-black/50 text-[#00ff00]/70 border border-[#00ff00]/30 hover:border-[#00ff00]/50 hover:text-[#00ff00]"
+                              : "bg-gray-100 text-gray-700 border border-gray-300 hover:border-gray-400 hover:text-gray-900"
+                          }`}
+                          title={`${tagData.totalVotes} total votes • ${tagData.stationCount} stations`}
+                        >
+                          <span>{tag.charAt(0).toUpperCase() + tag.slice(1)}</span>
+                          <div className={`text-xs px-1.5 py-0.5 rounded-full ${
+                            isSelected
+                              ? theme === "matrix"
+                                ? "bg-black/20 text-black"
+                                : "bg-white/20 text-white"
+                              : theme === "matrix"
+                              ? "bg-[#00ff00]/20 text-[#00ff00]"
+                              : "bg-gray-200 text-gray-600"
+                          }`}>
+                            {tagData.totalVotes}
+                          </div>
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
             </div>
             
-            {selectedTags.size > 0 && (
+            {/* Filter by Countries */}
+
+            <div className="mb-2 mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={`text-lg font-semibold ${
+                  theme === "matrix" ? "text-[#00ff00]" : "text-gray-800"
+                }`}>
+                  Filter by Countries
+                </h3>
+                {selectedCountries.size > 0 && (
+                  <button
+                    onClick={clearCountryFilters}
+                    className={`text-sm px-3 py-1 rounded-full border ${
+                      theme === "matrix"
+                        ? "text-[#00ff00]/70 border-[#00ff00]/30 hover:border-[#00ff00] hover:text-[#00ff00]"
+                        : "text-gray-600 border-gray-300 hover:border-gray-400 hover:text-gray-800"
+                    } transition-colors`}
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="h-30 overflow-x-auto">
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  {allCountries.map(country => {
+                    const isSelected = selectedCountries.has(country.countryCode);
+                    return (
+                      <button
+                        key={country.countryCode}
+                        onClick={() => handleCountryToggle(country.countryCode)}
+                        className={`px-3 py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 ${
+                          isSelected
+                            ? theme === "matrix"
+                              ? "bg-[#00ff00] text-black border border-[#00ff00]"
+                              : "bg-blue-600 text-white border border-blue-600"
+                            : theme === "matrix"
+                            ? "bg-black/50 text-[#00ff00]/70 border border-[#00ff00]/30 hover:border-[#00ff00]/50 hover:text-[#00ff00]"
+                            : "bg-gray-100 text-gray-700 border border-gray-300 hover:border-gray-400 hover:text-gray-900"
+                        }`}
+                      >
+                        {country.countryName}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            
+            {
               <div className={`mt-3 text-sm ${
                 theme === "matrix" ? "text-[#00ff00]/70" : "text-gray-600"
               }`}>
                 Showing {filteredStations.length} of {stations.length} stations
               </div>
-            )}
+            }
           </div>
         )}
 
-        {/* Country Filter UI */}
-        {countriesInRegion.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className={`text-lg font-semibold ${
-                theme === "matrix" ? "text-[#00ff00]" : "text-gray-800"
-              }`}>
-                Filter by Country
-              </h3>
-              {selectedCountries.size > 0 && (
-                <button
-                  onClick={clearCountryFilters}
-                  className={`text-sm px-3 py-1 rounded-full border ${
-                    theme === "matrix"
-                      ? "text-[#00ff00]/70 border-[#00ff00]/30 hover:border-[#00ff00] hover:text-[#00ff00]"
-                      : "text-gray-600 border-gray-300 hover:border-gray-400 hover:text-gray-800"
-                  } transition-colors`}
-                >
-                  Clear All
-                </button>
-              )}
-            </div>
-            
-            <div className="flex flex-wrap gap-2">
-              {countriesInRegion.map(country => {
-                const isSelected = selectedCountries.has(country.countryCode);
-                return (
-                  <button
-                    key={country.countryCode}
-                    onClick={() => handleCountryToggle(country.countryCode)}
-                    className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
-                      isSelected
-                        ? theme === "matrix"
-                          ? "bg-[#00ff00] text-black border border-[#00ff00]"
-                          : "bg-blue-600 text-white border border-blue-600"
-                        : theme === "matrix"
-                        ? "bg-black/50 text-[#00ff00]/70 border border-[#00ff00]/30 hover:border-[#00ff00]/50 hover:text-[#00ff00]"
-                        : "bg-gray-100 text-gray-700 border border-gray-300 hover:border-gray-400 hover:text-gray-900"
-                    }`}
-                  >
-                    {country.countryName}
-                  </button>
-                );
-              })}
-            </div>
-            
-            {selectedCountries.size > 0 && (
-              <div className={`mt-3 text-sm ${
-                theme === "matrix" ? "text-[#00ff00]/70" : "text-gray-600"
-              }`}>
-                Showing {filteredStations.length} of {stations.length} stations
-              </div>
-            )}
-          </div>
-        )}
         
 
         {/* Stations List - Single Column with proper flex behavior */}
@@ -535,21 +669,63 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                     </svg>
                   </div>
 
+                  {/* Station Favicon */}
+                  <div className="w-12 h-12 flex-shrink-0">
+                    {station.favicon ? (
+                      <img
+                        src={station.favicon}
+                        alt={`${station.name} logo`}
+                        className="w-12 h-12 rounded-md object-cover bg-gray-100"
+                        onError={(e) => {
+                          // Fallback to default icon if favicon fails to load
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    {/* Fallback icon when no favicon or favicon fails */}
+                    <div className={`w-12 h-12 rounded-md flex items-center justify-center ${
+                      station.favicon ? 'hidden' : ''
+                    } ${
+                      theme === "matrix"
+                        ? "bg-[#00ff00]/10 text-[#00ff00]"
+                        : "bg-gray-100 text-gray-400"
+                    }`}>
+                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                      </svg>
+                    </div>
+                  </div>
+
                   {/* Station Info */}
                   <div className="flex-1 min-w-0">
-                    <div
-                                            className={`font-medium truncate ${
-                        currentStation?.id === station.id
-                          ? theme === "matrix"
-                            ? "text-[#00ff00]"
-                            : "text-green-600"
-                          : theme === "matrix"
+                    <div className="flex items-center gap-2 mb-1">
+                      <div
+                        className={`font-medium truncate ${
+                          currentStation?.id === station.id
+                            ? theme === "matrix"
+                              ? "text-[#00ff00]"
+                              : "text-green-600"
+                            : theme === "matrix"
                             ? "text-[#00ff00]"
                             : "text-gray-900"
-                      }`}
-                    >
-                      {station.name}
+                        }`}
+                      >
+                        {station.name}
+                      </div>
+                      {/* Online Status Indicator */}
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        station.lastCheckOk
+                          ? theme === "matrix"
+                            ? "bg-[#00ff00]"
+                            : "bg-green-500"
+                          : "bg-red-500"
+                      }`} 
+                      title={station.lastCheckOk ? "Online" : "Offline"}
+                      />
                     </div>
+                    
+                    {/* Location and Tags */}
                     <div
                       className={`text-sm truncate ${
                         theme === "matrix"
@@ -558,40 +734,108 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                       }`}
                     >
                       {station.country}
+                      {station.state && station.state !== station.country && (
+                        <span>, {station.state}</span>
+                      )}
                       {station.tags && station.tags.length > 0 && (
                         <span> • {station.tags.slice(0, 2).join(", ")}</span>
                       )}
                     </div>
+
+                    {/* Technical Info */}
+                    <div className="flex items-center gap-3 mt-1">
+                      {/* Codec and Bitrate */}
+                      {station.codec && (
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          theme === "matrix"
+                            ? "bg-[#00ff00]/10 text-[#00ff00]/80"
+                            : "bg-blue-50 text-blue-600"
+                        }`}>
+                          {station.codec}
+                          {station.bitrate && ` • ${station.bitrate}k`}
+                        </span>
+                      )}
+                      
+                      {/* Language */}
+                      {station.language && station.language.length > 0 && (
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          theme === "matrix"
+                            ? "bg-[#00ff00]/10 text-[#00ff00]/80"
+                            : "bg-gray-100 text-gray-600"
+                        }`}>
+                          {station.language[0]}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Distance */}
-                  <div
-                    className={`text-sm ${
-                      theme === "matrix"
-                        ? "text-[#00ff00]/70"
-                        : "text-gray-500"
-                    } min-w-[60px] text-right flex-shrink-0`}
-                  >
-                    {station.distanceKm.toFixed(1)} km
-                  </div>
-
-                  {/* Duration Placeholder (Spotify-style) */}
-                  <div
-                    className={`text-sm ${
-                      theme === "matrix"
-                        ? "text-[#00ff00]/70"
-                        : "text-gray-500"
-                    } min-w-[40px] text-right flex-shrink-0`}
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      className="opacity-0 group-hover:opacity-100"
+                  {/* Distance and Popularity */}
+                  <div className="flex flex-col items-end gap-1 min-w-[80px] flex-shrink-0">
+                    {/* Distance */}
+                    <div
+                      className={`text-sm ${
+                        theme === "matrix"
+                          ? "text-[#00ff00]/70"
+                          : "text-gray-500"
+                      }`}
                     >
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                    </svg>
+                      {station.distanceKm.toFixed(1)} km
+                    </div>
+                    
+                    {/* Popularity Indicators */}
+                    <div className="flex items-center gap-1">
+                      {/* Votes */}
+                      {station.votes > 0 && (
+                        <span className={`text-xs flex items-center gap-1 ${
+                          theme === "matrix"
+                            ? "text-[#00ff00]/70"
+                            : "text-gray-500"
+                        }`}>
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                          </svg>
+                          {station.votes}
+                        </span>
+                      )}
+                      
+                      {/* Click Count */}
+                      {station.clickCount > 0 && (
+                        <span className={`text-xs flex items-center gap-1 ${
+                          theme === "matrix"
+                            ? "text-[#00ff00]/70"
+                            : "text-gray-500"
+                        }`}>
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                          </svg>
+                          {station.clickCount}
+                        </span>
+                      )}
+
+                      {/* Click Trend */}
+                      {station.clickTrend !== 0 && (
+                        <span className={`text-xs flex items-center gap-1 ${
+                          station.clickTrend > 0
+                            ? theme === "matrix"
+                              ? "text-[#00ff00]"
+                              : "text-green-600"
+                            : theme === "matrix"
+                              ? "text-red-400"
+                              : "text-red-600"
+                        }`}>
+                          {station.clickTrend > 0 ? (
+                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M7 14l5-5 5 5z"/>
+                            </svg>
+                          ) : (
+                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M7 10l5 5 5-5z"/>
+                            </svg>
+                          )}
+                          {Math.abs(station.clickTrend)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -631,25 +875,37 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
           <div className="flex items-center justify-between max-w-screen-xl mx-auto">
             {/* Left: Now Playing Info */}
             <div className="flex items-center gap-4 flex-1 min-w-0 max-w-[30%]">
-              {/* Album Art Placeholder */}
-              <div
-                className={`w-14 h-14 ${
+              {/* Station Favicon */}
+              <div className="w-14 h-14 flex-shrink-0">
+                {currentStation?.favicon ? (
+                  <img
+                    src={currentStation.favicon}
+                    alt={`${currentStation.name} logo`}
+                    className="w-14 h-14 rounded-md object-cover bg-gray-100"
+                    onError={(e) => {
+                      // Fallback to default icon if favicon fails to load
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                {/* Fallback icon when no favicon or favicon fails */}
+                <div className={`w-14 h-14 rounded-md flex items-center justify-center ${
+                  currentStation?.favicon ? 'hidden' : ''
+                } ${
                   theme === "matrix"
-                    ? "bg-[#00ff00]/20 border border-[#00ff00]/30"
-                    : "bg-gray-200"
-                } rounded-md flex items-center justify-center flex-shrink-0`}
-              >
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className={
-                    theme === "matrix" ? "text-[#00ff00]/50" : "text-gray-400"
-                  }
-                >
-                  <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-                </svg>
+                    ? "bg-[#00ff00]/20 border border-[#00ff00]/30 text-[#00ff00]/50"
+                    : "bg-gray-200 text-gray-400"
+                }`}>
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                  </svg>
+                </div>
               </div>
 
               {/* Track Info */}

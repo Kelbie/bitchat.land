@@ -1,6 +1,36 @@
 import { Station } from '@luigivampa/radio-browser-api';
 
-export interface StationWithDistance extends Station {
+// Enhanced interface that explicitly includes all the properties we need
+export interface StationWithDistance {
+  // Core station properties
+  changeId: string;
+  id: string;
+  name: string;
+  url: string;
+  urlResolved: string;
+  homepage: string;
+  favicon: string;
+  tags: string[];
+  country: string;
+  countryCode: string;
+  state: string;
+  language: string[];
+  votes: number;
+  lastChangeTime: Date;
+  codec: string;
+  bitrate: number;
+  hls: boolean;
+  lastCheckOk: boolean;
+  lastCheckTime: Date;
+  lastCheckOkTime: Date;
+  lastLocalCheckTime: Date;
+  clickTimestamp: Date;
+  clickCount: number;
+  clickTrend: number;
+  geoLat: number | null;
+  geoLong: number | null;
+  
+  // Additional properties from our extension
   distanceKm: number;
   isMusicStation: boolean;
 }
@@ -13,6 +43,8 @@ export interface RadioPlayerState {
   error: string | null;
   currentTime: number;
   duration: number;
+  bufferAvailable: number;
+  isLive: boolean;
 }
 
 export interface CountryInRegion {

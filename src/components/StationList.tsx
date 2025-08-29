@@ -78,7 +78,7 @@ export const StationList: React.FC<StationListProps> = ({
                   >
                     {isCurrentlyPlaying ? 'Playing' : 'Play'}
                   </button>
-                  
+
                   {station.favicon && (
                     <img
                       src={station.favicon}

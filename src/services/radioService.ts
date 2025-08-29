@@ -1,12 +1,84 @@
 import { RadioBrowserApi, Station } from '@luigivampa/radio-browser-api';
 import { StationWithDistance } from '../types/radio';
-import { GeohashInfo, CountryInRegion } from '../types/radio';
+import { CountryInRegion } from '../types/radio';
+
+interface CachedData {
+  stations: StationWithDistance[];
+  countries: CountryInRegion[];
+  timestamp: number;
+  geohash: string;
+}
 
 export class RadioService {
   private api: RadioBrowserApi;
+  private cache: Map<string, CachedData> = new Map();
+  private readonly CACHE_EXPIRY_HOURS = 24; // Cache for 24 hours
 
   constructor(userAgent: string = 'GeohashRadioFinder/1.0') {
     this.api = new RadioBrowserApi(userAgent);
+  }
+
+  /**
+   * Get cached data for a geohash if it exists and is not expired
+   */
+  private getCachedData(geohash: string): CachedData | null {
+    const cached = this.cache.get(geohash);
+    if (!cached) return null;
+
+    const now = Date.now();
+    const expiryTime = cached.timestamp + (this.CACHE_EXPIRY_HOURS * 60 * 60 * 1000);
+    
+    if (now > expiryTime) {
+      // Cache expired, remove it
+      this.cache.delete(geohash);
+      return null;
+    }
+
+    return cached;
+  }
+
+  /**
+   * Cache data for a geohash
+   */
+  private setCachedData(geohash: string, stations: StationWithDistance[], countries: CountryInRegion[]): void {
+    this.cache.set(geohash, {
+      stations,
+      countries,
+      timestamp: Date.now(),
+      geohash
+    });
+  }
+
+  /**
+   * Clear expired cache entries
+   */
+  private cleanupExpiredCache(): void {
+    const now = Date.now();
+    const expiryTime = this.CACHE_EXPIRY_HOURS * 60 * 60 * 1000;
+    
+    for (const [geohash, data] of this.cache.entries()) {
+      if (now > data.timestamp + expiryTime) {
+        this.cache.delete(geohash);
+      }
+    }
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats(): { totalEntries: number; totalSize: number } {
+    this.cleanupExpiredCache();
+    return {
+      totalEntries: this.cache.size,
+      totalSize: JSON.stringify(Array.from(this.cache.entries())).length
+    };
+  }
+
+  /**
+   * Clear all cache
+   */
+  clearCache(): void {
+    this.cache.clear();
   }
 
   /**
@@ -24,7 +96,7 @@ export class RadioService {
         const stations = await this.api.searchStations({
           countryCode: country.countryCode,
           hasGeoInfo: true, // Only stations with lat/lon
-          limit: 100, // Reasonable limit per country
+          limit: 500, // Reasonable limit per country
           hideBroken: true // Only working stations
         });
         

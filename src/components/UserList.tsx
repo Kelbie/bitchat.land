@@ -124,8 +124,8 @@ const styles = {
     rail:
       "w-48 min-w-[192px] border-l border-gray-300 bg-white text-gray-800 flex flex-col overflow-hidden",
     header:
-      "bg-gray-100 text-gray-700 px-3 py-3 border-b border-gray-300 sticky top-0 z-20",
-    headerText: "text-sm font-medium uppercase tracking-wider",
+      "bg-white text-blue-600 px-4 py-3 border-b border-blue-200 sticky top-0 z-20",
+    headerText: "text-base uppercase tracking-wider",
     sectionHeader:
       "bg-gray-50 text-gray-600 px-3 py-2 border-b border-gray-200 text-xs uppercase tracking-wider font-medium",
     list: "overflow-y-auto px-2 py-2 flex-1",
