@@ -38,7 +38,7 @@ import {
 
 import { hasImageUrl } from "./utils/imageUtils";
 import { getFavorites, addToFavorites, removeFromFavorites } from "./utils/favorites";
-import { isFirstTimeOpeningToday, markChannelOpenedToday, debugChannelJoinStorage } from "./utils/channelJoinTracker";
+import { isFirstTimeOpeningThisHour, markChannelOpenedThisHour, debugChannelJoinStorage } from "./utils/channelJoinTracker";
 import { sendJoinMessage } from "./utils/systemMessageSender";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
@@ -511,10 +511,10 @@ export default function App({
       
       handleTextSearch(`in:${channelValue}`);
       
-      // Check if this is the first time opening the channel today
-      console.log(`🔍 About to call isFirstTimeOpeningToday with: ${ch}`);
-      const isFirstTime = isFirstTimeOpeningToday(ch);
-      console.log(`📅 Is first time opening today: ${isFirstTime}`);
+      // Check if this is the first time opening the channel this hour
+      console.log(`🔍 About to call isFirstTimeOpeningThisHour with: ${ch}`);
+      const isFirstTime = isFirstTimeOpeningThisHour(ch);
+      console.log(`🕐 Is first time opening this hour: ${isFirstTime}`);
       
       if (isFirstTime) {
         console.log(`👤 User profile exists: ${!!savedProfile}`);
@@ -534,10 +534,10 @@ export default function App({
         }
       }
       
-      // Mark channel as opened today
-      console.log(`🔍 About to call markChannelOpenedToday with: ${ch}`);
-      markChannelOpenedToday(ch);
-      console.log(`✅ Marked channel ${ch} as opened today`);
+      // Mark channel as opened this hour
+      console.log(`🔍 About to call markChannelOpenedThisHour with: ${ch}`);
+      markChannelOpenedThisHour(ch);
+      console.log(`✅ Marked channel ${ch} as opened this hour`);
       
       const nowSec = Math.floor(Date.now() / 1000);
       setChannelLastReadMap((prev) => {

@@ -37,10 +37,10 @@ export function getChannelLastOpened(channelKey: string): string | null {
 }
 
 /**
- * Check if this is the first time opening a channel today
+ * Check if this is the first time opening a channel this hour
  */
-export function isFirstTimeOpeningToday(channelKey: string): boolean {
-  console.log(`🔍 Checking if first time opening ${channelKey} today (type: ${typeof channelKey})`);
+export function isFirstTimeOpeningThisHour(channelKey: string): boolean {
+  console.log(`🔍 Checking if first time opening ${channelKey} this hour (type: ${typeof channelKey})`);
   const lastOpened = getChannelLastOpened(channelKey);
   console.log(`📅 Last opened: ${lastOpened}`);
   
@@ -50,20 +50,23 @@ export function isFirstTimeOpeningToday(channelKey: string): boolean {
   }
   
   const lastDate = new Date(lastOpened);
-  const today = new Date();
+  const now = new Date();
   
-  // Compare dates (ignoring time)
-  const isFirstTime = lastDate.toDateString() !== today.toDateString();
-  console.log(`📅 Last opened date: ${lastDate.toDateString()}, Today: ${today.toDateString()}`);
-  console.log(`📅 Is first time today: ${isFirstTime}`);
+  // Compare hours (ignoring minutes and seconds)
+  const lastHour = new Date(lastDate.getFullYear(), lastDate.getMonth(), lastDate.getDate(), lastDate.getHours());
+  const currentHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours());
+  
+  const isFirstTime = lastHour.getTime() !== currentHour.getTime();
+  console.log(`🕐 Last opened hour: ${lastHour.toISOString()}, Current hour: ${currentHour.toISOString()}`);
+  console.log(`🕐 Is first time this hour: ${isFirstTime}`);
   
   return isFirstTime;
 }
 
 /**
- * Mark a channel as opened today
+ * Mark a channel as opened this hour
  */
-export function markChannelOpenedToday(channelKey: string): void {
+export function markChannelOpenedThisHour(channelKey: string): void {
   try {
     const stored = localStorage.getItem(CHANNEL_JOIN_DATES_KEY);
     const dates: Record<string, string> = stored ? JSON.parse(stored) : {};
