@@ -38,6 +38,8 @@ import {
 
 import { hasImageUrl } from "./utils/imageUtils";
 import { getFavorites, addToFavorites, removeFromFavorites } from "./utils/favorites";
+import { isFirstTimeOpeningToday, markChannelOpenedToday, debugChannelJoinStorage } from "./utils/channelJoinTracker";
+import { sendJoinMessage } from "./utils/systemMessageSender";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -353,6 +355,9 @@ export default function App({
     } catch (err) {
       console.warn("Failed to load saved profile:", err);
     }
+    
+    // Debug channel join storage on mount
+    debugChannelJoinStorage();
   }, []);
 
   // Handle profile saved - update state immediately
@@ -500,7 +505,40 @@ export default function App({
   const handleOpenChannel = useCallback(
     (ch: string) => {
       const channelValue = ch.slice(1).toLowerCase();
+      console.log(`🔍 Opening channel: ${ch}, channelValue: ${channelValue}`);
+      console.log(`🔍 Channel type: ${typeof ch}, length: ${ch.length}`);
+      console.log(`🔍 Channel starts with #: ${ch.startsWith('#')}`);
+      
       handleTextSearch(`in:${channelValue}`);
+      
+      // Check if this is the first time opening the channel today
+      console.log(`🔍 About to call isFirstTimeOpeningToday with: ${ch}`);
+      const isFirstTime = isFirstTimeOpeningToday(ch);
+      console.log(`📅 Is first time opening today: ${isFirstTime}`);
+      
+      if (isFirstTime) {
+        console.log(`👤 User profile exists: ${!!savedProfile}`);
+        // Send join message if user has a profile
+        if (savedProfile) {
+          const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(channelValue);
+          console.log(`🌍 Is geohash channel: ${isGeohash}`);
+          console.log(`📤 Sending join message for channel: ${channelValue}`);
+          sendJoinMessage({
+            channelKey: channelValue,
+            username: savedProfile.username,
+            privateKey: savedProfile.privateKey,
+            isGeohash
+          });
+        } else {
+          console.log(`❌ No saved profile found, cannot send join message`);
+        }
+      }
+      
+      // Mark channel as opened today
+      console.log(`🔍 About to call markChannelOpenedToday with: ${ch}`);
+      markChannelOpenedToday(ch);
+      console.log(`✅ Marked channel ${ch} as opened today`);
+      
       const nowSec = Math.floor(Date.now() / 1000);
       setChannelLastReadMap((prev) => {
         const next = { ...prev, [ch]: nowSec };
@@ -508,7 +546,7 @@ export default function App({
         return next;
       });
     },
-    [handleTextSearch, persistChannelLastRead]
+    [handleTextSearch, persistChannelLastRead, savedProfile]
   );
 
   const handleSelectUser = useCallback(

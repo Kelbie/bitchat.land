@@ -77,7 +77,8 @@ const EventItem = React.memo(({
     const hasActionIndicators =
       content.includes("🫂") || // hug emoji
       content.includes("🐟") || // slap emoji
-      content.includes("took a screenshot");
+      content.includes("took a screenshot") ||
+      content.includes("joined the channel"); // join messages
 
     return hasActionIndicators;
   }
