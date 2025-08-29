@@ -68,6 +68,8 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
       // Clear filters when geohash changes since stations/countries will be different
       setSelectedTags(new Set());
       setSelectedCountries(new Set());
+      // Clear any existing errors when starting a new search
+      setError(null);
       fetchStationsForGeohash(newGeohash);
     }
   }, [searchText, geohash]);
