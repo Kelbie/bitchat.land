@@ -466,7 +466,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
         {filteredStations.length > 0 && (
           <div className="flex-1 min-h-0 overflow-y-auto">
             <div className="space-y-1 h-full">
-              {filteredStations.map((station, index) => (
+              {filteredStations.sort((a, b) => a.distanceKm - b.distanceKm).map((station, index) => (
                 <div
                   key={station.id}
                   onClick={() => handleStationPlay(station)}
