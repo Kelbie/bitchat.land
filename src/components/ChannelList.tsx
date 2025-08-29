@@ -16,6 +16,8 @@ type Props = {
   unreadCounts: Record<string, number>;
   onOpenChannel: (ch: string) => void;
   theme?: "matrix" | "material";
+  pinnedChannels?: string[];
+  onPinnedChannelsChange?: (pinnedChannels: string[]) => void;
 };
 
 // Separate ChannelItem component
@@ -182,15 +184,28 @@ export function ChannelList({
   unreadCounts,
   onOpenChannel,
   theme = "matrix",
+  pinnedChannels: externalPinnedChannels,
+  onPinnedChannelsChange,
 }: Props) {
   const t = styles[theme];
-  const [pinnedChannels, setPinnedChannels] = useState<string[]>([]);
+  const [internalPinnedChannels, setInternalPinnedChannels] = useState<string[]>([]);
   const parentRef = useRef<HTMLDivElement>(null);
+
+  // Use external pinnedChannels if provided, otherwise use internal state
+  const pinnedChannels = externalPinnedChannels || internalPinnedChannels;
+  
+  const updatePinnedChannels = (newPinnedChannels: string[]) => {
+    if (onPinnedChannelsChange) {
+      onPinnedChannelsChange(newPinnedChannels);
+    } else {
+      setInternalPinnedChannels(newPinnedChannels);
+    }
+  };
 
   // Load pinned channels from localStorage on mount
   useEffect(() => {
     const pinned = getPinnedChannels();
-    setPinnedChannels(pinned.map(p => p.key));
+    updatePinnedChannels(pinned.map(p => p.key));
   }, []);
 
   // Categorize channels based on their actual event kinds
@@ -213,16 +228,25 @@ export function ChannelList({
       }
     });
 
+    // Sort channels by length (shortest first), then alphabetically for same length
+    const sortByLength = (channelList: string[]) => {
+      return channelList.sort((a, b) => {
+        const lengthDiff = a.length - b.length;
+        if (lengthDiff !== 0) return lengthDiff;
+        return a.localeCompare(b);
+      });
+    };
+
     return {
-      pinned: pinnedChannels,
-      geohash,
-      standard
+      pinned: sortByLength(pinnedChannels),
+      geohash: sortByLength(geohash),
+      standard: sortByLength(standard)
     };
   };
 
-  const categorized = categorizeChannelsByEventKind(
-    channels,
-    pinnedChannels
+  const categorized = useMemo(() => 
+    categorizeChannelsByEventKind(channels, pinnedChannels),
+    [channels, pinnedChannels]
   );
 
   // Create a flat list of all channels with their category info for virtualization
@@ -242,6 +266,14 @@ export function ChannelList({
       });
     }
 
+    // Add standard section (before geohash since there are usually fewer)
+    if (categorized.standard.length > 0) {
+      result.push({ key: 'standard-header', category: 'standard', isSectionHeader: true, sectionTitle: 'STANDARD' });
+      categorized.standard.forEach(channelKey => {
+        result.push({ key: channelKey, category: 'standard', isSectionHeader: false });
+      });
+    }
+
     // Add geohash section
     if (categorized.geohash.length > 0) {
       result.push({ key: 'geohash-header', category: 'geohash', isSectionHeader: true, sectionTitle: 'GEOHASH' });
@@ -250,16 +282,8 @@ export function ChannelList({
       });
     }
 
-    // Add standard section
-    if (categorized.standard.length > 0) {
-      result.push({ key: 'standard-header', category: 'standard', isSectionHeader: true, sectionTitle: 'STANDARD' });
-      categorized.standard.forEach(channelKey => {
-        result.push({ key: channelKey, category: 'standard', isSectionHeader: false });
-      });
-    }
-
     return result;
-  }, [categorized]);
+  }, [categorized, selectedChannel]);
 
   // TanStack Virtual setup
   const virtualizer = useVirtualizer({
@@ -275,10 +299,10 @@ export function ChannelList({
     
     if (pinnedChannels.includes(channelKey)) {
       removePinnedChannel(channelKey);
-      setPinnedChannels(prev => prev.filter(k => k !== channelKey));
+      updatePinnedChannels(pinnedChannels.filter(k => k !== channelKey));
     } else {
       addPinnedChannel(channelKey);
-      setPinnedChannels(prev => [...prev, channelKey]);
+      updatePinnedChannels([...pinnedChannels, channelKey]);
     }
   };
 

@@ -35,7 +35,7 @@ export async function sendJoinMessage({
     console.log(`🌍 Is geohash: ${isGeohash}`);
     
     // Create the system message content
-    const messageContent = `* ${username} joined the channel via bitchat.land *`;
+    const messageContent = `* 👋 ${username} joined the channel via bitchat.land *`;
     console.log(`📝 Message content: ${messageContent}`);
     
     // Determine event kind and tags based on channel type

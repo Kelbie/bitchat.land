@@ -37,9 +37,23 @@ import {
 } from "./utils/searchParser";
 
 import { hasImageUrl } from "./utils/imageUtils";
-import { getFavorites, addToFavorites, removeFromFavorites } from "./utils/favorites";
-import { isFirstTimeOpeningThisHour, markChannelOpenedThisHour, debugChannelJoinStorage } from "./utils/channelJoinTracker";
+import {
+  getFavorites,
+  addToFavorites,
+  removeFromFavorites,
+} from "./utils/favorites";
+import {
+  isFirstTimeOpeningThisHour,
+  markChannelOpenedThisHour,
+  debugChannelJoinStorage,
+} from "./utils/channelJoinTracker";
+import {
+  getPinnedChannels,
+  addPinnedChannel,
+  removePinnedChannel,
+} from "./utils/pinnedChannels";
 import { sendJoinMessage } from "./utils/systemMessageSender";
+import { RadioPage } from "./components/RadioPage";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -102,13 +116,15 @@ export default function App({
   const t = styles[theme];
 
   // View state
-  const [activeView, setActiveView] = useState<"map" | "chat" | "panel">("map");
+  const [activeView, setActiveView] = useState<
+    "map" | "chat" | "panel" | "radio"
+  >("map");
 
   // Profile state using React state with localStorage initialization
   const [savedProfile, setSavedProfile] = useState<any>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showFavoritesModal, setShowFavoritesModal] = useState(false);
-
+  const [pinnedChannels, setPinnedChannels] = useState<string[]>([]);
 
   // Search and zoom state
   const [searchText, setSearchText] = useState("");
@@ -165,6 +181,12 @@ export default function App({
     } catch (e) {
       console.warn("Failed to load channelLastReadMap from localStorage", e);
     }
+  }, []);
+
+  // Load pinned channels from localStorage
+  useEffect(() => {
+    const pinned = getPinnedChannels();
+    setPinnedChannels(pinned.map((p) => p.key));
   }, []);
 
   const persistChannelLastRead = (next: Record<string, number>) => {
@@ -228,9 +250,10 @@ export default function App({
     : geohashDisplayPrecision;
 
   // Generate only localized geohashes when searching, otherwise use global precision
-  const currentGeohashes = shouldShowLocalizedPrecision && primarySearchGeohash
-    ? generateLocalizedGeohashes(primarySearchGeohash.toLowerCase())
-    : generateGeohashes(geohashDisplayPrecision, null);
+  const currentGeohashes =
+    shouldShowLocalizedPrecision && primarySearchGeohash
+      ? generateLocalizedGeohashes(primarySearchGeohash.toLowerCase())
+      : generateGeohashes(geohashDisplayPrecision, null);
 
   // Initialize Nostr with animation callback
   const {
@@ -245,7 +268,12 @@ export default function App({
     getGeorelayRelays,
     connectToGeoRelays,
     disconnectFromGeoRelays,
-  } = useNostr(searchGeohash, currentGeohashes, animateGeohash, selectedChannelKey);
+  } = useNostr(
+    searchGeohash,
+    currentGeohashes,
+    animateGeohash,
+    selectedChannelKey
+  );
 
   // Build users list from events - moved here after useNostr hook
   const users = useMemo<UserMeta[]>(() => {
@@ -262,13 +290,18 @@ export default function App({
       lastSeen: number;
       messageCount: number;
     }
-    
+
     const userMap: Record<string, UserData> = {};
 
     // Process events to build user information
     for (const ev of allStoredEvents) {
       // Guard against malformed events
-      if (!ev || !ev.pubkey || typeof ev.created_at !== 'number' || typeof ev.kind !== 'number') {
+      if (
+        !ev ||
+        !ev.pubkey ||
+        typeof ev.created_at !== "number" ||
+        typeof ev.kind !== "number"
+      ) {
         continue;
       }
 
@@ -278,9 +311,9 @@ export default function App({
         const d = ev.tags.find((t: any) => t[0] === "d");
         const gv = g && typeof g[1] === "string" ? g[1].toLowerCase() : "";
         const dv = d && typeof d[1] === "string" ? d[1].toLowerCase() : "";
-        
+
         const eventChannel = gv ? `#${gv}` : dv ? `#${dv}` : null;
-        
+
         // Skip events that don't match the selected channel
         if (eventChannel !== selectedChannelKey) {
           continue;
@@ -289,7 +322,7 @@ export default function App({
 
       const pubkey = ev.pubkey;
       const existing = userMap[pubkey];
-      
+
       if (existing) {
         // Update existing user
         existing.messageCount += 1;
@@ -314,7 +347,7 @@ export default function App({
     // Convert to array and sort by last seen (most recent first)
     return Object.values(userMap)
       .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0))
-      .map(user => ({
+      .map((user) => ({
         ...user,
         isPinned: false, // This is handled by the UserList component
       }));
@@ -355,7 +388,7 @@ export default function App({
     } catch (err) {
       console.warn("Failed to load saved profile:", err);
     }
-    
+
     // Debug channel join storage on mount
     debugChannelJoinStorage();
   }, []);
@@ -371,28 +404,32 @@ export default function App({
     setShowFavoritesModal(true);
   }, []);
 
-
-
   // Handle inserting images into chat input
-  const handleInsertImage = useCallback((imageUrl: string, cursorPosition?: number, currentValue?: string) => {
-    // Insert the image URL into the chat input at the specified position
-    const imageText = imageUrl;
-    
-    if (cursorPosition !== undefined && currentValue !== undefined) {
-      // Insert at cursor position
-      const beforeCursor = currentValue.slice(0, cursorPosition);
-      const afterCursor = currentValue.slice(cursorPosition);
-      const newValue = beforeCursor + imageText + afterCursor;
-      
-      // Update the chat input value directly
-      if (window.updateChatInputValue) {
-        window.updateChatInputValue(newValue, cursorPosition + imageText.length);
+  const handleInsertImage = useCallback(
+    (imageUrl: string, cursorPosition?: number, currentValue?: string) => {
+      // Insert the image URL into the chat input at the specified position
+      const imageText = imageUrl;
+
+      if (cursorPosition !== undefined && currentValue !== undefined) {
+        // Insert at cursor position
+        const beforeCursor = currentValue.slice(0, cursorPosition);
+        const afterCursor = currentValue.slice(cursorPosition);
+        const newValue = beforeCursor + imageText + afterCursor;
+
+        // Update the chat input value directly
+        if (window.updateChatInputValue) {
+          window.updateChatInputValue(
+            newValue,
+            cursorPosition + imageText.length
+          );
+        }
+      } else {
+        // Fallback: append to reply prefill
+        setReplyPrefillText((prev) => prev + (prev ? " " : "") + imageText);
       }
-    } else {
-      // Fallback: append to reply prefill
-      setReplyPrefillText(prev => prev + (prev ? ' ' : '') + imageText);
-    }
-  }, []);
+    },
+    []
+  );
 
   // Expose openFavoritesModal globally for ChatInput to use
   useEffect(() => {
@@ -408,7 +445,13 @@ export default function App({
       delete (window as any).getFavorites;
       delete (window as any).onInsertImage; // Clean up the new function
     };
-  }, [openFavoritesModal, addToFavorites, removeFromFavorites, getFavorites, handleInsertImage]);
+  }, [
+    openFavoritesModal,
+    addToFavorites,
+    removeFromFavorites,
+    getFavorites,
+    handleInsertImage,
+  ]);
 
   // Handle geohash clicks from map - add to text search
   const handleGeohashClickForSearch = (geohash: string) => {
@@ -470,18 +513,23 @@ export default function App({
   }, [latestEventTimestampByChannel]);
 
   const channels = useMemo<ChannelMeta[]>(() => {
-    const allChannels = Array.from(channelSet).sort();
-    
+    const allChannels = Array.from(channelSet).sort((a, b) => {
+      // Sort by length first (shortest first), then alphabetically for same length
+      const lengthDiff = a.length - b.length;
+      if (lengthDiff !== 0) return lengthDiff;
+      return a.localeCompare(b);
+    });
+
     // Create a map of channel keys to their event kinds for proper categorization
     const channelEventKinds: Record<string, number> = {};
-    
+
     // Go through all events to determine the kind for each channel
     for (const ev of allStoredEvents) {
       const g = ev.tags.find((t: any) => t[0] === "g");
       const d = ev.tags.find((t: any) => t[0] === "d");
       const gv = g && typeof g[1] === "string" ? g[1].toLowerCase() : "";
       const dv = d && typeof d[1] === "string" ? d[1].toLowerCase() : "";
-      
+
       if (gv) {
         const key = `#${gv}`;
         // Use the actual event kind from the event
@@ -493,7 +541,7 @@ export default function App({
         channelEventKinds[key] = ev.kind;
       }
     }
-    
+
     return allChannels.map((ch) => ({
       key: ch,
       isPinned: false, // This is now handled by the ChannelList component
@@ -507,38 +555,40 @@ export default function App({
       const channelValue = ch.slice(1).toLowerCase();
       console.log(`🔍 Opening channel: ${ch}, channelValue: ${channelValue}`);
       console.log(`🔍 Channel type: ${typeof ch}, length: ${ch.length}`);
-      console.log(`🔍 Channel starts with #: ${ch.startsWith('#')}`);
-      
+      console.log(`🔍 Channel starts with #: ${ch.startsWith("#")}`);
+
       handleTextSearch(`in:${channelValue}`);
-      
+
       // Check if this is the first time opening the channel this hour
       console.log(`🔍 About to call isFirstTimeOpeningThisHour with: ${ch}`);
       const isFirstTime = isFirstTimeOpeningThisHour(ch);
       console.log(`🕐 Is first time opening this hour: ${isFirstTime}`);
-      
+
       if (isFirstTime) {
         console.log(`👤 User profile exists: ${!!savedProfile}`);
         // Send join message if user has a profile
         if (savedProfile) {
-          const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(channelValue);
+          const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(
+            channelValue
+          );
           console.log(`🌍 Is geohash channel: ${isGeohash}`);
           console.log(`📤 Sending join message for channel: ${channelValue}`);
           sendJoinMessage({
             channelKey: channelValue,
             username: savedProfile.username,
             privateKey: savedProfile.privateKey,
-            isGeohash
+            isGeohash,
           });
         } else {
           console.log(`❌ No saved profile found, cannot send join message`);
         }
       }
-      
+
       // Mark channel as opened this hour
       console.log(`🔍 About to call markChannelOpenedThisHour with: ${ch}`);
       markChannelOpenedThisHour(ch);
       console.log(`✅ Marked channel ${ch} as opened this hour`);
-      
+
       const nowSec = Math.floor(Date.now() / 1000);
       setChannelLastReadMap((prev) => {
         const next = { ...prev, [ch]: nowSec };
@@ -549,14 +599,24 @@ export default function App({
     [handleTextSearch, persistChannelLastRead, savedProfile]
   );
 
-  const handleSelectUser = useCallback(
-    (pubkey: string) => {
-      setSelectedUser(pubkey);
-      // Could add user-specific search functionality here
-      console.log("Selected user:", pubkey);
-    },
-    []
-  );
+  const handleRecentEventsHeartClick = useCallback(() => {
+    // Use the current channel key if one is selected, otherwise use "global"
+    const currentChannelKey = selectedChannelKey || "global";
+
+    if (pinnedChannels.includes(currentChannelKey)) {
+      removePinnedChannel(currentChannelKey);
+      setPinnedChannels((prev) => prev.filter((k) => k !== currentChannelKey));
+    } else {
+      addPinnedChannel(currentChannelKey);
+      setPinnedChannels((prev) => [...prev, currentChannelKey]);
+    }
+  }, [pinnedChannels, selectedChannelKey]);
+
+  const handleSelectUser = useCallback((pubkey: string) => {
+    setSelectedUser(pubkey);
+    // Could add user-specific search functionality here
+    console.log("Selected user:", pubkey);
+  }, []);
 
   // When selected channel changes, mark the previous channel as read at switch-away time
   useEffect(() => {
@@ -682,17 +742,20 @@ export default function App({
       if (!eventGeohash) {
         matches = false;
       } else if (VALID_GEOHASH_CHARS.test(eventGeohash)) {
-        const geohashMatch = parsedSearch.geohashes.some((searchGeohash, index) => {
-          const includeChildren = parsedSearch.includeChildren[index] ?? false;
-          
-          if (includeChildren) {
-            // With + suffix: allow child regions (starts with)
-            return eventGeohash.startsWith(searchGeohash.toLowerCase());
-          } else {
-            // Without + suffix: exact match only
-            return eventGeohash === searchGeohash.toLowerCase();
+        const geohashMatch = parsedSearch.geohashes.some(
+          (searchGeohash, index) => {
+            const includeChildren =
+              parsedSearch.includeChildren[index] ?? false;
+
+            if (includeChildren) {
+              // With + suffix: allow child regions (starts with)
+              return eventGeohash.startsWith(searchGeohash.toLowerCase());
+            } else {
+              // Without + suffix: exact match only
+              return eventGeohash === searchGeohash.toLowerCase();
+            }
           }
-        });
+        );
         if (!geohashMatch) matches = false;
       } else {
         // Invalid geohash present -> include regardless of match
@@ -756,7 +819,7 @@ export default function App({
     <div className={t.appContainer}>
       {/* eSIM Marquee Banner */}
       <MarqueeBanner theme={theme} />
-      
+
       {/* Mobile Header */}
       <header>
         <MobileHeader
@@ -778,13 +841,13 @@ export default function App({
 
       {/* Main Content Area */}
       <main className={t.mainArea}>
-              {/* Map - Always rendered, but might be hidden on mobile */}
-      <section
-        aria-label="Interactive World Map with Geohash Heatmap"
-        className={`${
-          activeView !== "map" ? "hidden" : "block"
-        } w-full h-full`}
-      >
+        {/* Map - Always rendered, but might be hidden on mobile */}
+        <section
+          aria-label="Interactive World Map with Geohash Heatmap"
+          className={`${
+            activeView !== "map" ? "hidden" : "block"
+          } w-full h-full`}
+        >
           <Map
             width={mapWidth || 800}
             height={mapHeight || 600}
@@ -824,15 +887,45 @@ export default function App({
                 unreadCounts={unreadCountByChannel}
                 onOpenChannel={handleOpenChannel}
                 theme={theme}
+                pinnedChannels={pinnedChannels}
+                onPinnedChannelsChange={setPinnedChannels}
               />
 
               {/* Chat column */}
               <div className={t.chatColumn}>
                 {/* Sub header (chat) to align next to channels */}
                 <div className={t.subHeader}>
-                  <div className={t.subHeaderTitle}>
-                    RECENT NOSTR EVENTS{" "}
-                    {searchText ? `MATCHING "${searchText}"` : ""}
+                  <div className="flex items-center justify-between w-full">
+                    <div className={t.subHeaderTitle}>
+                      RECENT NOSTR EVENTS{" "}
+                      {searchText ? `MATCHING "${searchText}"` : ""}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRecentEventsHeartClick}
+                      className={`w-6 h-6 flex items-center justify-center transition-all hover:scale-110 ${
+                        theme === "matrix"
+                          ? "text-[#00ff00] hover:text-[#00aa00]"
+                          : "text-blue-600 hover:text-blue-800"
+                      }`}
+                      title={
+                        pinnedChannels.includes(selectedChannelKey || "global")
+                          ? `Unpin ${
+                              selectedChannelKey
+                                ? selectedChannelKey.slice(1)
+                                : "global"
+                            } channel`
+                          : `Pin ${
+                              selectedChannelKey
+                                ? selectedChannelKey.slice(1)
+                                : "global"
+                            } channel`
+                      }
+                    >
+                      {pinnedChannels.includes(selectedChannelKey || "global")
+                        ? "❤️"
+                        : "🤍"}
+                    </button>
                   </div>
                 </div>
 
@@ -886,6 +979,36 @@ export default function App({
               />
             </div>
           )}
+
+          {/* Radio View */}
+          <div
+            className={`${t.chatViewContainer} h-full ${
+              activeView === "radio" ? "block" : "hidden"
+            }`}
+          >
+            <ChannelList
+              channels={channels}
+              selectedChannel={selectedChannelKey}
+              unreadCounts={unreadCountByChannel}
+              onOpenChannel={handleOpenChannel}
+              theme={theme}
+              pinnedChannels={pinnedChannels}
+              onPinnedChannelsChange={setPinnedChannels}
+            />
+
+            <div className={`${t.chatColumn} h-full overflow-hidden`}>
+              <RadioPage searchText={searchText} theme={theme} />
+            </div>
+
+            <UserList
+              users={users}
+              selectedUser={selectedUser}
+              onSelectUser={handleSelectUser}
+              searchText={searchText}
+              allStoredEvents={allStoredEvents}
+              theme={theme}
+            />
+          </div>
         </>
       </main>
 
@@ -931,8 +1054,9 @@ export default function App({
           // Insert the image URL into the chat input
           if (window.onInsertImage) {
             // Get current cursor position and value from ChatInput
-            const cursorPos = (window as any).getChatInputCursorPosition?.() || 0;
-            const currentValue = (window as any).getChatInputValue?.() || '';
+            const cursorPos =
+              (window as any).getChatInputCursorPosition?.() || 0;
+            const currentValue = (window as any).getChatInputValue?.() || "";
             window.onInsertImage(imageUrl, cursorPos, currentValue);
           }
           setShowFavoritesModal(false);

@@ -53,12 +53,23 @@ export function isFirstTimeOpeningThisHour(channelKey: string): boolean {
   const now = new Date();
   
   // Compare hours (ignoring minutes and seconds)
-  const lastHour = new Date(lastDate.getFullYear(), lastDate.getMonth(), lastDate.getDate(), lastDate.getHours());
-  const currentHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours());
+  // Use Math.floor to ensure we're comparing at hour boundaries
+  // This fixes the bug where hour rollovers could cause multiple "first time" triggers
+  // The previous approach using Date constructor had edge cases around hour boundaries
+  const lastHourTimestamp = Math.floor(lastDate.getTime() / (1000 * 60 * 60)) * (1000 * 60 * 60);
+  const currentHourTimestamp = Math.floor(now.getTime() / (1000 * 60 * 60)) * (1000 * 60 * 60);
   
-  const isFirstTime = lastHour.getTime() !== currentHour.getTime();
-  console.log(`🕐 Last opened hour: ${lastHour.toISOString()}, Current hour: ${currentHour.toISOString()}`);
+  const isFirstTime = lastHourTimestamp !== currentHourTimestamp;
+  console.log(`🕐 Last opened hour timestamp: ${lastHourTimestamp}, Current hour timestamp: ${currentHourTimestamp}`);
+  console.log(`🕐 Last opened hour: ${new Date(lastHourTimestamp).toISOString()}, Current hour: ${new Date(currentHourTimestamp).toISOString()}`);
   console.log(`🕐 Is first time this hour: ${isFirstTime}`);
+  
+  // Additional debugging to help track hour boundary issues
+  if (isFirstTime) {
+    const timeDiff = now.getTime() - lastDate.getTime();
+    const hoursDiff = timeDiff / (1000 * 60 * 60);
+    console.log(`🕐 Time difference: ${timeDiff}ms (${hoursDiff.toFixed(2)} hours)`);
+  }
   
   return isFirstTime;
 }

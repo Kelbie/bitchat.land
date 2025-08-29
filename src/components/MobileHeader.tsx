@@ -3,8 +3,8 @@ import { ThemedButton } from "./ThemedButton";
 import { ThemedInput } from "./ThemedInput";
 
 interface MobileHeaderProps {
-  activeView: "map" | "chat" | "panel";
-  onViewChange: (view: "map" | "chat" | "panel") => void;
+  activeView: "map" | "chat" | "panel" | "radio";
+  onViewChange: (view: "map" | "chat" | "panel" | "radio") => void;
   searchText: string;
   onSearch: (value: string) => void;
   zoomedGeohash: string | null;
@@ -21,7 +21,7 @@ interface MobileHeaderProps {
 const styles = {
   matrix: {
     header:
-      "bg-black/95 backdrop-blur flex flex-col items-center font-mono flex-shrink-0 p-2 text-[#00ff00]",
+      "bg-black/95 backdrop-blur flex flex-col items-center font-mono flex-shrink-0 p-2 text-[#00ff00] relative overflow-visible",
     logoText:
       "text-[#00ff00] text-lg font-bold uppercase tracking-wider drop-shadow-[0_0_10px_rgba(0,255,0,0.5)]",
     searchIcon: "stroke-[#00aa00]",
@@ -38,7 +38,7 @@ const styles = {
   },
   material: {
     header:
-      "bg-white text-gray-800 flex flex-col items-center font-sans flex-shrink-0 p-2",
+      "bg-white text-gray-800 flex flex-col items-center font-sans flex-shrink-0 p-2 relative overflow-visible",
     logoText: "text-blue-600 text-lg font-bold text-lg font-bold uppercase tracking-wider",
     searchIcon: "stroke-blue-600",
     clearButton:
@@ -75,6 +75,8 @@ export function MobileHeader({
 
   return (
     <header className={t.header}>
+      {/* <GeoRelayTest /> */}
+
       <div className="flex items-center gap-2 mb-0">
         <img src={`/favicon${theme === "matrix" ? ".webp" : `_${theme}.webp`}`} alt="bitchat.land" className="w-12 h-12 -ml-3" />
         <div className={t.logoText}>bitchat.land</div>
@@ -106,6 +108,14 @@ export function MobileHeader({
           chat
         </ThemedButton>
         <ThemedButton
+          onClick={() => onViewChange("radio")}
+          active={activeView === "radio"}
+          theme={theme}
+          className="flex-1 px-3 py-2 text-sm text-center"
+        >
+          radio
+        </ThemedButton>
+        <ThemedButton
           onClick={onLoginClick}
           theme={theme}
           className="flex-1 px-3 py-2 text-sm text-center"
@@ -134,42 +144,45 @@ export function MobileHeader({
       </div>
 
       <div className="w-full mt-2 mb-4 px-4">
-        <div className="flex gap-2 items-center mx-auto max-w-md">
-          <div className="relative w-full">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                className={t.searchIcon}
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
-              </svg>
+        <div className="flex flex-col gap-2 mx-auto max-w-md">
+          {/* Search Input */}
+          <div className="flex gap-2 items-center">
+            <div className="relative w-full">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className={t.searchIcon}
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.35-4.35" />
+                </svg>
+              </div>
+              <ThemedInput
+                value={searchText}
+                onChange={(e) => onSearch((e.target as HTMLInputElement).value)}
+                placeholder="hello in:dr5r from:@jack"
+                theme={theme}
+                className={`my-2 w-full pl-9 pr-3 py-2 ${
+                  theme === "matrix"
+                    ? "focus:shadow-[0_0_5px_rgba(0,255,0,0.5)]"
+                    : "focus:ring-2 focus:ring-blue-600"
+                }`}
+              />
             </div>
-            <ThemedInput
-              value={searchText}
-              onChange={(e) => onSearch((e.target as HTMLInputElement).value)}
-              placeholder="hello in:nyc from:@jack"
-              theme={theme}
-              className={`my-2 w-full pl-9 pr-3 py-2 ${
-                theme === "matrix"
-                  ? "focus:shadow-[0_0_5px_rgba(0,255,0,0.5)]"
-                  : "focus:ring-2 focus:ring-blue-600"
-              }`}
-            />
+            {searchText && (
+              <button onClick={() => onSearch("")} className={t.clearButton}>
+                ✕
+              </button>
+            )}
           </div>
-          {searchText && (
-            <button onClick={() => onSearch("")} className={t.clearButton}>
-              ✕
-            </button>
-          )}
-        </div>
-      </div>
+          
+                  </div>
 
       {((activeView === "chat" && nostrEnabled) || activeView === "panel") && (
         <div className={t.separator} />
@@ -188,8 +201,10 @@ export function MobileHeader({
         </div>
       )}
 
-      <div className={t.separator} />
+        <div className={t.separator} />
+      </div>
     </header>
+
   );
 }
 
