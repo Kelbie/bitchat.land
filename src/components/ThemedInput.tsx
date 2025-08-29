@@ -1,4 +1,4 @@
-import { ElementType } from "react";
+import { ElementType, forwardRef } from "react";
 
 interface ThemedInputProps<T extends ElementType = 'input'> {
   as?: T;
@@ -13,20 +13,26 @@ const styles = {
     'bg-white text-gray-800 placeholder-gray-400 border border-blue-600 rounded outline-none',
 } as const;
 
-export function ThemedInput<T extends ElementType = 'input'>({
-  as,
-  theme = 'matrix',
-  className = '',
-  ...rest
-}: ThemedInputProps<T> & Omit<React.ComponentPropsWithoutRef<T>, 'as' | 'className'>) {
+export const ThemedInput = forwardRef(<T extends ElementType = 'input'>(
+  {
+    as,
+    theme = 'matrix',
+    className = '',
+    ...rest
+  }: ThemedInputProps<T> & Omit<React.ComponentPropsWithoutRef<T>, 'as' | 'className'>,
+  ref: React.Ref<any>
+) => {
   const Component = (as || 'input') as ElementType;
   return (
     <Component
+      ref={ref}
       className={`${styles[theme]} ${className}`}
       {...rest}
     />
   );
-}
+});
+
+ThemedInput.displayName = 'ThemedInput';
 
 export default ThemedInput;
 

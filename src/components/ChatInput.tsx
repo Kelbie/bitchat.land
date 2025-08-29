@@ -122,6 +122,16 @@ export function ChatInput({
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
   const lastPrefillRef = useRef<string>("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Debug: Log when ref is set
+  useEffect(() => {
+    if (textareaRef.current) {
+      console.log("🔍 Textarea ref is now available");
+    }
+  }, []);
+
+
 
   // Handle prefillText changes - only apply when it's a new prefill
   useEffect(() => {
@@ -129,11 +139,10 @@ export function ChatInput({
       setMessage(prefillText);
       lastPrefillRef.current = prefillText;
       // Focus the textarea after setting the prefill
-      const textarea = document.querySelector('textarea');
-      if (textarea) {
+      if (textareaRef.current) {
         setTimeout(() => {
-          textarea.focus();
-          textarea.setSelectionRange(prefillText.length, prefillText.length);
+          textareaRef.current?.focus();
+          textareaRef.current?.setSelectionRange(prefillText.length, prefillText.length);
         }, 100);
       }
     }
@@ -147,8 +156,8 @@ export function ChatInput({
     
     // Expose functions for getting cursor position and input value
     window.getChatInputCursorPosition = () => {
-      // Use a ref to get the specific textarea for this component
-      const textarea = document.querySelector('textarea[data-chat-input="true"]') as HTMLTextAreaElement;
+      // Use the ref to get the textarea for this component
+      const textarea = textareaRef.current;
       const cursorPos = textarea ? textarea.selectionStart : 0;
       return cursorPos;
     };
@@ -162,7 +171,7 @@ export function ChatInput({
       setMessage(newValue);
       // Set cursor position after the component re-renders
       setTimeout(() => {
-        const textarea = document.querySelector('textarea[data-chat-input="true"]') as HTMLTextAreaElement;
+        const textarea = textareaRef.current;
         if (textarea) {
           // Ensure cursor position is within bounds
           const safeCursorPos = Math.min(Math.max(0, newCursorPos), newValue.length);
@@ -179,6 +188,19 @@ export function ChatInput({
       delete window.updateChatInputValue;
     };
   }, [onInsertImage, message]);
+
+  // Focus textarea when message is cleared (after sending)
+  useEffect(() => {
+    if (message === "" && textareaRef.current) {
+      console.log("🔍 Message cleared, focusing textarea via useEffect");
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          console.log("✅ Textarea focused via useEffect");
+        }
+      });
+    }
+  }, [message]);
 
   const t = styles[theme];
 
@@ -406,10 +428,34 @@ export function ChatInput({
             failed.map(result => result.reason?.message || 'Unknown error'));
         }
   
-        // Clear input and notify parent
+                // Clear input and notify parent
         setMessage("");
         onMessageSent?.(message.trim());
-  
+
+        // Focus the textarea after clearing the message
+        setTimeout(() => {
+          console.log("🔍 Attempting to focus textarea after send");
+          if (textareaRef.current) {
+            textareaRef.current.focus();
+            console.log("✅ Textarea focused successfully");
+            // Try to focus again after a short delay to ensure it sticks
+            setTimeout(() => {
+              if (textareaRef.current) {
+                textareaRef.current.focus();
+                console.log("🔄 Refocusing textarea to ensure focus sticks");
+              }
+            }, 50);
+          } else {
+            console.warn("⚠️ textareaRef.current is null");
+            // Fallback: try to find textarea by data attribute
+            const textarea = document.querySelector('textarea[data-chat-input="true"]') as HTMLTextAreaElement;
+            if (textarea) {
+              textarea.focus();
+              console.log("✅ Textarea focused via fallback DOM query");
+            }
+          }
+        }, 100);
+
         if (rollRange) {
           setTimeout(() => {
             handleRoll(rollRange).catch(console.error);
@@ -443,10 +489,9 @@ export function ChatInput({
     setMessage(newMessage);
     
     // Focus the textarea and move cursor to end
-    const textarea = document.querySelector('textarea');
-    if (textarea) {
-      textarea.focus();
-      textarea.setSelectionRange(newMessage.length, newMessage.length);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(newMessage.length, newMessage.length);
     }
   };
 
@@ -480,9 +525,10 @@ export function ChatInput({
       <div className="flex gap-2 items-stretch">
         <div className={t.inputWrapper}>
           <ThemedInput
+            ref={textareaRef}
             as="textarea"
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
               currentChannel === "global"
