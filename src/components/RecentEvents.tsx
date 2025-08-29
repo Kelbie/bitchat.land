@@ -11,9 +11,7 @@ import { renderTextWithLinks } from "../utils/linkRenderer";
 import { colorForPeerSeed } from "../utils/userColor";
 import { hasImageUrl, extractImageUrl } from "../utils/imageUtils";
 import { Image } from "./Image";
-import { getFavorites, addToFavorites, removeFromFavorites } from "../utils/favorites";
-
-
+import React from "react"; // Added missing import
 
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
 
@@ -27,6 +25,236 @@ interface RecentEventsProps {
   onReply?: (username: string, pubkeyHash: string) => void;
   theme: "matrix" | "material";
 }
+
+// Separate EventItem component
+type EventItemProps = {
+  event: NostrEvent;
+  searchText: string;
+  onSearch?: (text: string) => void;
+  onReply?: (username: string, pubkeyHash: string) => void;
+  theme: "matrix" | "material";
+};
+
+const EventItem = React.memo(({
+  event,
+  searchText,
+  onSearch,
+  onReply,
+  theme
+}: EventItemProps) => {
+  const t = styles[theme];
+
+  const geoTag = event.tags.find((tag: string[]) => tag[0] === "g");
+  const groupTag = event.tags.find((tag: string[]) => tag[0] === "d");
+  const nameTag = event.tags.find((tag: string[]) => tag[0] === "n");
+  const clientTag = event.tags.find((tag: string[]) => tag[0] === "client");
+
+  const rawGeohash =
+    geoTag && typeof geoTag[1] === "string" ? geoTag[1] : "";
+  const groupTagValue =
+    groupTag && typeof groupTag[1] === "string" ? groupTag[1] : "";
+  const username = nameTag ? nameTag[1] : "Anonymous";
+  const clientName = clientTag ? clientTag[1] : null;
+  const pubkeyHash = event.pubkey.slice(-4);
+  const time = new Date(event.created_at * 1000).toLocaleTimeString();
+  const date = new Date(event.created_at * 1000).toLocaleDateString();
+  const isToday =
+    new Date().toDateString() ===
+    new Date(event.created_at * 1000).toDateString();
+  const eventGeohash = (geoTag ? geoTag[1] : "").toLowerCase();
+  const userColors = colorForPeerSeed("nostr:" + event.pubkey, true);
+
+  function isActionMessage(content: string): boolean {
+    // Check for asterisk wrapper pattern
+    const hasAsteriskWrapper =
+      content.startsWith("* ") && content.endsWith(" *");
+
+    if (!hasAsteriskWrapper) {
+      return false;
+    }
+
+    // Check for specific action indicators
+    const hasActionIndicators =
+      content.includes("🫂") || // hug emoji
+      content.includes("🐟") || // slap emoji
+      content.includes("took a screenshot");
+
+    return hasActionIndicators;
+  }
+
+  if (isActionMessage(event.content)) {
+    return (
+      <div className="pb-4">
+        <div className={t.messageCard}>
+          {/* Header with location/client info - same as regular messages */}
+          <div className="flex justify-start items-center h-4">
+            <div className="flex items-center gap-2">
+              <span
+                className={`${t.hashTag} ${onSearch ? "cursor-pointer" : ""}`}
+                onClick={
+                  onSearch
+                    ? () =>
+                        onSearch(
+                          addGeohashToSearch(
+                            searchText,
+                            rawGeohash.toLowerCase()
+                          )
+                        )
+                    : undefined
+                }
+              >
+                {eventGeohash
+                  ? `#${eventGeohash.toUpperCase()}`
+                  : `#${groupTagValue.toUpperCase()}`}
+              </span>
+
+              {clientName && <span className={t.hashTag}>•</span>}
+              {clientName && (
+                <span className={t.hashTag}>via {clientName}</span>
+              )}
+            </div>
+          </div>
+
+          {/* System message content */}
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0 leading-relaxed break-words whitespace-pre-wrap font-mono tracking-wide">
+              <span className={`text-sm italic ${theme === 'matrix' ? 'text-gray-400' : 'text-gray-500'}`}>
+                {event.content}
+              </span>
+
+              <span className="pl-2 text-[11px] font-mono text-gray-500">
+                [{isToday ? time : `${date} ${time}`}]
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pb-4">
+      <div className={t.messageCard}>
+        <div className="flex justify-start items-center h-4">
+          <div className="flex items-center gap-2">
+            <span
+              className={`${t.hashTag} ${onSearch ? "cursor-pointer" : ""}`}
+              onClick={
+                onSearch
+                  ? () =>
+                      onSearch(
+                        addGeohashToSearch(
+                          searchText,
+                          rawGeohash.toLowerCase()
+                        )
+                      )
+                  : undefined
+              }
+            >
+              {eventGeohash
+                ? `#${eventGeohash.toUpperCase()}`
+                : `#${groupTagValue.toUpperCase()}`}
+            </span>
+
+            {clientName && <span className={t.hashTag}>•</span>}
+            {clientName && (
+              <span className={t.hashTag}>via {clientName}</span>
+            )}
+
+            {onReply && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onReply(username, pubkeyHash);
+                }}
+                className={t.replyButton}
+              >
+                ↪ Reply
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2">
+          <div className="flex-1 min-w-0 leading-relaxed break-words whitespace-pre-wrap font-mono tracking-wide">
+            <span
+              className={`text-sm font-bold ${
+                onSearch ? "cursor-pointer" : ""
+              }`}
+              style={{ color: userColors.hex }}
+              onClick={
+                onSearch
+                  ? () =>
+                      onSearch(
+                        addUserToSearch(searchText, username, pubkeyHash)
+                      )
+                  : undefined
+              }
+            >
+              &lt;@{username}#{pubkeyHash}&gt;
+            </span>
+
+            <span
+              className="pl-2 text-[15px]"
+              style={{ color: userColors.hex }}
+            >
+              {event.content
+                ? (() => {
+                    if (hasImageUrl(event.content)) {
+                      // Find the image URL and its position
+                      const imageUrl = extractImageUrl(event.content);
+                      if (imageUrl) {
+                        // Split content around the image URL to preserve position
+                        const parts = event.content.split(imageUrl);
+                        return (
+                          <>
+                            {parts[0] && (
+                              <span>
+                                {renderTextWithLinks(parts[0], theme)}
+                              </span>
+                            )}
+                            <br />
+                            <div className="block my-2">
+                              <Image
+                                src={imageUrl}
+                                alt=""
+                                theme={theme}
+                                showControls={true}
+                                maxWidth="200px"
+                                maxHeight="200px"
+                                className="max-w-[200px] h-auto rounded-lg shadow-sm"
+                                tags={[]}
+                                showTags={false}
+                              />
+                            </div>
+                            <br />
+                            {parts[1] && (
+                              <span>
+                                {renderTextWithLinks(parts[1], theme)}
+                              </span>
+                            )}
+                          </>
+                        );
+                      }
+                    }
+                    return renderTextWithLinks(event.content, theme);
+                  })()
+                : "[No content]"}
+            </span>
+
+            <span className="pl-2 text-[11px] font-mono text-gray-500">
+              [{isToday ? time : `${date} ${time}`}]
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+EventItem.displayName = 'EventItem';
 
 const styles = {
   matrix: {
@@ -68,31 +296,17 @@ export function RecentEvents({
   allStoredEvents,
   recentEvents,
   onSearch,
-  forceScrollToBottom = false,
   onReply,
   theme,
 }: RecentEventsProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [lastSeenEventId, setLastSeenEventId] = useState<string | null>(null);
   const [isUserAtBottom, setIsUserAtBottom] = useState(true);
-  const [favoritesVersion, setFavoritesVersion] = useState(0); // To trigger re-renders when favourites change
 
   const prevEventsLengthRef = useRef(0);
   const measurementCache = useRef<Map<number, number>>(new Map());
 
   const t = styles[theme];
-
-  if (!nostrEnabled) return null;
-
-  // Listen for storage changes to trigger re-renders when favourites change
-  useEffect(() => {
-    const handleStorageChange = () => {
-      setFavoritesVersion(prev => prev + 1);
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
 
   // Parse search and filter events
   const parsedSearch: ParsedSearch = parseSearchQuery(searchText);
@@ -109,15 +323,15 @@ export function RecentEvents({
     if (!hasSearchTerms) return true;
 
     const messageContent = (event.content || "").toLowerCase();
-    const nameTag = event.tags.find((tag: any) => tag[0] === "n");
+    const nameTag = event.tags.find((tag: string[]) => tag[0] === "n");
     const username = (nameTag ? nameTag[1] : "").toLowerCase();
-    const geoTag = event.tags.find((tag: any) => tag[0] === "g");
-    const groupTag = event.tags.find((tag: any) => tag[0] === "d");
+    const geoTag = event.tags.find((tag: string[]) => tag[0] === "g");
+    const groupTag = event.tags.find((tag: string[]) => tag[0] === "d");
     const eventGeohash = (geoTag ? geoTag[1] : "").toLowerCase();
     const eventGroup = (groupTag ? groupTag[1] : "").toLowerCase();
     const eventLocationTag = eventGeohash || eventGroup;
     const pubkeyHash = event.pubkey.slice(-4).toLowerCase();
-    const clientTag = event.tags.find((tag: any) => tag[0] === "client");
+    const clientTag = event.tags.find((tag: string[]) => tag[0] === "client");
     const eventClient = (clientTag ? clientTag[1] : "").toLowerCase();
 
     let matches = true;
@@ -169,7 +383,7 @@ export function RecentEvents({
 
     if (parsedSearch.clients?.length > 0 && matches) {
       matches =
-        eventClient &&
+        !!eventClient &&
         parsedSearch.clients?.some((searchClient) =>
           eventClient.includes(searchClient.toLowerCase())
         );
@@ -219,7 +433,7 @@ export function RecentEvents({
     (
       element: Element,
       entry: ResizeObserverEntry | undefined,
-      instance: any
+      instance: { scrollDirection?: string | null }
     ) => {
       const height = element.getBoundingClientRect().height;
       const index = Number(element.getAttribute("data-index"));
@@ -300,226 +514,6 @@ export function RecentEvents({
     return () => element.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
 
-
-
-  // Event item renderer
-  const EventItem = useCallback(
-    ({ index }: { index: number }) => {
-      const event = sortedEvents[index];
-      if (!event) return null;
-
-      const geoTag = event.tags.find((tag: any) => tag[0] === "g");
-      const groupTag = event.tags.find((tag: any) => tag[0] === "d");
-      const nameTag = event.tags.find((tag: any) => tag[0] === "n");
-      const clientTag = event.tags.find((tag: any) => tag[0] === "client");
-
-      const rawGeohash =
-        geoTag && typeof geoTag[1] === "string" ? geoTag[1] : "";
-      const groupTagValue =
-        groupTag && typeof groupTag[1] === "string" ? groupTag[1] : "";
-      const username = nameTag ? nameTag[1] : "Anonymous";
-      const clientName = clientTag ? clientTag[1] : null;
-      const pubkeyHash = event.pubkey.slice(-4);
-      const time = new Date(event.created_at * 1000).toLocaleTimeString();
-      const date = new Date(event.created_at * 1000).toLocaleDateString();
-      const isToday =
-        new Date().toDateString() ===
-        new Date(event.created_at * 1000).toDateString();
-      const eventGeohash = (geoTag ? geoTag[1] : "").toLowerCase();
-      const userColors = colorForPeerSeed("nostr:" + event.pubkey, true);
-
-      function isActionMessage(content: string): boolean {
-        // Check for asterisk wrapper pattern
-        const hasAsteriskWrapper =
-          content.startsWith("* ") && content.endsWith(" *");
-
-        if (!hasAsteriskWrapper) {
-          return false;
-        }
-
-        // Check for specific action indicators
-        const hasActionIndicators =
-          content.includes("🫂") || // hug emoji
-          content.includes("🐟") || // slap emoji
-          content.includes("took a screenshot");
-
-        return hasActionIndicators;
-      }
-
-      if (isActionMessage(event.content)) {
-        return (
-          <div className="pb-4">
-            <div className={t.messageCard}>
-              {/* Header with location/client info - same as regular messages */}
-              <div className="flex justify-start items-center h-4">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`${t.hashTag} ${onSearch ? "cursor-pointer" : ""}`}
-                    onClick={
-                      onSearch
-                        ? () =>
-                            onSearch(
-                              addGeohashToSearch(
-                                searchText,
-                                rawGeohash.toLowerCase()
-                              )
-                            )
-                        : undefined
-                    }
-                  >
-                    {eventGeohash
-                      ? `#${eventGeohash.toUpperCase()}`
-                      : `#${groupTagValue.toUpperCase()}`}
-                  </span>
-
-                  {clientName && <span className={t.hashTag}>•</span>}
-                  {clientName && (
-                    <span className={t.hashTag}>via {clientName}</span>
-                  )}
-                </div>
-              </div>
-
-              {/* System message content */}
-              <div className="flex items-start gap-2">
-                <div className="flex-1 min-w-0 leading-relaxed break-words whitespace-pre-wrap font-mono tracking-wide">
-                  <span className={`text-sm italic ${theme === 'matrix' ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {event.content}
-                  </span>
-
-                  <span className="pl-2 text-[11px] font-mono text-gray-500">
-                    [{isToday ? time : `${date} ${time}`}]
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      return (
-        <div className="pb-4">
-          <div className={t.messageCard}>
-            <div className="flex justify-start items-center h-4">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`${t.hashTag} ${onSearch ? "cursor-pointer" : ""}`}
-                  onClick={
-                    onSearch
-                      ? () =>
-                          onSearch(
-                            addGeohashToSearch(
-                              searchText,
-                              rawGeohash.toLowerCase()
-                            )
-                          )
-                      : undefined
-                  }
-                >
-                  {eventGeohash
-                    ? `#${eventGeohash.toUpperCase()}`
-                    : `#${groupTagValue.toUpperCase()}`}
-                </span>
-
-                {clientName && <span className={t.hashTag}>•</span>}
-                {clientName && (
-                  <span className={t.hashTag}>via {clientName}</span>
-                )}
-
-                {onReply && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onReply(username, pubkeyHash);
-                    }}
-                    className={t.replyButton}
-                  >
-                    ↪ Reply
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <div className="flex-1 min-w-0 leading-relaxed break-words whitespace-pre-wrap font-mono tracking-wide">
-                <span
-                  className={`text-sm font-bold ${
-                    onSearch ? "cursor-pointer" : ""
-                  }`}
-                  style={{ color: userColors.hex }}
-                  onClick={
-                    onSearch
-                      ? () =>
-                          onSearch(
-                            addUserToSearch(searchText, username, pubkeyHash)
-                          )
-                      : undefined
-                  }
-                >
-                  &lt;@{username}#{pubkeyHash}&gt;
-                </span>
-
-                <span
-                  className="pl-2 text-[15px]"
-                  style={{ color: userColors.hex }}
-                >
-                  {event.content
-                    ? (() => {
-                        if (hasImageUrl(event.content)) {
-                          // Find the image URL and its position
-                          const imageUrl = extractImageUrl(event.content);
-                          if (imageUrl) {
-                            // Split content around the image URL to preserve position
-                            const parts = event.content.split(imageUrl);
-                            return (
-                              <>
-                                {parts[0] && (
-                                  <span>
-                                    {renderTextWithLinks(parts[0], theme)}
-                                  </span>
-                                )}
-                                <br />
-                                <div className="block my-2">
-                                  <Image
-                                    src={imageUrl}
-                                    alt=""
-                                    theme={theme}
-                                    showControls={true}
-                                    maxWidth="200px"
-                                    maxHeight="200px"
-                                    className="max-w-[200px] h-auto rounded-lg shadow-sm"
-                                    tags={[]}
-                                    showTags={false}
-                                  />
-                                </div>
-                                <br />
-                                {parts[1] && (
-                                  <span>
-                                    {renderTextWithLinks(parts[1], theme)}
-                                  </span>
-                                )}
-                              </>
-                            );
-                          }
-                        }
-                        return renderTextWithLinks(event.content, theme);
-                      })()
-                    : "[No content]"}
-                </span>
-
-                <span className="pl-2 text-[11px] font-mono text-gray-500">
-                  [{isToday ? time : `${date} ${time}`}]
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    },
-    [sortedEvents, onSearch, searchText, onReply, t, theme]
-  );
-
   // Image grid view
   if (hasImageFilter) {
     if (sortedEvents.length === 0) {
@@ -574,6 +568,8 @@ export function RecentEvents({
 
   const items = virtualizer.getVirtualItems();
 
+  if (!nostrEnabled) return null;
+
   return (
     <>
       <div className={styles[theme].container}>
@@ -590,22 +586,33 @@ export function RecentEvents({
                 position: "relative",
               }}
             >
-              {items.map((virtualItem) => (
-                <div
-                  key={virtualItem.key}
-                  data-index={virtualItem.index}
-                  ref={virtualizer.measureElement}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    transform: `translateY(${virtualItem.start}px)`,
-                  }}
-                >
-                  <EventItem index={virtualItem.index} />
-                </div>
-              ))}
+              {items.map((virtualItem) => {
+                const event = sortedEvents[virtualItem.index];
+                if (!event) return null;
+
+                return (
+                  <div
+                    key={virtualItem.key}
+                    data-index={virtualItem.index}
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
+                  >
+                    <EventItem
+                      event={event}
+                      searchText={searchText}
+                      onSearch={onSearch}
+                      onReply={onReply}
+                      theme={theme}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
 

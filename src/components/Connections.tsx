@@ -3,6 +3,13 @@ import { GeoRelayDirectory } from "../utils/geoRelayDirectory";
 import { ThemedButton } from "./ThemedButton";
 import { DEFAULT_RELAYS } from "../constants/projections";
 
+export const truncate = (value: string, options: { length: number }): string => {
+  if (value.length > options.length) {
+    return value.slice(0, options.length) + "...";
+  }
+  return value;
+};
+
 interface ConnectionsProps {
   theme: "matrix" | "material";
   connectedRelays: string[];
@@ -131,12 +138,6 @@ export function Connections({
     }
   };
 
-  const truncate = (value: string, options: { length: number }): string => {
-    if (value.length > options.length) {
-      return value.slice(0, options.length) + "...";
-    }
-    return value;
-  };
 
   return (
     <div className={`${t.container} w-48`}>

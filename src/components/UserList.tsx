@@ -1,5 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { colorForPeerSeed } from "../utils/userColor";
+import { truncate } from "./Connections";
 
 type UserMeta = {
   pubkey: string;
@@ -19,6 +21,81 @@ type Props = {
   allStoredEvents: any[]; // Add events to filter by channel
   theme?: "matrix" | "material";
 };
+
+// Separate UserItem component
+type UserItemProps = {
+  user: UserMeta;
+  isSelected: boolean;
+  onSelectUser: (pubkey: string) => void;
+  theme: "matrix" | "material";
+};
+
+const UserItem = React.memo(({
+  user,
+  isSelected,
+  onSelectUser,
+  theme
+}: UserItemProps) => {
+  const t = styles[theme];
+
+  let buttonClass = t.buttonBase;
+  if (isSelected) {
+    buttonClass += ` ${t.selected}`;
+  } else {
+    buttonClass += ` ${t.hover}`;
+  }
+
+  // Determine if we're in dark mode based on theme
+  const isDark = theme === "matrix";
+  
+  // Get user color based on pubkey
+  const userColor = colorForPeerSeed(user.pubkey, isDark);
+  
+  // Format display name: name#0000 (last 4 digits of pubkey)
+  const displayName = truncate(user.displayName, { length: 9 });
+  const pubkeySuffix = user.pubkey.slice(-4);
+  const formattedName = `${displayName}#${pubkeySuffix}`;
+
+  const formatLastSeen = (timestamp: number): string => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    if (minutes < 1) return "now";
+    if (minutes < 60) return `${minutes}m`;
+    if (hours < 24) return `${hours}h`;
+    return `${days}d`;
+  };
+
+  return (
+    <button
+      key={user.pubkey}
+      onClick={() => onSelectUser(user.pubkey)}
+      className={buttonClass}
+    >
+      <div className={t.userInfo}>
+        <div 
+          className={t.userName}
+          style={{ color: colorForPeerSeed('nostr:'+ user.pubkey, isDark).hex }}
+        >
+          {formattedName}
+        </div>
+        <div className="flex items-center justify-between text-xs opacity-70">
+          <span className={t.lastSeen}>
+            {formatLastSeen(user.lastSeen)}
+          </span>
+          <span className={t.messageCount}>
+            {user.messageCount} msg
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+});
+
+UserItem.displayName = 'UserItem';
 
 const styles = {
   matrix: {
@@ -74,8 +151,7 @@ export function UserList({
   theme = "matrix",
 }: Props) {
   const t = styles[theme];
-
-
+  const parentRef = useRef<HTMLDivElement>(null);
 
   // Filter users based on search text
   const filteredUsers = useMemo(() => {
@@ -119,87 +195,65 @@ export function UserList({
     return users;
   }, [users, searchText, allStoredEvents]);
 
+  // TanStack Virtual setup
+  const virtualizer = useVirtualizer({
+    count: filteredUsers.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 45, // Estimate height for user buttons (more compact layout)
+    overscan: 5,
+    getItemKey: (index) => filteredUsers[index]?.pubkey || index,
+  });
 
-
-  const formatLastSeen = (timestamp: number): string => {
-    const now = Date.now();
-    const diff = now - timestamp;
-    const minutes = Math.floor(diff / (1000 * 60));
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (minutes < 1) return "now";
-    if (minutes < 60) return `${minutes}m`;
-    if (hours < 24) return `${hours}h`;
-    return `${days}d`;
-  };
-
-  const renderUserButton = (pubkey: string) => {
-    const user = users.find(u => u.pubkey === pubkey);
-    if (!user) return null;
-
-    const isSelected = selectedUser === pubkey;
-
-    let buttonClass = t.buttonBase;
-    if (isSelected) {
-      buttonClass += ` ${t.selected}`;
-    } else {
-      buttonClass += ` ${t.hover}`;
-    }
-
-    // Determine if we're in dark mode based on theme
-    const isDark = theme === "matrix";
-    
-    // Get user color based on pubkey
-    const userColor = colorForPeerSeed(pubkey, isDark);
-    
-    // Format display name: name#0000 (last 4 digits of pubkey)
-    const displayName = user.displayName || pubkey.slice(0, 8);
-    const pubkeySuffix = user.pubkey.slice(-4);
-    const formattedName = `${displayName}#${pubkeySuffix}`;
-
-    return (
-      <button
-        key={pubkey}
-        onClick={() => onSelectUser(pubkey)}
-        className={buttonClass}
-      >
-        <div className={t.userInfo}>
-          <div 
-            className={t.userName}
-            style={{ color: userColor.css }}
-          >
-            {formattedName}
-          </div>
-          <div className={t.userDetails}>
-            {formatLastSeen(user.lastSeen)}
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <span className={t.messageCount}>
-            {user.messageCount}
-          </span>
-        </div>
-      </button>
-    );
-  };
-
-
+  const items = virtualizer.getVirtualItems();
 
   return (
     <div className={t.rail}>
       <div className={t.header}>
         <div className={t.headerText}>USERS</div>
       </div>
-      <div className={t.list}>
+      
+      {/* CHANGED: the list itself is the only scroll container */}
+      <div className={t.list} ref={parentRef}>
         {filteredUsers.length === 0 ? (
           <div className={t.empty}>
             {!searchText ? "select a channel to see users" : "no users found"}
           </div>
         ) : (
-          <div className="px-2 py-1">
-            {filteredUsers.map(user => renderUserButton(user.pubkey))}
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {items.map((virtualItem) => {
+              const user = filteredUsers[virtualItem.index];
+              if (!user) return null;
+
+              return (
+                <div
+                  key={virtualItem.key}
+                  data-index={virtualItem.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
+                  <div className="px-2 py-1">
+                    <UserItem
+                      user={user}
+                      isSelected={selectedUser === user.pubkey}
+                      onSelectUser={onSelectUser}
+                      theme={theme}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { getPinnedChannels, addPinnedChannel, removePinnedChannel, isChannelPinned } from "../utils/pinnedChannels";
-import { categorizeChannels, getEventKindForChannel } from "../utils/channelCategorization";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { getPinnedChannels, addPinnedChannel, removePinnedChannel } from "../utils/pinnedChannels";
 import { EVENT_KINDS } from "../constants/eventKinds";
 
 type ChannelMeta = {
@@ -17,6 +17,104 @@ type Props = {
   onOpenChannel: (ch: string) => void;
   theme?: "matrix" | "material";
 };
+
+// Separate ChannelItem component
+type ChannelItemProps = {
+  channelKey: string;
+  category: 'pinned' | 'geohash' | 'standard';
+  isSelected: boolean;
+  unread: number;
+  isPinned: boolean;
+  onOpenChannel: (channelKey: string) => void;
+  onHeartClick: (e: React.MouseEvent, channelKey: string) => void;
+  theme: "matrix" | "material";
+};
+
+const ChannelItem = React.memo(({
+  channelKey,
+  category,
+  isSelected,
+  unread,
+  isPinned,
+  onOpenChannel,
+  onHeartClick,
+  theme
+}: ChannelItemProps) => {
+  const t = styles[theme];
+  const showUnread = unread > 0 && !isSelected;
+
+  let buttonClass = t.buttonBase;
+  if (isSelected) {
+    buttonClass += ` ${t.selected}`;
+  } else if (category === 'pinned') {
+    buttonClass += ` ${t.pinned}`;
+  } else if (category === 'geohash') {
+    buttonClass += ` ${t.geohash}`;
+  } else {
+    buttonClass += ` ${t.standard}`;
+  }
+  
+  if (!isSelected) {
+    buttonClass += ` ${t.hover}`;
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpenChannel(channelKey)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onOpenChannel(channelKey);
+      }}
+      className={buttonClass}
+    >
+      <div className={t.channelInfo}>
+        <div className={t.channelName}>
+          {channelKey}
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-2">
+        {showUnread && (
+          <span className={t.unreadContainer}>
+            <span className={t.unreadDot} />
+            <span className={t.unreadCount}>{unread}</span>
+          </span>
+        )}
+        
+        <button
+          type="button"
+          onClick={(e) => onHeartClick(e, channelKey)}
+          className={`${t.heartButton} ${
+            isPinned ? t.heartIconPinned : t.heartIcon
+          } cursor-pointer`}
+          title={isPinned ? "Unpin channel" : "Pin channel"}
+        >
+          {isPinned ? "❤️" : "🤍"}
+        </button>
+      </div>
+    </div>
+  );
+});
+
+ChannelItem.displayName = 'ChannelItem';
+
+// Section header component
+type SectionHeaderProps = {
+  title: string;
+  theme: "matrix" | "material";
+};
+
+const SectionHeader = React.memo(({ title, theme }: SectionHeaderProps) => {
+  const t = styles[theme];
+  return (
+    <div className={t.sectionHeader}>
+      {title}
+    </div>
+  );
+});
+
+SectionHeader.displayName = 'SectionHeader';
 
 const styles = {
   matrix: {
@@ -87,6 +185,7 @@ export function ChannelList({
 }: Props) {
   const t = styles[theme];
   const [pinnedChannels, setPinnedChannels] = useState<string[]>([]);
+  const parentRef = useRef<HTMLDivElement>(null);
 
   // Load pinned channels from localStorage on mount
   useEffect(() => {
@@ -126,6 +225,51 @@ export function ChannelList({
     pinnedChannels
   );
 
+  // Create a flat list of all channels with their category info for virtualization
+  const virtualizedChannels = useMemo(() => {
+    const result: Array<{
+      key: string;
+      category: 'pinned' | 'geohash' | 'standard';
+      isSectionHeader: boolean;
+      sectionTitle?: string;
+    }> = [];
+
+    // Add pinned section
+    if (categorized.pinned.length > 0) {
+      result.push({ key: 'pinned-header', category: 'pinned', isSectionHeader: true, sectionTitle: 'PINNED' });
+      categorized.pinned.forEach(channelKey => {
+        result.push({ key: channelKey, category: 'pinned', isSectionHeader: false });
+      });
+    }
+
+    // Add geohash section
+    if (categorized.geohash.length > 0) {
+      result.push({ key: 'geohash-header', category: 'geohash', isSectionHeader: true, sectionTitle: 'GEOHASH' });
+      categorized.geohash.forEach(channelKey => {
+        result.push({ key: channelKey, category: 'geohash', isSectionHeader: false });
+      });
+    }
+
+    // Add standard section
+    if (categorized.standard.length > 0) {
+      result.push({ key: 'standard-header', category: 'standard', isSectionHeader: true, sectionTitle: 'STANDARD' });
+      categorized.standard.forEach(channelKey => {
+        result.push({ key: channelKey, category: 'standard', isSectionHeader: false });
+      });
+    }
+
+    return result;
+  }, [categorized]);
+
+  // TanStack Virtual setup
+  const virtualizer = useVirtualizer({
+    count: virtualizedChannels.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 50, // Estimate height for channel buttons
+    overscan: 5,
+    getItemKey: (index) => virtualizedChannels[index]?.key || index,
+  });
+
   const handleHeartClick = (e: React.MouseEvent, channelKey: string) => {
     e.stopPropagation();
     
@@ -138,95 +282,80 @@ export function ChannelList({
     }
   };
 
-  const renderChannelButton = (channelKey: string, category: 'pinned' | 'geohash' | 'standard') => {
-    const isSelected = selectedChannel === channelKey;
-    const unread = unreadCounts[channelKey] || 0;
-    const showUnread = unread > 0 && !isSelected;
-    const isPinned = pinnedChannels.includes(channelKey);
-    
-    // Find the channel meta to get the actual event kind
-    const channelMeta = channels.find(c => c.key === channelKey);
-    const eventKind = channelMeta?.eventKind || 23333; // Default to standard if unknown
-
-    let buttonClass = t.buttonBase;
-    if (isSelected) {
-      buttonClass += ` ${t.selected}`;
-    } else if (category === 'pinned') {
-      buttonClass += ` ${t.pinned}`;
-    } else if (category === 'geohash') {
-      buttonClass += ` ${t.geohash}`;
-    } else {
-      buttonClass += ` ${t.standard}`;
-    }
-    
-    if (!isSelected) {
-      buttonClass += ` ${t.hover}`;
-    }
-
-    return (
-      <button
-        key={channelKey}
-        onClick={() => onOpenChannel(channelKey)}
-        className={buttonClass}
-      >
-        <div className={t.channelInfo}>
-          <div className={t.channelName}>
-            {channelKey}
-          </div>
-          {/* <div className={t.eventKind}>
-            kind {eventKind}
-          </div> */}
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {showUnread && (
-            <span className={t.unreadContainer}>
-              <span className={t.unreadDot} />
-              <span className={t.unreadCount}>{unread}</span>
-            </span>
-          )}
-          
-          <div
-            onClick={(e) => handleHeartClick(e, channelKey)}
-            className={`${t.heartButton} ${
-              isPinned ? t.heartIconPinned : t.heartIcon
-            } cursor-pointer`}
-            title={isPinned ? "Unpin channel" : "Pin channel"}
-          >
-            {isPinned ? "❤️" : "🤍"}
-          </div>
-        </div>
-      </button>
-    );
-  };
-
-  const renderSection = (title: string, channels: string[], category: 'pinned' | 'geohash' | 'standard') => {
-    if (channels.length === 0) return null;
-    
-    return (
-      <div key={title}>
-        <div className={t.sectionHeader}>{title}</div>
-        <div className="px-2 py-1">
-          {channels.map(channelKey => renderChannelButton(channelKey, category))}
-        </div>
-      </div>
-    );
-  };
+  const items = virtualizer.getVirtualItems();
 
   return (
     <div className={t.rail}>
       <div className={t.header}>
         <div className={t.headerText}>CHANNELS</div>
       </div>
-      <div className={t.list}>
-        {renderSection("PINNED", categorized.pinned, 'pinned')}
-        {renderSection("GEOHASH", categorized.geohash, 'geohash')}
-        {renderSection("STANDARD", categorized.standard, 'standard')}
-        
-        {categorized.pinned.length === 0 && 
-         categorized.geohash.length === 0 && 
-         categorized.standard.length === 0 && (
+      
+      {/* CHANGED: the list itself is the only scroll container */}
+      <div className={t.list} ref={parentRef}>
+        {virtualizedChannels.length === 0 ? (
           <div className={t.empty}>no channels</div>
+        ) : (
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {items.map((virtualItem) => {
+              const item = virtualizedChannels[virtualItem.index];
+              if (!item) return null;
+
+              if (item.isSectionHeader) {
+                return (
+                  <div
+                    key={virtualItem.key}
+                    data-index={virtualItem.index}
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
+                  >
+                    <div className="px-2 py-1">
+                      <SectionHeader title={item.sectionTitle!} theme={theme} />
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={virtualItem.key}
+                  data-index={virtualItem.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
+                  <div className="px-2 py-1">
+                    <ChannelItem
+                      channelKey={item.key}
+                      category={item.category}
+                      isSelected={selectedChannel === item.key}
+                      unread={unreadCounts[item.key] || 0}
+                      isPinned={pinnedChannels.includes(item.key)}
+                      onOpenChannel={onOpenChannel}
+                      onHeartClick={handleHeartClick}
+                      theme={theme}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
