@@ -9,7 +9,9 @@ export const useAudioPlayer = () => {
     currentStation: null,
     volume: 0.7,
     loading: false,
-    error: null
+    error: null,
+    currentTime: 0,
+    duration: 0
   });
 
   const play = useCallback(async (station: Station) => {
@@ -41,6 +43,23 @@ export const useAudioPlayer = () => {
         isPlaying: false
       }));
       
+      // Add time tracking
+      audio.ontimeupdate = () => {
+        setPlayerState(prev => ({
+          ...prev,
+          currentTime: audio.currentTime,
+          duration: audio.duration || 0
+        }));
+      };
+      
+      // Add duration change listener
+      audio.ondurationchange = () => {
+        setPlayerState(prev => ({
+          ...prev,
+          duration: audio.duration || 0
+        }));
+      };
+      
       audioRef.current = audio;
       await audio.play();
       
@@ -64,7 +83,9 @@ export const useAudioPlayer = () => {
       isPlaying: false,
       currentStation: null,
       loading: false,
-      error: null
+      error: null,
+      currentTime: 0,
+      duration: 0
     }));
   }, []);
 
@@ -75,10 +96,27 @@ export const useAudioPlayer = () => {
     setPlayerState(prev => ({ ...prev, volume }));
   }, []);
 
+  // Function to seek to a specific time
+  const seekTo = useCallback((time: number) => {
+    if (audioRef.current && !isNaN(time) && time >= 0) {
+      audioRef.current.currentTime = time;
+    }
+  }, []);
+
+  // Helper function to format time as MM:SS
+  const formatTime = useCallback((seconds: number): string => {
+    if (isNaN(seconds) || seconds === 0) return '--:--';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }, []);
+
   return {
     ...playerState,
     play,
     stop,
-    setVolume
+    setVolume,
+    seekTo,
+    formatTime
   };
 };

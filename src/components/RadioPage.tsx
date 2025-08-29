@@ -622,7 +622,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
       {/* Player Bar (Fixed at bottom) */}
       {stations.length > 0 && (
         <div
-          className={`fixed bottom-0 left-0 right-0 ${
+          className={`z-50 fixed bottom-0 left-0 right-0 ${
             theme === "matrix"
               ? "bg-black/95 border-t border-[#00ff00]/30"
               : "bg-white border-t border-gray-200"
@@ -821,25 +821,58 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                     theme === "matrix" ? "text-[#00ff00]/70" : "text-gray-500"
                   } w-10 text-right`}
                 >
-                  --:--
+                  {audioPlayer.formatTime(audioPlayer.currentTime)}
                 </span>
                 <div
                   className={`flex-1 h-1 ${
                     theme === "matrix" ? "bg-[#00ff00]/30" : "bg-gray-300"
-                  } rounded-full`}
+                  } rounded-full cursor-pointer relative group`}
+                  onClick={(e) => {
+                    if (audioPlayer.duration > 0) {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const clickX = e.clientX - rect.left;
+                      const percentage = clickX / rect.width;
+                      const newTime = percentage * audioPlayer.duration;
+                      
+                      // Use the seekTo function from the hook
+                      audioPlayer.seekTo(newTime);
+                    }
+                  }}
+                  title="Click to seek"
                 >
+                  {/* Hover tooltip showing current time */}
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                    {audioPlayer.formatTime(audioPlayer.currentTime)}
+                  </div>
                   <div
                     className={`h-full ${
                       theme === "matrix" ? "bg-[#00ff00]" : "bg-gray-600"
-                    } rounded-full w-0`}
+                    } rounded-full transition-all duration-100`}
+                    style={{
+                      width: audioPlayer.duration > 0 
+                        ? `${(audioPlayer.currentTime / audioPlayer.duration) * 100}%` 
+                        : '0%'
+                    }}
                   ></div>
+                  {/* Live progress indicator dot */}
+                  {audioPlayer.duration > 0 && (
+                    <div
+                      className={`absolute top-1/2 transform -translate-y-1/2 w-3 h-3 ${
+                        theme === "matrix" ? "bg-[#00ff00]" : "bg-gray-600"
+                      } rounded-full shadow-lg transition-all duration-100`}
+                      style={{
+                        left: `${(audioPlayer.currentTime / audioPlayer.duration) * 100}%`,
+                        transform: 'translate(-50%, -50%)'
+                      }}
+                    ></div>
+                  )}
                 </div>
                 <span
                   className={`text-xs ${
                     theme === "matrix" ? "text-[#00ff00]/70" : "text-gray-500"
                   } w-10`}
                 >
-                  --:--
+                  {audioPlayer.formatTime(audioPlayer.duration)}
                 </span>
               </div>
             </div>

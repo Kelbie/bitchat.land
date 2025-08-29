@@ -11,6 +11,8 @@ export interface RadioPlayerState {
   volume: number;
   loading: boolean;
   error: string | null;
+  currentTime: number;
+  duration: number;
 }
 
 export interface CountryInRegion {
