@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { SimplePool } from "nostr-tools/pool";
-import type { Event, Event as NostrEventOriginal, verifiedSymbol } from "nostr-tools";
+import type { Event as NostrEventOriginal } from "nostr-tools";
 import { getPow } from "nostr-tools/nip13";
 import { NostrEvent, GeohashActivity } from "../types";
 import { NOSTR_RELAYS } from "../constants/projections";
@@ -20,6 +20,12 @@ export function useNostr(
 ) {
   // Debug logging for PoW settings
   console.log('useNostr PoW settings:', { powEnabled, powDifficulty });
+  
+  // Log when PoW settings change
+  useEffect(() => {
+    console.log('PoW settings changed:', { powEnabled, powDifficulty });
+  }, [powEnabled, powDifficulty]);
+  
   const [connectedRelays, setConnectedRelays] = useState<Array<{url: string, geohash: string}>>([]);
   const [recentEvents, setRecentEvents] = useState<NostrEvent[]>([]);
   const [geohashActivity, setGeohashActivity] = useState<Map<string, GeohashActivity>>(
@@ -37,14 +43,15 @@ export function useNostr(
   const statusIntervalRef = useRef<number | null>(null);
 
   // Single event handler function to avoid duplication
-  const handleNostrEvent = (event: NostrEventOriginal) => {
+  const handleNostrEvent = useCallback((event: NostrEventOriginal) => {
     console.log("Received Nostr event:", event);
+    console.log(`Current PoW settings in handler: enabled=${powEnabled}, difficulty=${powDifficulty}`);
 
     // Proof of Work validation - only if enabled
     if (powEnabled) {
       const eventPow = getPow(event.id);
       console.log(`PoW validation: event difficulty ${eventPow}, required ${powDifficulty}`);
-      
+    
       if (eventPow < powDifficulty) {
         console.log(`Skipping event with insufficient PoW difficulty: ${eventPow} < ${powDifficulty}`, event.id);
         return;
@@ -166,7 +173,33 @@ export function useNostr(
       }
       return [event, ...prev];
     });
-  };
+  }, [powEnabled, powDifficulty]);
+
+  // Recreate subscription when PoW settings change
+  useEffect(() => {
+    if (subRef.current && poolRef.current && connectedRelays.length > 0) {
+      console.log('Recreating subscription with new PoW settings:', { powEnabled, powDifficulty });
+      
+      // Close existing subscription
+      subRef.current.close();
+      
+      // Get current relay URLs
+      const currentRelayUrls = connectedRelays.map(r => r.url);
+      
+      // Create new subscription with updated event handler
+      const newSub = poolRef.current.subscribeMany(currentRelayUrls, [{ kinds: [20000, 23333] }], {
+        onevent: handleNostrEvent,
+        oneose() {
+          console.log("End of stored events (recreated)");
+        },
+        onclose() {
+          console.log("Subscription closed (recreated)");
+        },
+      });
+      
+      subRef.current = newSub;
+    }
+  }, [powEnabled, powDifficulty, handleNostrEvent, connectedRelays]);
 
   const connectToNostr = async () => {
     try {
