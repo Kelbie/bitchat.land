@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { globalStyles } from "../../styles";
 
 export type ListItem<T> = {
   key: string;
@@ -22,34 +23,7 @@ export type ListProps<T> = {
   borderDirection?: "left" | "right";
 };
 
-const getRailStyles = (theme: "matrix" | "material", borderDirection: "left" | "right" = "right") => {
-  const baseStyles = {
-    matrix: {
-      base: "w-48 min-w-[192px] bg-black/90 text-[#00ff00] flex flex-col overflow-hidden",
-      border: borderDirection === "left" ? "border-l border-[#003300]" : "border-r border-[#003300]",
-      header: "bg-black/98 text-[#00aa00] px-3 py-3 border-b border-[#003300] sticky top-0 z-20",
-      headerText: "text-[16px] uppercase tracking-wider font-mono drop-shadow-[0_0_10px_rgba(0,255,0,0.5)]",
-      list: "overflow-y-auto px-2 py-2 flex-1",
-      empty: "text-[10px] opacity-70 px-2 py-1",
-    },
-    material: {
-      base: "w-48 min-w-[192px] bg-white text-gray-800 flex flex-col overflow-hidden",
-      border: borderDirection === "left" ? "border-l border-gray-300" : "border-r border-gray-300",
-      header: "bg-white text-blue-600 px-4 py-3 border-b border-blue-200 sticky top-0 z-20",
-      headerText: "text-base uppercase tracking-wider",
-      list: "overflow-y-auto px-2 py-2 flex-1",
-      empty: "text-xs text-gray-500 px-2 py-1",
-    },
-  };
-  
-  return {
-    rail: `${baseStyles[theme].base} ${baseStyles[theme].border}`,
-    header: baseStyles[theme].header,
-    headerText: baseStyles[theme].headerText,
-    list: baseStyles[theme].list,
-    empty: baseStyles[theme].empty,
-  };
-};
+// Styles are now imported from globalStyles
 
 export function List<T>({
   items,
@@ -63,7 +37,15 @@ export function List<T>({
   className,
   borderDirection = "right",
 }: ListProps<T>) {
-  const t = getRailStyles(theme, borderDirection);
+  const styles = globalStyles.List[theme];
+  const borderStyle = borderDirection === "left" ? styles.borderLeft : styles.borderRight;
+  const t = {
+    rail: `${styles.base} ${borderStyle}`,
+    header: styles.header,
+    headerText: styles.headerText,
+    list: styles.list,
+    empty: styles.empty,
+  };
   const parentRef = useRef<HTMLDivElement>(null);
 
   // TanStack Virtual setup

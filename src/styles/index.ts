@@ -1,28 +1,56 @@
 import './radioFinder.css';
+import { rgba } from 'polished';
 
+const colors = {
+  matrix: {
+    c1: "#003300",    // Dark green (borders, backgrounds)
+    c2: "#00ff00",    // Bright green (text, highlights)
+    c3: "#00aa00",    // Medium green (secondary text)
+    c4: "#001100",    // Very dark green (dark backgrounds)
+    c5: "#004400",    // Medium dark green (hover states)
+    c6: "#00cc00",    // Light green (accent)
+    c7: "#00dd00",    // Bright light green
+    c8: "#003200",    // Dark green variant
+    c9: "#005000",    // Medium green variant
+    c11: "#ff6666",   // Red (errors)
+    c12: "#ff0000",   // Bright red
+    c13: "#330000",   // Dark red
+    c14: "#ff3300",   // Orange-red
+    c15: "#ff9999",   // Light red
+    c16: "#ffaa00",   // Orange (highlights)
+    c17: "#888",      // Gray
+    c18: "#666",      // Dark gray
+    c19: "#333",      // Very dark gray
+    c20: "#00aaaa",   // Cyan
+    c21: "#111",      // Very dark (near black)
+    c22: "#000",      // Black
+  }
+}
+
+// each key is the component name
 export const globalStyles = {
   ChatInput: {
     matrix: {
       container:
-        "px-4 py-3 bg-black/95 border-t border-[#003300] flex flex-col gap-2 font-mono text-[#00ff00]",
-      channelInfo: "text-[11px] text-[#888] font-mono flex items-center gap-2",
+        `px-4 py-3 bg-black/95 border-t border-[${colors.matrix.c1}] flex flex-col gap-2 font-mono text-[${colors.matrix.c2}]`,
+      channelInfo: `text-[11px] text-[${colors.matrix.c17}] font-mono flex items-center gap-2`,
       channelPill:
-        "text-[#00ff00] bg-[rgba(0,255,0,0.1)] px-1.5 py-0.5 rounded border border-[rgba(0,255,0,0.3)]",
-      username: "text-[#00aaaa]",
+        `text-[${colors.matrix.c2}] bg-[${rgba(colors.matrix.c2, 0.1)}] px-1.5 py-0.5 rounded border border-[${rgba(colors.matrix.c2, 0.3)}]`,
+      username: `text-[${colors.matrix.c20}]`,
       error:
-        "text-[#ff6666] bg-[rgba(255,0,0,0.1)] px-2 py-1 rounded border border-[rgba(255,0,0,0.3)]",
+        `text-[${colors.matrix.c11}] bg-[${rgba(colors.matrix.c11, 0.1)}] px-2 py-1 rounded border border-[${rgba(colors.matrix.c11, 0.3)}]`,
       inputWrapper: "flex-1 relative flex flex-col",
-      charCount: "absolute -bottom-4 right-0 text-[10px] font-mono text-[#888]",
-      charCountExceeded: "text-[#ff6666]",
+      charCount: `absolute -bottom-4 right-0 text-[10px] font-mono text-[${colors.matrix.c17}]`,
+      charCountExceeded: `text-[${colors.matrix.c11}]`,
       sendButton:
-        "px-4 py-2 bg-[#003300] text-[#00ff00] border border-[#00ff00] rounded text-xs font-mono uppercase font-bold transition-colors",
-      sendButtonHover: "hover:bg-[#004400] hover:shadow-[0_0_8px_rgba(0,255,0,0.3)]",
-      sendButtonDisabled: "bg-[#333] text-[#666] border-[#666] cursor-not-allowed",
-      hint: "text-right text-[10px] text-[#666] font-mono mt-1",
+        `px-4 py-2 bg-[${colors.matrix.c1}] text-[${colors.matrix.c2}] border border-[${colors.matrix.c2}] rounded text-xs font-mono uppercase font-bold transition-colors`,
+      sendButtonHover: `hover:bg-[${colors.matrix.c5}] hover:shadow-[0_0_8px_${rgba(colors.matrix.c2, 0.3)}]`,
+      sendButtonDisabled: `bg-[${colors.matrix.c19}] text-[${colors.matrix.c18}] border-[${colors.matrix.c18}] cursor-not-allowed`,
+      hint: `text-right text-[10px] text-[${colors.matrix.c18}] font-mono mt-1`,
       noProfileContainer:
-        "p-4 bg-black/95 border-t border-[#003300] flex items-center justify-center",
+        `p-4 bg-black/95 border-t border-[${colors.matrix.c1}] flex items-center justify-center`,
       noProfileButton:
-        "text-[#00ff00] text-sm font-mono bg-[#001100] border-2 border-[#00ff00] rounded-lg px-5 py-3 cursor-pointer [text-shadow:0_0_10px_rgba(0,255,0,0.5)] shadow-[0_0_15px_rgba(0,255,0,0.3)] transition-all duration-200 hover:bg-[#003300] hover:shadow-[0_0_20px_rgba(0,255,0,0.5)]",
+        `text-[${colors.matrix.c2}] text-sm font-mono bg-[${colors.matrix.c4}] border-2 border-[${colors.matrix.c2}] rounded-lg px-5 py-3 cursor-pointer [text-shadow:0_0_10px_${rgba(colors.matrix.c2, 0.5)}] shadow-[0_0_15px_${rgba(colors.matrix.c2, 0.3)}] transition-all duration-200 hover:bg-[${colors.matrix.c1}] hover:shadow-[0_0_20px_${rgba(colors.matrix.c2, 0.5)}]`,
     },
     material: {
       container:
@@ -54,9 +82,9 @@ export const globalStyles = {
         "flex items-center justify-center h-full text-green-600 font-mono text-sm text-center p-5",
       noEventsMessage: "mb-2",
       scrollButton:
-        "absolute bottom-[32px] right-[30px] bg-green-500 text-black rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,255,0,0.3)] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110 flex items-center justify-center",
+        `absolute bottom-[32px] right-[30px] bg-green-500 text-black rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_${rgba(colors.matrix.c2, 0.3)}] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110 flex items-center justify-center`,
       scrollButtonWithCount:
-        "absolute bottom-[32px] right-[30px] bg-green-500 text-black rounded-full min-w-[50px] h-[50px] px-2 cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,255,0,0.3)] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110 flex items-center justify-center",
+        `absolute bottom-[32px] right-[30px] bg-green-500 text-black rounded-full min-w-[50px] h-[50px] px-2 cursor-pointer font-bold shadow-[0_4px_12px_${rgba(colors.matrix.c2, 0.3)}] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110 flex items-center justify-center`,
       messageCard: "mx-3 px-3 py-2 bg-black/30 rounded-lg transition-all",
       hashTag: "text-gray-500 text-[10px] font-mono",
       replyButton:
@@ -81,8 +109,8 @@ export const globalStyles = {
   },
   ThemedProgressBar: {
     matrix: {
-      outer: "bg-[#333] h-2 rounded overflow-hidden mb-2",
-      inner: "bg-[#00ff00] h-full transition-[width] duration-300",
+      outer: `bg-[${colors.matrix.c19}] h-2 rounded overflow-hidden mb-2`,
+      inner: `bg-[${colors.matrix.c2}] h-full transition-[width] duration-300`,
     },
     material: {
       outer: "bg-gray-200 h-2 rounded overflow-hidden mb-2",
@@ -92,7 +120,7 @@ export const globalStyles = {
   CornerOverlay: {
     matrix: {
       base:
-        "fixed z-[9999] opacity-70 hover:opacity-100 transition-opacity duration-200 font-mono text-[#00aa00] drop-shadow-[0_0_3px_rgba(0,255,0,0.3)]",
+        `fixed z-[9999] opacity-70 hover:opacity-100 transition-opacity duration-200 font-mono text-[${colors.matrix.c3}] drop-shadow-[0_0_3px_${rgba(colors.matrix.c2, 0.3)}]`,
     },
     material: {
       base:
@@ -102,18 +130,18 @@ export const globalStyles = {
   Modal: {
     matrix: {
       overlay: "fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[10000] p-5",
-      container: "bg-[#111] border-2 border-[#00ff00] rounded-lg shadow-[0_0_20px_rgba(0,255,0,0.3)] font-mono text-[#00ff00]",
-      header: "p-4 border-b border-[#003300]",
-      title: "text-lg font-bold text-[#00ff00]",
-      closeButton: "p-2 rounded hover:bg-opacity-20 hover:bg-[#00ff00] text-[#00ff00] transition-colors",
+      container: `bg-[${colors.matrix.c21}] border-2 border-[${colors.matrix.c2}] rounded-lg shadow-[0_0_20px_${rgba(colors.matrix.c2, 0.3)}] font-mono text-[${colors.matrix.c2}]`,
+      header: `p-4 border-b border-[${colors.matrix.c1}]`,
+      title: `text-lg font-bold text-[${colors.matrix.c2}]`,
+      closeButton: `p-2 rounded hover:bg-opacity-20 hover:bg-[${colors.matrix.c2}] text-[${colors.matrix.c2}] transition-colors`,
       tabContainer: "flex gap-1 mt-4",
       tabButton: "px-4 py-2 text-sm font-medium rounded-t-lg transition-colors",
-      tabButtonActive: "bg-[#00ff00] text-black",
-      tabButtonInactive: "bg-[#003300] text-[#00ff00] hover:bg-[#004400]",
+      tabButtonActive: `bg-[${colors.matrix.c2}] text-black`,
+      tabButtonInactive: `bg-[${colors.matrix.c1}] text-[${colors.matrix.c2}] hover:bg-[${colors.matrix.c5}]`,
       body: "p-4",
       flowContainer: "space-y-4",
-      flowTitle: "text-lg font-bold text-[#00ff00] mb-4",
-      flowActions: "flex gap-2 pt-4 border-t border-[#003300]",
+      flowTitle: `text-lg font-bold text-[${colors.matrix.c2}] mb-4`,
+      flowActions: `flex gap-2 pt-4 border-t border-[${colors.matrix.c1}]`,
     },
     material: {
       overlay: "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000] p-5",
@@ -132,16 +160,16 @@ export const globalStyles = {
     },
   },
   SectionHeader: {
-    matrix: "bg-black/95 text-[#00aa00] px-3 py-2 border-b border-[#003300] text-xs uppercase tracking-wider font-mono",
+    matrix: `bg-black/95 text-[${colors.matrix.c3}] px-3 py-2 border-b border-[${colors.matrix.c1}] text-xs uppercase tracking-wider font-mono`,
     material: "bg-gray-50 text-gray-600 px-3 py-2 border-b border-gray-200 text-xs uppercase tracking-wider font-medium",
   },
   ThemedButton: {
     matrix: {
       base: 'border font-mono font-bold uppercase transition-colors',
       active:
-        'bg-[#00ff00] text-black shadow-[0_0_10px_rgba(0,255,0,0.5)] border-[#00ff00]',
+        `bg-[${colors.matrix.c2}] text-black shadow-[0_0_10px_${rgba(colors.matrix.c2, 0.5)}] border-[${colors.matrix.c2}]`,
       inactive:
-        'bg-black/70 text-[#00ff00] border-[#00ff00] hover:bg-[#00ff00]/10 hover:shadow-[0_0_5px_rgba(0,255,0,0.3)]',
+        `bg-black/70 text-[${colors.matrix.c2}] border-[${colors.matrix.c2}] hover:bg-[${rgba(colors.matrix.c2, 0.1)}] hover:shadow-[0_0_5px_${rgba(colors.matrix.c2, 0.3)}]`,
     },
     material: {
       base: 'border font-sans font-bold uppercase transition-colors',
@@ -151,15 +179,15 @@ export const globalStyles = {
   },
   ThemedInput: {
     matrix:
-      'bg-black/80 text-[#00ff00] placeholder-[#00ff00]/50 border border-[#00ff00] rounded outline-none',
+      `bg-black/80 text-[${colors.matrix.c2}] placeholder-[${colors.matrix.c2}]/50 border border-[${colors.matrix.c2}] rounded outline-none`,
     material:
       'bg-white text-gray-800 placeholder-gray-400 border border-blue-600 rounded outline-none',
   },
   MarqueeBanner: {
     matrix: {
-      container: "bg-[#001100] border-[#00aa00] hover:bg-[#002200]",
-      text: "text-[#00ff00] [text-shadow:0_0_5px_rgba(0,255,0,0.5)]",
-      highlight: "text-[#ffaa00] [text-shadow:0_0_5px_rgba(255,170,0,0.5)]",
+      container: `bg-[${colors.matrix.c4}] border-[${colors.matrix.c3}] hover:bg-[${colors.matrix.c4}]`,
+      text: `text-[${colors.matrix.c2}] [text-shadow:0_0_5px_${rgba(colors.matrix.c2, 0.5)}]`,
+      highlight: `text-[${colors.matrix.c16}] [text-shadow:0_0_5px_${rgba(colors.matrix.c16, 0.5)}]`,
     },
     material: {
       container: "bg-blue-50 border-blue-300 hover:bg-blue-100",
@@ -170,20 +198,20 @@ export const globalStyles = {
   MobileHeader: {
     matrix: {
       header:
-        "bg-black/95 backdrop-blur flex flex-col items-center font-mono flex-shrink-0 p-2 text-[#00ff00] relative overflow-visible",
+        `bg-black/95 backdrop-blur flex flex-col items-center font-mono flex-shrink-0 p-2 text-[${colors.matrix.c2}] relative overflow-visible`,
       logoText:
-        "text-[#00ff00] text-lg font-bold uppercase tracking-wider drop-shadow-[0_0_10px_rgba(0,255,0,0.5)]",
-      searchIcon: "stroke-[#00aa00]",
+        `text-[${colors.matrix.c2}] text-lg font-bold uppercase tracking-wider drop-shadow-[0_0_10px_${rgba(colors.matrix.c2, 0.5)}]`,
+      searchIcon: `stroke-[${colors.matrix.c3}]`,
       clearButton:
-        "px-3 py-3 bg-green-900/80 text-[#00ff00] border border-[#00ff00] rounded text-xs font-mono uppercase hover:bg-green-900",
+        `px-3 py-3 bg-green-900/80 text-[${colors.matrix.c2}] border border-[${colors.matrix.c2}] rounded text-xs font-mono uppercase hover:bg-green-900`,
       separator:
-        "w-full h-0.5 bg-gradient-to-r from-transparent via-[#00ff00] to-transparent shadow-[0_0_4px_rgba(0,255,0,0.5)]",
+        `w-full h-0.5 bg-gradient-to-r from-transparent via-[${colors.matrix.c2}] to-transparent shadow-[0_0_4px_${rgba(colors.matrix.c2, 0.5)}]`,
       subheader:
-        "w-full bg-black/95 px-5 py-3 text-[#00aa00] font-bold backdrop-blur",
+        `w-full bg-black/95 px-5 py-3 text-[${colors.matrix.c3}] font-bold backdrop-blur`,
       subheaderTitle:
-        "mb-1 text-lg uppercase tracking-wider drop-shadow-[0_0_10px_rgba(0,255,0,0.5)]",
+        `mb-1 text-lg uppercase tracking-wider drop-shadow-[0_0_10px_${rgba(colors.matrix.c2, 0.5)}]`,
       statsBadge:
-        "text-xs text-[#00ff00] bg-[#00ff00]/10 px-1.5 py-1 rounded border border-[#00ff00]/30",
+        `text-xs text-[${colors.matrix.c2}] bg-[${rgba(colors.matrix.c2, 0.1)}] px-1.5 py-1 rounded border border-[${rgba(colors.matrix.c2, 0.3)}]`,
     },
     material: {
       header:
@@ -199,6 +227,26 @@ export const globalStyles = {
         "text-xs text-blue-600 bg-blue-50 px-1.5 py-1 rounded border border-blue-200",
     },
   },
+  List: {
+    matrix: {
+      base: `w-48 min-w-[192px] bg-black/90 text-[${colors.matrix.c2}] flex flex-col overflow-hidden`,
+      borderLeft: `border-l border-[${colors.matrix.c1}]`,
+      borderRight: `border-r border-[${colors.matrix.c1}]`,
+      header: `bg-black/98 text-[${colors.matrix.c3}] px-3 py-3 border-b border-[${colors.matrix.c1}] sticky top-0 z-20`,
+      headerText: `text-[16px] uppercase tracking-wider font-mono drop-shadow-[0_0_10px_${rgba(colors.matrix.c2, 0.5)}]`,
+      list: "overflow-y-auto px-2 py-2 flex-1",
+      empty: "text-[10px] opacity-70 px-2 py-1",
+    },
+    material: {
+      base: "w-48 min-w-[192px] bg-white text-gray-800 flex flex-col overflow-hidden",
+      borderLeft: "border-l border-gray-300",
+      borderRight: "border-r border-gray-300",
+      header: "bg-white text-blue-600 px-4 py-3 border-b border-blue-200 sticky top-0 z-20",
+      headerText: "text-base uppercase tracking-wider",
+      list: "overflow-y-auto px-2 py-2 flex-1",
+      empty: "text-xs text-gray-500 px-2 py-1",
+    },
+  },
   SearchPanel: {
     matrix: {
       container:
@@ -211,7 +259,7 @@ export const globalStyles = {
       inputWrapper: "relative flex items-center",
       icon: "absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none",
       input:
-        "w-full pl-7 pr-2 py-1 bg-black text-green-400 border border-green-500 text-xs font-mono outline-none focus:border-green-500 focus:shadow-[0_0_5px_rgba(0,255,0,0.5)]",
+        `w-full pl-7 pr-2 py-1 bg-black text-green-400 border border-green-500 text-xs font-mono outline-none focus:border-green-500 focus:shadow-[0_0_5px_${rgba(colors.matrix.c2, 0.5)}]`,
       inputMobile: "pl-10 py-3 text-base rounded",
       button:
         "mt-2 w-full py-1 bg-green-900 text-green-400 border border-green-500 font-mono text-xs uppercase cursor-pointer",
@@ -245,7 +293,7 @@ export const globalStyles = {
     matrix: {
       container:
         "bg-black/90 text-green-500 border border-green-500/30 rounded-lg p-3 shadow-lg",
-      title: "text-[#00aa00] text-xs mb-1 font-mono font-bold",
+      title: `text-[${colors.matrix.c3}] text-xs mb-1 font-mono font-bold`,
       status: "text-xs font-mono text-green-400 text-center",
       statusConnected: "text-green-400",
       statusDisconnected: "text-red-400",
@@ -288,8 +336,8 @@ export const globalStyles = {
   GeohashLayer: {
     matrix: {
       base: "0,255,0",
-      text: "font-mono font-bold fill-[#00ff00]",
-      count: "fill-[#00aa00]",
+      text: `font-mono font-bold fill-[${colors.matrix.c2}]`,
+      count: `fill-[${colors.matrix.c3}]`,
     },
     material: {
       base: "59,130,246",
@@ -301,9 +349,9 @@ export const globalStyles = {
     matrix: {
       svg: "absolute top-0 left-0",
       rectFill: "url(#matrixLines)",
-      pathFill: "#001100",
-      timezoneStroke: "rgba(0,255,0,0.05)",
-      regionStroke: "rgba(0,255,0,0.1)",
+      pathFill: `#${colors.matrix.c4.slice(1)}`,
+      timezoneStroke: `${rgba(colors.matrix.c2, 0.05)}`,
+      regionStroke: `${rgba(colors.matrix.c2, 0.1)}`,
     },
     material: {
       svg: "absolute top-0 left-0",
@@ -315,7 +363,7 @@ export const globalStyles = {
   },
   ProjectionSelector: {
     matrix: {
-      label: "text-[#00aa00] text-xs mb-1",
+      label: `text-[${colors.matrix.c3}] text-xs mb-1`,
     },
     material: {
       label: "text-blue-600 text-xs mb-1",
@@ -323,9 +371,9 @@ export const globalStyles = {
   },
   ProfileInputPage: {
     matrix: {
-      historyButton: "px-2 py-1 bg-black text-[#00ff00] border border-[#00ff00] rounded text-xs font-mono",
-      error: "bg-[#330000] border border-[#ff0000] text-[#ff6666] p-2 rounded mb-5 text-sm",
-      progressText: "text-center text-xs text-[#888]",
+      historyButton: `px-2 py-1 bg-black text-[${colors.matrix.c2}] border border-[${colors.matrix.c2}] rounded text-xs font-mono`,
+      error: `bg-[${colors.matrix.c13}] border border-[${colors.matrix.c12}] text-[${colors.matrix.c11}] p-2 rounded mb-5 text-sm`,
+      progressText: `text-center text-xs text-[${colors.matrix.c17}]`,
     },
     material: {
       historyButton: "px-2 py-1 bg-white text-blue-600 border border-blue-600 rounded text-xs",
@@ -335,8 +383,8 @@ export const globalStyles = {
   },
   ProfileSelectionPage: {
     matrix: {
-      progressText: "text-center text-xs text-[#888]",
-      profileOption: "border-[#00ff00]",
+      progressText: `text-center text-xs text-[${colors.matrix.c17}]`,
+      profileOption: `border-[${colors.matrix.c2}]`,
     },
     material: {
       progressText: "text-center text-xs text-gray-500",
@@ -348,14 +396,14 @@ export const globalStyles = {
       buttonBase:
         "w-full text-left rounded px-2 py-2 text-sm mb-2 flex items-center justify-between gap-2 transition",
       selected:
-        "border bg-[#00ff00]/10 border-[#00ff00] text-[#00ff00] font-bold shadow-inner shadow-[#00ff00]/15",
+        `border bg-[${colors.matrix.c2}]/10 border-[${colors.matrix.c2}] text-[${colors.matrix.c2}] font-bold shadow-inner shadow-[${colors.matrix.c2}]/15`,
       pinned: "bg-yellow-400/5 border-yellow-400 text-yellow-300",
       geohash: "bg-blue-400/5 border-blue-400 text-blue-300",
       standard: "bg-gray-400/5 border-gray-400 text-gray-300",
-      hover: "hover:bg-[#00ff00]/10 hover:border-[#00ff00]",
+      hover: `hover:bg-[${colors.matrix.c2}]/10 hover:border-[${colors.matrix.c2}]`,
       unreadContainer: "flex items-center gap-1",
       unreadDot:
-        "w-2 h-2 rounded-full bg-red-600 shadow-[0_0_6px_rgba(255,0,51,0.6)]",
+        `w-2 h-2 rounded-full bg-red-600 shadow-[0_0_6px_${rgba(colors.matrix.c11, 0.6)}]`,
       unreadCount: "text-xs text-red-500",
       heartButton: "w-5 h-5 flex items-center justify-center transition-all hover:scale-110",
       heartIcon: "text-red-500",
@@ -388,8 +436,8 @@ export const globalStyles = {
       buttonBase:
         "w-full text-left rounded px-2 py-2 text-sm mb-2 flex items-center justify-between gap-2 transition",
       selected:
-        "border bg-[#00ff00]/10 border-[#00ff00] text-[#00ff00] font-bold shadow-inner shadow-[#00ff00]/15",
-      hover: "hover:bg-[#00ff00]/10 hover:border-[#00ff00]",
+        `border bg-[${colors.matrix.c2}]/10 border-[${colors.matrix.c2}] text-[${colors.matrix.c2}] font-bold shadow-inner shadow-[${colors.matrix.c2}]/15`,
+      hover: `hover:bg-[${colors.matrix.c2}]/10 hover:border-[${colors.matrix.c2}]`,
       userInfo: "flex-1",
       userName: "break-words font-medium",
       userDetails: "text-[10px] opacity-60 font-mono",
@@ -410,16 +458,16 @@ export const globalStyles = {
     },
   },
   LinkRenderer: {
-    matrix: "text-[#00ff00] underline cursor-pointer break-all",
+    matrix: `text-[${colors.matrix.c2}] underline cursor-pointer break-all`,
     material: "text-blue-600 underline cursor-pointer break-all",
   },
   HierarchyItem: {
     matrix: {
       container:
-        "mb-3 p-4 cursor-pointer font-mono bg-gradient-to-br from-[#003200]/40 to-[#001400]/20 border border-[#00cc00]/30 border-l-4 border-[#00ff00] rounded hover:from-[#005000]/50 hover:to-[#003000]/30 hover:border-[#00cc00]/60 hover:-translate-y-px transition-all shadow", // using transition
-      tag: "text-[#00ff00] font-bold bg-[#00ff00]/10 px-1 rounded text-sm",
-      count: "text-[#00aa00] bg-black/50 px-1 rounded text-xs",
-      location: "text-[#00dd00] font-sans text-sm",
+        `mb-3 p-4 cursor-pointer font-mono bg-gradient-to-br from-[${colors.matrix.c8}]/40 to-[${colors.matrix.c4}]/20 border border-[${colors.matrix.c6}]/30 border-l-4 border-[${colors.matrix.c2}] rounded hover:from-[${colors.matrix.c9}]/50 hover:to-[${colors.matrix.c1}]/30 hover:border-[${colors.matrix.c6}]/60 hover:-translate-y-px transition-all shadow`, // using transition
+      tag: `text-[${colors.matrix.c2}] font-bold bg-[${colors.matrix.c2}]/10 px-1 rounded text-sm`,
+      count: `text-[${colors.matrix.c3}] bg-black/50 px-1 rounded text-xs`,
+      location: `text-[${colors.matrix.c7}] font-sans text-sm`,
     },
     material: {
       container:
@@ -432,9 +480,9 @@ export const globalStyles = {
   EventHierarchy: {
     matrix: {
       container:
-        "relative top-0 left-0 w-full h-full z-[1000] bg-black text-[#00ff00] font-mono flex flex-col overflow-x-hidden",
+        `relative top-0 left-0 w-full h-full z-[1000] bg-black text-[${colors.matrix.c2}] font-mono flex flex-col overflow-x-hidden`,
       list: "flex-1 overflow-y-auto p-5 pt-5",
-      section: "text-xs text-[#00aa00] mb-2 font-bold border-b border-[#00aa00]/30 pb-1",
+      section: `text-xs text-[${colors.matrix.c3}] mb-2 font-bold border-b border-[${colors.matrix.c3}]/30 pb-1`,
     },
     material: {
       container:
@@ -445,20 +493,20 @@ export const globalStyles = {
   },
   ProfilePreviewPage: {
     matrix: {
-      previewCard: "bg-[#001100] border-2 border-[#00ff00] rounded-[15px] p-6 mb-5 shadow-[0_0_20px_rgba(0,255,0,0.2)]",
-      previewUsername: "text-[#00ff00] text-[20px] font-bold",
+      previewCard: `bg-[${colors.matrix.c4}] border-2 border-[${colors.matrix.c2}] rounded-[15px] p-6 mb-5 shadow-[0_0_20px_${rgba(colors.matrix.c2, 0.2)}]`,
+      previewUsername: `text-[${colors.matrix.c2}] text-[20px] font-bold`,
       previewHighlight: "bg-yellow-300 text-black px-1 rounded",
-      privateContainer: "bg-[#110000] border border-[#ff3300] rounded mb-5",
-      privateToggle: "p-3 cursor-pointer flex items-center justify-between hover:bg-[#220000]",
-      privateToggleOpen: "border-b border-[#ff3300]",
-      privateToggleText: "text-[12px] text-[#ff6666] uppercase font-bold flex items-center gap-2",
-      privateToggleIcon: "text-[#ff6666] transition-transform",
+      privateContainer: `bg-[${colors.matrix.c13}] border border-[${colors.matrix.c14}] rounded mb-5`,
+      privateToggle: `p-3 cursor-pointer flex items-center justify-between hover:bg-[${colors.matrix.c13}]`,
+      privateToggleOpen: `border-b border-[${colors.matrix.c14}]`,
+      privateToggleText: `text-[12px] text-[${colors.matrix.c11}] uppercase font-bold flex items-center gap-2`,
+      privateToggleIcon: `text-[${colors.matrix.c11}] transition-transform`,
       privateContent: "p-4",
       privateItem: "mb-4",
-      privateLabel: "text-[11px] text-[#ff9999] mb-1",
-      privateValue: "bg-black p-2 rounded text-[11px] break-all flex justify-between items-center gap-2 border border-[#330000]",
-      privateValueText: "text-[#ff9999]",
-      copyButton: "bg-[#330000] text-[#ff6666] border border-[#ff3300] px-2 py-1 text-[10px] rounded cursor-pointer flex-shrink-0",
+      privateLabel: `text-[11px] text-[${colors.matrix.c15}] mb-1`,
+      privateValue: `bg-black p-2 rounded text-[11px] break-all flex justify-between items-center gap-2 border border-[${colors.matrix.c13}]`,
+      privateValueText: `text-[${colors.matrix.c15}]`,
+      copyButton: `bg-[${colors.matrix.c13}] text-[${colors.matrix.c11}] border border-[${colors.matrix.c14}] px-2 py-1 text-[10px] rounded cursor-pointer flex-shrink-0`,
     },
     material: {
       previewCard: "bg-white border-2 border-blue-600 rounded-[15px] p-6 mb-5 shadow-md",
@@ -481,22 +529,22 @@ export const globalStyles = {
     matrix: {
       container: "space-y-4",
       searchContainer: "space-y-4 mb-6",
-      topicLabel: "text-sm font-medium text-[#00ff00]",
+      topicLabel: `text-sm font-medium text-[${colors.matrix.c2}]`,
       topicButton: "px-3 py-1 text-xs rounded-full transition-all duration-200",
       topicButtonActive:
-        "bg-[#00ff00] text-black shadow-[0_0_8px_rgba(0,255,0,0.5)]",
+        `bg-[${colors.matrix.c2}] text-black shadow-[0_0_8px_${rgba(colors.matrix.c2, 0.5)}]`,
       topicButtonInactive:
-        "bg-[#003300] text-[#00aa00] hover:bg-[#004400] border border-[#00ff00]/20",
+        `bg-[${colors.matrix.c1}] text-[${colors.matrix.c3}] hover:bg-[${colors.matrix.c5}] border border-[${colors.matrix.c2}]/20`,
       searchInput:
-        "w-full px-4 py-2 rounded border bg-black border-[#003300] text-[#00ff00] placeholder-[#00aa00] focus:border-[#00ff00] focus:outline-none focus:shadow-[0_0_8px_rgba(0,255,0,0.3)]",
+        `w-full px-4 py-2 rounded border bg-black border-[${colors.matrix.c1}] text-[${colors.matrix.c2}] placeholder-[${colors.matrix.c3}] focus:border-[${colors.matrix.c2}] focus:outline-none focus:shadow-[0_0_8px_${rgba(colors.matrix.c2, 0.3)}]`,
       errorContainer:
         "text-center py-4 text-red-400 bg-red-900/20 rounded border border-red-500/20",
-      noResultsContainer: "text-center py-8 text-[#00aa00]",
+      noResultsContainer: `text-center py-8 text-[${colors.matrix.c3}]`,
       imageGrid: "grid grid-cols-3 gap-4 auto-rows-max",
       imageButton:
         "w-full rounded-lg border-none cursor-pointer hover:border-blue-400 hover:shadow-lg transition-all duration-200 overflow-hidden",
       loadMoreButton:
-        "w-full px-6 py-3 rounded-lg font-medium transition-all bg-[#003300] text-[#00ff00] border border-[#00ff00] hover:bg-[#004400] hover:shadow-[0_0_8px_rgba(0,255,0,0.3)] disabled:opacity-50 disabled:cursor-not-allowed",
+        `w-full px-6 py-3 rounded-lg font-medium transition-all bg-[${colors.matrix.c1}] text-[${colors.matrix.c2}] border border-[${colors.matrix.c2}] hover:bg-[${colors.matrix.c5}] hover:shadow-[0_0_8px_${rgba(colors.matrix.c2, 0.3)}] disabled:opacity-50 disabled:cursor-not-allowed`,
     },
     material: {
       container: "space-y-4",
@@ -521,14 +569,14 @@ export const globalStyles = {
   App: {
     matrix: {
       appContainer:
-        "flex flex-col w-screen h-screen overflow-hidden bg-black text-[#00ff00] font-mono",
+        `flex flex-col w-screen h-screen overflow-hidden bg-black text-[${colors.matrix.c2}] font-mono`,
       mainArea: "flex-1 relative w-full overflow-hidden",
       chatViewContainer:
         "absolute inset-0 w-full h-full bg-black flex flex-row overflow-hidden",
       chatColumn: "flex-1 flex flex-col",
-      subHeader: "bg-black/95 text-[#00aa00] px-4 py-3 border-b border-[#003300]",
+      subHeader: `bg-black/95 text-[${colors.matrix.c3}] px-4 py-3 border-b border-[${colors.matrix.c1}]`,
       subHeaderTitle:
-        "text-base uppercase tracking-wider [text-shadow:0_0_10px_rgba(0,255,0,0.5)]",
+        `text-base uppercase tracking-wider [text-shadow:0_0_10px_${rgba(colors.matrix.c2, 0.5)}]`,
     },
     material: {
       appContainer:
