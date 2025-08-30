@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { getPinnedChannels, addPinnedChannel, removePinnedChannel } from "../../utils/pinnedChannels";
 import { EVENT_KINDS } from "../../constants/eventKinds";
+import { List, ListItem } from "../common/List";
+import { SectionHeader } from "../common/SectionHeader";
 
 type ChannelMeta = {
   key: string;
@@ -101,35 +102,8 @@ const ChannelItem = React.memo(({
 
 ChannelItem.displayName = 'ChannelItem';
 
-// Section header component
-type SectionHeaderProps = {
-  title: string;
-  theme: "matrix" | "material";
-};
-
-const SectionHeader = React.memo(({ title, theme }: SectionHeaderProps) => {
-  const t = styles[theme];
-  return (
-    <div className={t.sectionHeader}>
-      {title}
-    </div>
-  );
-});
-
-SectionHeader.displayName = 'SectionHeader';
-
 const styles = {
   matrix: {
-    rail:
-      "w-48 min-w-[192px] border-r border-[#003300] bg-black/90 text-[#00ff00] flex flex-col overflow-hidden",
-    header:
-      "bg-black/98 text-[#00aa00] px-3 py-3 border-b border-[#003300] sticky top-0 z-20",
-    headerText:
-      "text-[16px] uppercase tracking-wider font-mono drop-shadow-[0_0_10px_rgba(0,255,0,0.5)]",
-    sectionHeader:
-      "bg-black/95 text-[#00aa00] px-3 py-2 border-b border-[#003300] text-xs uppercase tracking-wider font-mono",
-    list: "overflow-y-auto px-2 py-2 flex-1",
-    empty: "text-[10px] opacity-70 px-2 py-1",
     buttonBase:
       "w-full text-left rounded px-2 py-2 text-sm mb-2 flex items-center justify-between gap-2 transition",
     selected:
@@ -150,15 +124,6 @@ const styles = {
     eventKind: "text-[10px] opacity-60 font-mono",
   },
   material: {
-    rail:
-      "w-48 min-w-[192px] border-r border-gray-300 bg-white text-gray-800 flex flex-col overflow-hidden",
-    header:
-      "bg-white text-blue-600 px-4 py-3 border-b border-blue-200 sticky top-0 z-20",
-    headerText: "text-base uppercase tracking-wider",
-    sectionHeader:
-      "bg-gray-50 text-gray-600 px-3 py-2 border-b border-gray-200 text-xs uppercase tracking-wider font-medium",
-    list: "overflow-y-auto px-2 py-2 flex-1",
-    empty: "text-xs text-gray-500 px-2 py-1",
     buttonBase:
       "w-full text-left border rounded px-2 py-2 text-sm mb-2 flex items-center justify-between gap-2 transition",
     selected: "bg-blue-100 border-blue-500 text-blue-700 font-bold",
@@ -187,26 +152,24 @@ export function ChannelList({
   pinnedChannels: externalPinnedChannels,
   onPinnedChannelsChange,
 }: Props) {
-  const t = styles[theme];
   const [internalPinnedChannels, setInternalPinnedChannels] = useState<string[]>([]);
-  const parentRef = useRef<HTMLDivElement>(null);
 
   // Use external pinnedChannels if provided, otherwise use internal state
   const pinnedChannels = externalPinnedChannels || internalPinnedChannels;
   
-  const updatePinnedChannels = (newPinnedChannels: string[]) => {
+  const updatePinnedChannels = useCallback((newPinnedChannels: string[]) => {
     if (onPinnedChannelsChange) {
       onPinnedChannelsChange(newPinnedChannels);
     } else {
       setInternalPinnedChannels(newPinnedChannels);
     }
-  };
+  }, [onPinnedChannelsChange]);
 
   // Load pinned channels from localStorage on mount
   useEffect(() => {
     const pinned = getPinnedChannels();
     updatePinnedChannels(pinned.map(p => p.key));
-  }, []);
+  }, [updatePinnedChannels]);
 
   // Categorize channels based on their actual event kinds
   const categorizeChannelsByEventKind = (allChannels: ChannelMeta[], pinnedChannels: string[]) => {
@@ -250,49 +213,62 @@ export function ChannelList({
   );
 
   // Create a flat list of all channels with their category info for virtualization
-  const virtualizedChannels = useMemo(() => {
-    const result: Array<{
-      key: string;
-      category: 'pinned' | 'geohash' | 'standard';
-      isSectionHeader: boolean;
-      sectionTitle?: string;
-    }> = [];
+  const virtualizedChannels = useMemo((): ListItem<{ channelKey: string; category: 'pinned' | 'geohash' | 'standard' }>[] => {
+    const result: ListItem<{ channelKey: string; category: 'pinned' | 'geohash' | 'standard' }>[] = [];
 
     // Add pinned section
     if (categorized.pinned.length > 0) {
-      result.push({ key: 'pinned-header', category: 'pinned', isSectionHeader: true, sectionTitle: 'PINNED' });
+      result.push({ 
+        key: 'pinned-header', 
+        data: { channelKey: '', category: 'pinned' }, 
+        isSectionHeader: true, 
+        sectionTitle: 'PINNED' 
+      });
       categorized.pinned.forEach(channelKey => {
-        result.push({ key: channelKey, category: 'pinned', isSectionHeader: false });
+        result.push({ 
+          key: channelKey, 
+          data: { channelKey, category: 'pinned' }, 
+          isSectionHeader: false 
+        });
       });
     }
 
     // Add standard section (before geohash since there are usually fewer)
     if (categorized.standard.length > 0) {
-      result.push({ key: 'standard-header', category: 'standard', isSectionHeader: true, sectionTitle: 'STANDARD' });
+      result.push({ 
+        key: 'standard-header', 
+        data: { channelKey: '', category: 'standard' }, 
+        isSectionHeader: true, 
+        sectionTitle: 'STANDARD' 
+      });
       categorized.standard.forEach(channelKey => {
-        result.push({ key: channelKey, category: 'standard', isSectionHeader: false });
+        result.push({ 
+          key: channelKey, 
+          data: { channelKey, category: 'standard' }, 
+          isSectionHeader: false 
+        });
       });
     }
 
     // Add geohash section
     if (categorized.geohash.length > 0) {
-      result.push({ key: 'geohash-header', category: 'geohash', isSectionHeader: true, sectionTitle: 'GEOHASH' });
+      result.push({ 
+        key: 'geohash-header', 
+        data: { channelKey: '', category: 'geohash' }, 
+        isSectionHeader: true, 
+        sectionTitle: 'GEOHASH' 
+      });
       categorized.geohash.forEach(channelKey => {
-        result.push({ key: channelKey, category: 'geohash', isSectionHeader: false });
+        result.push({ 
+          key: channelKey, 
+          data: { channelKey, category: 'geohash' }, 
+          isSectionHeader: false 
+        });
       });
     }
 
     return result;
-  }, [categorized, selectedChannel]);
-
-  // TanStack Virtual setup
-  const virtualizer = useVirtualizer({
-    count: virtualizedChannels.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 50, // Estimate height for channel buttons
-    overscan: 5,
-    getItemKey: (index) => virtualizedChannels[index]?.key || index,
-  });
+  }, [categorized]);
 
   const handleHeartClick = (e: React.MouseEvent, channelKey: string) => {
     e.stopPropagation();
@@ -306,83 +282,34 @@ export function ChannelList({
     }
   };
 
-  const items = virtualizer.getVirtualItems();
+  const renderChannelItem = (data: { channelKey: string; category: 'pinned' | 'geohash' | 'standard' }) => (
+    <ChannelItem
+      channelKey={data.channelKey}
+      category={data.category}
+      isSelected={selectedChannel === data.channelKey}
+      unread={unreadCounts[data.channelKey] || 0}
+      isPinned={pinnedChannels.includes(data.channelKey)}
+      onOpenChannel={onOpenChannel}
+      onHeartClick={handleHeartClick}
+      theme={theme}
+    />
+  );
+
+  const renderChannelSectionHeader = (title: string) => (
+    <SectionHeader title={title} theme={theme} />
+  );
 
   return (
-    <div className={t.rail}>
-      <div className={t.header}>
-        <div className={t.headerText}>CHANNELS</div>
-      </div>
-      
-      {/* CHANGED: the list itself is the only scroll container */}
-      <div className={t.list} ref={parentRef}>
-        {virtualizedChannels.length === 0 ? (
-          <div className={t.empty}>no channels</div>
-        ) : (
-          <div
-            style={{
-              height: `${virtualizer.getTotalSize()}px`,
-              width: "100%",
-              position: "relative",
-            }}
-          >
-            {items.map((virtualItem) => {
-              const item = virtualizedChannels[virtualItem.index];
-              if (!item) return null;
-
-              if (item.isSectionHeader) {
-                return (
-                  <div
-                    key={virtualItem.key}
-                    data-index={virtualItem.index}
-                    ref={virtualizer.measureElement}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateY(${virtualItem.start}px)`,
-                    }}
-                  >
-                    <div className="px-2 py-1">
-                      <SectionHeader title={item.sectionTitle!} theme={theme} />
-                    </div>
-                  </div>
-                );
-              }
-
-              return (
-                <div
-                  key={virtualItem.key}
-                  data-index={virtualItem.index}
-                  ref={virtualizer.measureElement}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    transform: `translateY(${virtualItem.start}px)`,
-                  }}
-                >
-                  <div className="px-2 py-1">
-                    <ChannelItem
-                      channelKey={item.key}
-                      category={item.category}
-                      isSelected={selectedChannel === item.key}
-                      unread={unreadCounts[item.key] || 0}
-                      isPinned={pinnedChannels.includes(item.key)}
-                      onOpenChannel={onOpenChannel}
-                      onHeartClick={handleHeartClick}
-                      theme={theme}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
+    <List
+      items={virtualizedChannels}
+      renderItem={renderChannelItem}
+      renderSectionHeader={renderChannelSectionHeader}
+      headerTitle="CHANNELS"
+      theme={theme}
+      emptyMessage="no channels"
+      estimateItemSize={50}
+      borderDirection="right"
+    />
   );
 }
 
