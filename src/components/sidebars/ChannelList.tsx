@@ -31,6 +31,7 @@ type ChannelItemProps = {
   onOpenChannel: (channelKey: string) => void;
   onHeartClick: (e: React.MouseEvent, channelKey: string) => void;
   theme: "matrix" | "material";
+  eventKind?: number; // Add eventKind for pinned channels
 };
 
 const ChannelItem = React.memo(({
@@ -41,7 +42,8 @@ const ChannelItem = React.memo(({
   isPinned,
   onOpenChannel,
   onHeartClick,
-  theme
+  theme,
+  eventKind
 }: ChannelItemProps) => {
   const t = styles[theme];
   const showUnread = unread > 0 && !isSelected;
@@ -61,6 +63,16 @@ const ChannelItem = React.memo(({
     buttonClass += ` ${t.hover}`;
   }
 
+  // Get event kind label for pinned channels
+  const getEventKindLabel = () => {
+    if (!eventKind) return null;
+    if (eventKind === EVENT_KINDS.GEO_CHANNEL) return 'GEO';
+    if (eventKind === EVENT_KINDS.STANDARD_CHANNEL) return 'STD';
+    return null;
+  };
+
+  const eventKindLabel = getEventKindLabel();
+
   return (
     <div
       role="button"
@@ -75,6 +87,11 @@ const ChannelItem = React.memo(({
         <div className={t.channelName}>
           {channelKey}
         </div>
+        {isPinned && eventKindLabel && (
+          <div className={t.eventKind}>
+            {eventKindLabel}
+          </div>
+        )}
       </div>
       
       <div className="flex items-center gap-2">
@@ -171,23 +188,57 @@ export function ChannelList({
     updatePinnedChannels(pinned.map(p => p.key));
   }, [updatePinnedChannels]);
 
+  // Generate top-level geohashes based on existing geohash channels
+  const generateTopLevelGeohashes = (existingGeohashChannels: string[]) => {
+    const topLevelGeohashes = new Set<string>();
+    
+    // Extract top-level geohashes from existing channels
+    existingGeohashChannels.forEach(channel => {
+      if (channel.startsWith('#')) {
+        const parts = channel.slice(1).split('');
+        if (parts.length >= 1) {
+          // Add the first character as a top-level geohash
+          topLevelGeohashes.add(`#${parts[0]}`);
+        }
+      }
+    });
+    
+    // Always include all valid geohash alphabet characters for navigation
+    // Geohash alphabet: 0123456789bcdefghjkmnpqrstuvwxyz (excludes a, i, l, o)
+    const geohashAlphabet = '0123456789bcdefghjkmnpqrstuvwxyz';
+    geohashAlphabet.split('').forEach(char => {
+      topLevelGeohashes.add(`#${char}`);
+    });
+    
+    return Array.from(topLevelGeohashes).sort();
+  };
+
   // Categorize channels based on their actual event kinds
-  const categorizeChannelsByEventKind = (allChannels: ChannelMeta[], pinnedChannels: string[]) => {
+  const categorizeChannelsByEventKind = useCallback((allChannels: ChannelMeta[], pinnedChannels: string[]) => {
     const pinned = new Set(pinnedChannels);
-    const geohash: string[] = [];
-    const standard: string[] = [];
+    const geohashSet = new Set<string>();
+    const standardSet = new Set<string>();
 
     allChannels.forEach(channel => {
       if (pinned.has(channel.key)) {
-        // Pinned channels go in their own section
+        // Pinned channels go in their own section - don't add to geo/standard
         return;
       }
       
       // Use the actual event kind from the channel meta
       if (channel.eventKind === EVENT_KINDS.GEO_CHANNEL) {
-        geohash.push(channel.key);
-      } else {
-        standard.push(channel.key);
+        geohashSet.add(channel.key);
+      } else if (channel.eventKind === EVENT_KINDS.STANDARD_CHANNEL) {
+        standardSet.add(channel.key);
+      }
+    });
+
+    // Generate top-level geohashes and add them to the geohash set (no duplicates)
+    // Only add top-level geohashes that aren't already pinned
+    const topLevelGeohashes = generateTopLevelGeohashes(Array.from(geohashSet));
+    topLevelGeohashes.forEach(geohash => {
+      if (!pinned.has(geohash)) {
+        geohashSet.add(geohash);
       }
     });
 
@@ -202,14 +253,14 @@ export function ChannelList({
 
     return {
       pinned: sortByLength(pinnedChannels),
-      geohash: sortByLength(geohash),
-      standard: sortByLength(standard)
+      geohash: sortByLength(Array.from(geohashSet)),
+      standard: sortByLength(Array.from(standardSet))
     };
-  };
+  }, []);
 
   const categorized = useMemo(() => 
     categorizeChannelsByEventKind(channels, pinnedChannels),
-    [channels, pinnedChannels]
+    [categorizeChannelsByEventKind, channels, pinnedChannels]
   );
 
   // Create a flat list of all channels with their category info for virtualization
@@ -277,23 +328,43 @@ export function ChannelList({
       removePinnedChannel(channelKey);
       updatePinnedChannels(pinnedChannels.filter(k => k !== channelKey));
     } else {
-      addPinnedChannel(channelKey);
+      // Find the channel to get its eventKind
+      const channel = channels.find(c => c.key === channelKey);
+      let eventKind: number;
+      
+      if (channel) {
+        // Real channel - use its actual eventKind
+        eventKind = channel.eventKind;
+      } else if (channelKey.startsWith('#') && channelKey.length === 2) {
+        // Top-level geohash - treat as GEO_CHANNEL for pinning purposes
+        eventKind = EVENT_KINDS.GEO_CHANNEL;
+      } else {
+        // Unknown channel type - can't pin
+        console.warn(`Cannot pin unknown channel type: ${channelKey}`);
+        return;
+      }
+      
+      addPinnedChannel(channelKey, eventKind);
       updatePinnedChannels([...pinnedChannels, channelKey]);
     }
   };
 
-  const renderChannelItem = (data: { channelKey: string; category: 'pinned' | 'geohash' | 'standard' }) => (
-    <ChannelItem
-      channelKey={data.channelKey}
-      category={data.category}
-      isSelected={selectedChannel === data.channelKey}
-      unread={unreadCounts[data.channelKey] || 0}
-      isPinned={pinnedChannels.includes(data.channelKey)}
-      onOpenChannel={onOpenChannel}
-      onHeartClick={handleHeartClick}
-      theme={theme}
-    />
-  );
+  const renderChannelItem = (data: { channelKey: string; category: 'pinned' | 'geohash' | 'standard' }) => {
+    const channelMeta = channels.find(ch => ch.key === data.channelKey);
+    return (
+      <ChannelItem
+        channelKey={data.channelKey}
+        category={data.category}
+        isSelected={selectedChannel === data.channelKey}
+        unread={unreadCounts[data.channelKey] || 0}
+        isPinned={pinnedChannels.includes(data.channelKey)}
+        onOpenChannel={onOpenChannel}
+        onHeartClick={handleHeartClick}
+        theme={theme}
+        eventKind={channelMeta?.eventKind}
+      />
+    );
+  };
 
   const renderChannelSectionHeader = (title: string) => (
     <SectionHeader title={title} theme={theme} />

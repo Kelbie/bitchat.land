@@ -1,146 +1,17 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { SimplePool, Event, Filter } from "nostr-tools";
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { Image } from "../../common/Image";
 import { addToFavorites, isFavorited } from "../../../utils/favorites";
+import { MasonryGrid, MasonryImage as BaseMasonryImage } from "../../common/MasonryGrid";
 
 interface NostrImageSearchProps {
   theme: "matrix" | "material";
   onImageSelect: (imageUrl: string) => void;
 }
 
-interface ImageEvent {
-  id: string;
-  url: string;
+interface ImageEvent extends BaseMasonryImage {
   alt: string;
-  tags: string[];
   createdAt: number;
 }
-
-// True Masonry Grid with Virtual Scrolling
-const MasonryGrid: React.FC<{
-  images: ImageEvent[];
-  onImageSelect: (url: string) => void;
-  theme: "matrix" | "material";
-  className: string;
-}> = ({ images, onImageSelect, theme, className }) => {
-  const parentRef = useRef<HTMLDivElement>(null);
-  const [imageHeights, setImageHeights] = useState<Record<string, number>>({});
-  const [columnHeights, setColumnHeights] = useState<number[]>([0, 0, 0]);
-  const [itemPositions, setItemPositions] = useState<Array<{ x: number; y: number; height: number }>>([]);
-  
-  const COLUMN_COUNT = 3;
-  const GAP = 16;
-  
-  // Calculate positions when images or heights change
-  useEffect(() => {
-    if (images.length === 0) return;
-    
-    const containerWidth = parentRef.current?.clientWidth || 800;
-    const columnWidth = (containerWidth - (GAP * (COLUMN_COUNT - 1))) / COLUMN_COUNT;
-    const heights = [0, 0, 0];
-    const positions: Array<{ x: number; y: number; height: number }> = [];
-    
-    images.forEach((image, index) => {
-      // Find shortest column
-      const shortestColumnIndex = heights.indexOf(Math.min(...heights));
-      
-      // Get estimated or actual height
-      const estimatedHeight = imageHeights[image.id] || 250;
-      
-      // Calculate position
-      const x = shortestColumnIndex * (columnWidth + GAP);
-      const y = heights[shortestColumnIndex];
-      
-      positions.push({ x, y, height: estimatedHeight });
-      
-      // Update column height
-      heights[shortestColumnIndex] += estimatedHeight + GAP;
-    });
-    
-    setItemPositions(positions);
-    setColumnHeights(heights);
-  }, [images, imageHeights]);
-
-  // Handle image load to get actual dimensions
-  const handleImageLoad = useCallback((imageId: string, naturalHeight: number, displayWidth: number) => {
-    const containerWidth = parentRef.current?.clientWidth || 800;
-    const columnWidth = (containerWidth - (GAP * (COLUMN_COUNT - 1))) / COLUMN_COUNT;
-    
-    // Calculate actual display height based on aspect ratio
-    const aspectRatio = naturalHeight / displayWidth;
-    const actualHeight = Math.min(columnWidth * aspectRatio, 400); // Max height 400px
-    
-    setImageHeights(prev => ({
-      ...prev,
-      [imageId]: actualHeight
-    }));
-  }, []);
-
-  // Calculate total height for scrolling
-  const totalHeight = Math.max(...columnHeights);
-
-  // Use regular virtualizer for vertical scrolling only
-  const virtualizer = useVirtualizer({
-    count: images.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 250,
-    overscan: 5,
-  });
-
-  return (
-    <div
-      ref={parentRef}
-      className="h-96 w-full overflow-auto"
-      style={{ height: '500px' }}
-    >
-      <div
-        style={{
-          height: `${totalHeight}px`,
-          width: '100%',
-          position: 'relative',
-        }}
-      >
-        {images.map((image, index) => {
-          const position = itemPositions[index];
-          if (!position) return null;
-
-          // Only render items that are likely to be visible
-          const scrollTop = parentRef.current?.scrollTop || 0;
-          const containerHeight = parentRef.current?.clientHeight || 500;
-          const isVisible = position.y < scrollTop + containerHeight + 500 && 
-                           position.y + position.height > scrollTop - 500;
-
-          if (!isVisible) return null;
-
-          const containerWidth = parentRef.current?.clientWidth || 800;
-          const columnWidth = (containerWidth - (GAP * (COLUMN_COUNT - 1))) / COLUMN_COUNT;
-
-          return (
-            <div
-              key={image.id}
-              style={{
-                position: 'absolute',
-                left: `${position.x}px`,
-                top: `${position.y}px`,
-                width: `${columnWidth}px`,
-                height: `${position.height}px`,
-              }}
-            >
-              <MasonryImage
-                image={image}
-                onImageSelect={onImageSelect}
-                onLoad={handleImageLoad}
-                theme={theme}
-                width={columnWidth}
-              />
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
 
 // Separate component for masonry images with load handling and controls
 const MasonryImage: React.FC<{
@@ -148,8 +19,7 @@ const MasonryImage: React.FC<{
   onImageSelect: (url: string) => void;
   onLoad: (imageId: string, naturalHeight: number, displayWidth: number) => void;
   theme: "matrix" | "material";
-  width: number;
-}> = ({ image, onImageSelect, onLoad, theme, width }) => {
+}> = ({ image, onImageSelect, onLoad, theme }) => {
   const imgRef = useRef<HTMLImageElement>(null);
   const [isFavoritedState, setIsFavoritedState] = useState(() => isFavorited(image.url));
 
@@ -220,7 +90,7 @@ const MasonryImage: React.FC<{
       </div>
 
       {/* Tags */}
-      {image.tags.length > 0 && (
+      {image.tags && image.tags.length > 0 && (
         <div className="absolute bottom-2 left-2 right-2">
           <div className="flex flex-wrap gap-1">
             {image.tags.slice(0, 3).map((tag, idx) => (
@@ -328,17 +198,15 @@ const eventToImageEvent = (event: Event): ImageEvent[] => {
   return images;
 };
 
-export function NostrImageSearch({
+export function DiscoverPage({
   theme,
   onImageSelect,
 }: NostrImageSearchProps) {
   const [images, setImages] = useState<ImageEvent[]>([]);
-  const [unfilteredImages, setUnfilteredImages] = useState<ImageEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("meme");
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [nsfwFilterEnabled, setNsfwFilterEnabled] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
 
   const poolRef = useRef<SimplePool | null>(null);
@@ -376,17 +244,7 @@ export function NostrImageSearch({
     return () => clearTimeout(timer);
   }, []);
 
-  // Re-filter images when NSFW filter changes
-  useEffect(() => {
-    if (unfilteredImages.length > 0) {
-      const filteredImages = nsfwFilterEnabled
-        ? unfilteredImages.filter(
-            (img) => !img.tags.some((tag) => tag.toLowerCase() === "nsfw")
-          )
-        : unfilteredImages;
-      setImages(filteredImages);
-    }
-  }, [nsfwFilterEnabled, unfilteredImages]);
+  
 
   // Debounced search effect - only for manual input changes
   useEffect(() => {
@@ -444,7 +302,7 @@ export function NostrImageSearch({
 
       return filters;
     },
-    [searchTerm, getSelectedTopic]
+    [searchTerm]
   );
 
   const handleSearch = useCallback(
@@ -456,7 +314,6 @@ export function NostrImageSearch({
 
       if (isNewSearch) {
         setImages([]);
-        setUnfilteredImages([]);
         seenEventIds.current.clear();
         oldestTimestamp.current = Math.floor(Date.now() / 1000);
         setHasMore(true);
@@ -514,27 +371,13 @@ export function NostrImageSearch({
             arr.findIndex((other) => other.url === img.url) === index
         );
 
-        // Store unfiltered images for NSFW filtering
         if (isNewSearch) {
-          setUnfilteredImages(uniqueImages);
-        } else {
-          setUnfilteredImages(prev => [...prev, ...uniqueImages]);
-        }
-
-        // Apply NSFW filter if enabled
-        const filteredImages = nsfwFilterEnabled
-          ? uniqueImages.filter(
-              (img) => !img.tags.some((tag) => tag.toLowerCase() === "nsfw")
-            )
-          : uniqueImages;
-
-        if (isNewSearch) {
-          setImages(filteredImages.slice(0, IMAGES_PER_PAGE));
+          setImages(uniqueImages.slice(0, IMAGES_PER_PAGE));
         } else {
           // For load more, append to existing images and deduplicate
-          setImages((prev) => {
+          setImages((prev: ImageEvent[]) => {
             const existingUrls = new Set(prev.map((img) => img.url));
-            const newUniqueImages = filteredImages.filter(
+            const newUniqueImages = uniqueImages.filter(
               (img) => !existingUrls.has(img.url)
             );
             // Only add truly new images to prevent masonry recalculation
@@ -553,7 +396,7 @@ export function NostrImageSearch({
         setIsLoading(false);
       }
     },
-    [buildFilters, nsfwFilterEnabled]
+    [buildFilters]
   );
 
   const handleLoadMore = useCallback(() => {
@@ -631,47 +474,17 @@ export function NostrImageSearch({
 
   const s = styles[theme];
 
+  const renderImage = (image: ImageEvent, onLoad: (imageId: string, naturalHeight: number, displayWidth: number) => void) => (
+    <MasonryImage
+      image={image}
+      onImageSelect={onImageSelect}
+      onLoad={onLoad}
+      theme={theme}
+    />
+  );
+
   return (
     <div className={s.container}>
-      {/* NSFW Filter Toggle */}
-      <div className="flex items-center gap-2">
-        <label
-          className={`text-sm font-medium ${
-            theme === "matrix" ? "text-[#00aa00]" : "text-gray-700"
-          }`}
-        >
-          NSFW Filter:
-        </label>
-        <button
-          onClick={() => setNsfwFilterEnabled(!nsfwFilterEnabled)}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            nsfwFilterEnabled
-              ? theme === "matrix"
-                ? "bg-[#00ff00]"
-                : "bg-blue-600"
-              : theme === "matrix"
-              ? "bg-[#003300]"
-              : "bg-gray-300"
-          }`}
-          type="button"
-          title={
-            nsfwFilterEnabled ? "NSFW filter enabled" : "NSFW filter disabled"
-          }
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-              nsfwFilterEnabled ? "translate-x-6" : "translate-x-1"
-            }`}
-          />
-        </button>
-        <span
-          className={`text-xs ${
-            theme === "matrix" ? "text-[#00aa00]" : "text-gray-600"
-          }`}
-        >
-          {nsfwFilterEnabled ? "ON" : "OFF"}
-        </span>
-      </div>
       <div className={s.searchContainer}>
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -730,9 +543,10 @@ export function NostrImageSearch({
 
           <MasonryGrid
             images={images}
-            onImageSelect={onImageSelect}
-            theme={theme}
-            className={s.imageGrid}
+            renderImage={renderImage}
+            columnCount={3}
+            gap={16}
+            maxHeight={400}
           />
 
           {hasMore && (

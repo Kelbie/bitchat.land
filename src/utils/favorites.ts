@@ -1,6 +1,7 @@
 // Shared utility for managing favorite images
 
 interface FavoriteImage {
+  id: string;
   url: string;
   tags: string[];
 }
@@ -20,6 +21,7 @@ export const getFavorites = (): FavoriteImage[] => {
       
       // Convert old string array to new object array format
       const migratedFavorites: FavoriteImage[] = parsed.map((url: string) => ({
+        id: url, // Use URL as ID for backward compatibility
         url,
         tags: []
       }));
@@ -40,7 +42,7 @@ export const addToFavorites = (imageUrl: string, tags: string[] = []): void => {
   try {
     const favorites = getFavorites();
     if (!favorites.some(fav => fav.url === imageUrl)) {
-      favorites.push({ url: imageUrl, tags });
+      favorites.push({ id: imageUrl, url: imageUrl, tags });
       localStorage.setItem('favoriteImages', JSON.stringify(favorites));
       // Force re-render by dispatching a custom event
       window.dispatchEvent(new CustomEvent('favoritesUpdated'));

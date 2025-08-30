@@ -20,7 +20,7 @@ import { EventHierarchy } from "./components/panel/EventHierarchy";
 import { RecentEvents } from "./components/chat/RecentEvents";
 import { Map } from "./components/map/Map";
 import { MobileHeader } from "./components/header/MobileHeader";
-import { ProfileGenerationModal } from "./components/modals/login/ProfileGenerationModal";
+import { ProfileGenerationModal } from "./components/modals/login";
 import { ChatInput } from "./components/chat/ChatInput";
 import { ProjectionSelector } from "./components/map/ProjectionSelector";
 import { MarqueeBanner } from "./components/header/MarqueeBanner";

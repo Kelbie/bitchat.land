@@ -2,6 +2,7 @@ const PINNED_CHANNELS_KEY = 'pinned_channels';
 
 export interface PinnedChannel {
   key: string;
+  eventKind: number;
   pinnedAt: number;
 }
 
@@ -14,7 +15,7 @@ export function getPinnedChannels(): PinnedChannel[] {
   }
 }
 
-export function addPinnedChannel(channelKey: string): void {
+export function addPinnedChannel(channelKey: string, eventKind: number): void {
   try {
     const pinned = getPinnedChannels();
     const exists = pinned.find(p => p.key === channelKey);
@@ -22,6 +23,7 @@ export function addPinnedChannel(channelKey: string): void {
     if (!exists) {
       pinned.push({
         key: channelKey,
+        eventKind,
         pinnedAt: Date.now()
       });
       localStorage.setItem(PINNED_CHANNELS_KEY, JSON.stringify(pinned));
