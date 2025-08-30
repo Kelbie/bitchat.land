@@ -1,3 +1,4 @@
+import { globalStyles } from "../../styles";
 import type { NostrEvent } from "../../types";
 import { ThemedButton } from "../common/ThemedButton";
 import { ThemedInput } from "../common/ThemedInput";
@@ -14,43 +15,12 @@ interface MobileHeaderProps {
   hierarchicalCounts?: { direct: number; total: number };
   allStoredEvents?: NostrEvent[];
   onLoginClick?: () => void;
+  onSettingsClick?: () => void;
   theme?: "matrix" | "material";
   onThemeChange?: (next: "matrix" | "material") => void;
 }
 
-const styles = {
-  matrix: {
-    header:
-      "bg-black/95 backdrop-blur flex flex-col items-center font-mono flex-shrink-0 p-2 text-[#00ff00] relative overflow-visible",
-    logoText:
-      "text-[#00ff00] text-lg font-bold uppercase tracking-wider drop-shadow-[0_0_10px_rgba(0,255,0,0.5)]",
-    searchIcon: "stroke-[#00aa00]",
-    clearButton:
-      "px-3 py-3 bg-green-900/80 text-[#00ff00] border border-[#00ff00] rounded text-xs font-mono uppercase hover:bg-green-900",
-    separator:
-      "w-full h-0.5 bg-gradient-to-r from-transparent via-[#00ff00] to-transparent shadow-[0_0_4px_rgba(0,255,0,0.5)]",
-    subheader:
-      "w-full bg-black/95 px-5 py-3 text-[#00aa00] font-bold backdrop-blur",
-    subheaderTitle:
-      "mb-1 text-lg uppercase tracking-wider drop-shadow-[0_0_10px_rgba(0,255,0,0.5)]",
-    statsBadge:
-      "text-xs text-[#00ff00] bg-[#00ff00]/10 px-1.5 py-1 rounded border border-[#00ff00]/30",
-  },
-  material: {
-    header:
-      "bg-white text-gray-800 flex flex-col items-center font-sans flex-shrink-0 p-2 relative overflow-visible",
-    logoText: "text-blue-600 text-lg font-bold text-lg font-bold uppercase tracking-wider",
-    searchIcon: "stroke-blue-600",
-    clearButton:
-      "px-3 py-3 bg-blue-100 text-blue-600 border border-blue-600 rounded text-xs uppercase hover:bg-blue-200",
-    separator: "w-full h-0.5 bg-blue-600",
-    subheader: "w-full bg-white px-5 py-3 text-blue-600 font-bold",
-    subheaderTitle: "mb-1 text-lg uppercase tracking-wider",
-    statsBadge:
-      "text-xs text-blue-600 bg-blue-50 px-1.5 py-1 rounded border border-blue-200",
-  },
-} as const;
-
+const styles = globalStyles["MobileHeader"];
 export function MobileHeader({
   activeView,
   onViewChange,
@@ -63,6 +33,7 @@ export function MobileHeader({
   hierarchicalCounts = { direct: 0, total: 0 },
   allStoredEvents = [],
   onLoginClick,
+  onSettingsClick,
   theme = "matrix",
   onThemeChange,
 }: MobileHeaderProps) {
@@ -131,13 +102,11 @@ export function MobileHeader({
           download
         </ThemedButton>
         <ThemedButton
-          onClick={() =>
-            onThemeChange?.(theme === "matrix" ? "material" : "matrix")
-          }
+          onClick={onSettingsClick}
           theme={theme}
           className="flex-1 px-3 py-2 text-sm text-center"
         >
-          theme
+          settings
         </ThemedButton>
       </div>
 

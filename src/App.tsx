@@ -23,6 +23,8 @@ import { MobileHeader } from "./components/header/MobileHeader";
 import { ProfileGenerationModal } from "./components/modals/login";
 import { ChatInput } from "./components/chat/ChatInput";
 import { ProjectionSelector } from "./components/map/ProjectionSelector";
+import { SettingsModal } from "./components/modals/settings";
+import { useSettingsState } from "./components/modals/settings/useSettingsState";
 import { MarqueeBanner } from "./components/header/MarqueeBanner";
 import { CornerOverlay } from "./components/common/CornerOverlay";
 import { ChannelList, ChannelMeta } from "./components/sidebars/ChannelList";
@@ -93,6 +95,10 @@ export default function App({
   // Theme state for simple Tailwind-based theming
   const [theme, setTheme] = useState<"matrix" | "material">("matrix");
   const t = styles[theme];
+
+  // Settings state
+  const { settings, updateSettings } = useSettingsState();
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // View state
   const [activeView, setActiveView] = useState<
@@ -251,8 +257,13 @@ export default function App({
     searchGeohash,
     currentGeohashes,
     animateGeohash,
-    selectedChannelKey
+    selectedChannelKey,
+    settings.powEnabled,
+    settings.powDifficulty
   );
+
+  // Debug logging for settings
+  console.log('App settings state:', settings);
 
   // Build users list from events - moved here after useNostr hook
   const users = useMemo<UserMeta[]>(() => {
@@ -813,6 +824,7 @@ export default function App({
           hierarchicalCounts={hierarchicalCounts}
           allStoredEvents={allStoredEvents}
           onLoginClick={() => setShowProfileModal(true)}
+          onSettingsClick={() => setShowSettingsModal(true)}
           theme={theme}
           onThemeChange={setTheme}
         />
@@ -1022,6 +1034,18 @@ export default function App({
         onClose={() => setShowProfileModal(false)}
         onProfileSaved={handleProfileSaved}
         theme={theme}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        theme={theme}
+        onThemeChange={setTheme}
+        powEnabled={settings.powEnabled}
+        onPowToggle={(enabled) => updateSettings({ powEnabled: enabled })}
+        powDifficulty={settings.powDifficulty}
+        onPowDifficultyChange={(difficulty) => updateSettings({ powDifficulty: difficulty })}
       />
 
       {/* Favorites Modal */}

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { SimplePool } from "nostr-tools/pool";
 import type { Event, Event as NostrEventOriginal, verifiedSymbol } from "nostr-tools";
+import { getPow } from "nostr-tools/nip13";
 import { NostrEvent, GeohashActivity } from "../types";
 import { NOSTR_RELAYS } from "../constants/projections";
 import { findMatchingGeohash } from "../utils/geohashUtils";
@@ -13,8 +14,12 @@ export function useNostr(
   searchGeohash: string,
   currentGeohashes: string[],
   onGeohashAnimate: (geohash: string) => void,
-  currentChannel: string = "" // Add currentChannel parameter
+  currentChannel: string = "", // Add currentChannel parameter
+  powEnabled: boolean = true,
+  powDifficulty: number = 8
 ) {
+  // Debug logging for PoW settings
+  console.log('useNostr PoW settings:', { powEnabled, powDifficulty });
   const [connectedRelays, setConnectedRelays] = useState<Array<{url: string, geohash: string}>>([]);
   const [recentEvents, setRecentEvents] = useState<NostrEvent[]>([]);
   const [geohashActivity, setGeohashActivity] = useState<Map<string, GeohashActivity>>(
@@ -34,6 +39,19 @@ export function useNostr(
   // Single event handler function to avoid duplication
   const handleNostrEvent = (event: NostrEventOriginal) => {
     console.log("Received Nostr event:", event);
+
+    // Proof of Work validation - only if enabled
+    if (powEnabled) {
+      const eventPow = getPow(event.id);
+      console.log(`PoW validation: event difficulty ${eventPow}, required ${powDifficulty}`);
+      
+      if (eventPow < powDifficulty) {
+        console.log(`Skipping event with insufficient PoW difficulty: ${eventPow} < ${powDifficulty}`, event.id);
+        return;
+      }
+    } else {
+      console.log('PoW validation disabled, accepting all events');
+    }
 
     // Extract geohash from 'g' tag and group from 'd' tag
     const geoTag = event.tags.find((tag: string[]) => tag[0] === "g");
