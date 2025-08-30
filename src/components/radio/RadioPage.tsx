@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useAudioPlayer } from "../hooks/useAudioPlayer";
-import { GeohashService } from "../services/geohashService";
-import { CountryService } from "../services/countryService";
-import { RadioService } from "../services/radioService";
-import { StationWithDistance } from "../types/radio";
+import { useAudioPlayer } from "../../hooks/useAudioPlayer";
+import { GeohashService } from "../../services/geohashService";
+import { CountryService } from "../../services/countryService";
+import { RadioService } from "../../services/radioService";
+import { StationWithDistance } from "../../types/radio";
 
 interface RadioPageProps {
   searchText: string;

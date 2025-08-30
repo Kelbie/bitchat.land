@@ -1,7 +1,7 @@
 import React, { useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { colorForPeerSeed } from "../utils/userColor";
-import { truncate } from "./Connections";
+import { colorForPeerSeed } from "../../utils/userColor";
+import { truncate } from "../map/Connections";
 
 type UserMeta = {
   pubkey: string;

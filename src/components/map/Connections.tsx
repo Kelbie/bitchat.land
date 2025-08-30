@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { GeoRelayDirectory } from "../utils/geoRelayDirectory";
-import { ThemedButton } from "./ThemedButton";
-import { DEFAULT_RELAYS } from "../constants/projections";
+import { GeoRelayDirectory } from "../../utils/geoRelayDirectory";
+import { ThemedButton } from "../common/ThemedButton";
+import { DEFAULT_RELAYS } from "../../constants/projections";
 
 export const truncate = (value: string, options: { length: number }): string => {
   if (value.length > options.length) {

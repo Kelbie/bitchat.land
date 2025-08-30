@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { getHierarchicalCounts } from "../utils/geohashUtils";
-import { getCachedLocationFromGeohash, LocationInfo } from "../utils/geocoder";
-import { parseSearchQuery, addGeohashToSearch } from "../utils/searchParser";
+import { getHierarchicalCounts } from "../../utils/geohashUtils";
+import { getCachedLocationFromGeohash, LocationInfo } from "../../utils/geocoder";
+import { parseSearchQuery, addGeohashToSearch } from "../../utils/searchParser";
 import { HierarchyItem } from "./HierarchyItem";
 
 interface EventHierarchyProps {

@@ -1,10 +1,10 @@
 import React from "react";
 import { CustomProjection } from "@visx/geo";
 import * as topojson from "topojson-client";
-import topology from "../data/world-topo.json";
-import { FeatureShape } from "../types";
+import topology from "../../data/world-topo.json";
+import { FeatureShape } from "../../types";
 import { GeohashLayer } from "./GeohashLayer";
-import { PROJECTIONS } from "../constants/projections";
+import { PROJECTIONS } from "../../constants/projections";
 
 // @ts-expect-error
 const world = topojson.feature(topology, topology.objects.units) as {

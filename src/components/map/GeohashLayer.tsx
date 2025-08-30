@@ -1,7 +1,7 @@
 // import React from "react"; // Not needed for JSX in this file
-import { decodeGeohash, createGeohashPath } from "../utils/geohashUtils";
-import { parseSearchQuery } from "../utils/searchParser";
-import { GeohashActivity } from "../types";
+import { decodeGeohash, createGeohashPath } from "../../utils/geohashUtils";
+import { parseSearchQuery } from "../../utils/searchParser";
+import { GeohashActivity } from "../../types";
 
 interface GeohashLayerProps {
   currentGeohashes: string[];

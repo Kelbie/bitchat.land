@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { SimplePool, Event, Filter } from "nostr-tools";
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Image } from "./Image";
-import { addToFavorites, isFavorited } from "../utils/favorites";
+import { Image } from "../../common/Image";
+import { addToFavorites, isFavorited } from "../../../utils/favorites";
 
 interface NostrImageSearchProps {
   theme: "matrix" | "material";

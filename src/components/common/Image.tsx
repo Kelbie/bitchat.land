@@ -4,7 +4,7 @@ import {
   addToFavorites,
   removeFromFavorites,
   isFavorited,
-} from "../utils/favorites";
+} from "../../utils/favorites";
 
 interface ImageProps {
   src: string;

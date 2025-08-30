@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { SimplePool } from "nostr-tools/pool";
 import { finalizeEvent, validateEvent, verifyEvent } from "nostr-tools/pure";
-import { NOSTR_RELAYS, DEFAULT_RELAYS } from "../constants/projections";
+import { NOSTR_RELAYS, DEFAULT_RELAYS } from "../../constants/projections";
 import { generateSecretKey, getPublicKey } from "nostr-tools";
 import { sha256 } from "@noble/hashes/sha256";
-import { ThemedInput } from "./ThemedInput";
-import { GeoRelayDirectory } from "../utils/geoRelayDirectory";
+import { ThemedInput } from "../common/ThemedInput";
+import { GeoRelayDirectory } from "../../utils/geoRelayDirectory";
 
 // Extend Window interface to include our custom method
 declare global {

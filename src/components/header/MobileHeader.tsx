@@ -1,6 +1,6 @@
-import type { NostrEvent } from "../types";
-import { ThemedButton } from "./ThemedButton";
-import { ThemedInput } from "./ThemedInput";
+import type { NostrEvent } from "../../types";
+import { ThemedButton } from "../common/ThemedButton";
+import { ThemedInput } from "../common/ThemedInput";
 
 interface MobileHeaderProps {
   activeView: "map" | "chat" | "panel" | "radio";
@@ -75,8 +75,6 @@ export function MobileHeader({
 
   return (
     <header className={t.header}>
-      {/* <GeoRelayTest /> */}
-
       <div className="flex items-center gap-2 mb-0">
         <img src={`/favicon${theme === "matrix" ? ".webp" : `_${theme}.webp`}`} alt="bitchat.land" className="w-12 h-12 -ml-3" />
         <div className={t.logoText}>bitchat.land</div>

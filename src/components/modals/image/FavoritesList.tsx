@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Image } from './Image';
-import { getFavorites, removeFromFavorites } from '../utils/favorites';
+import { Image } from '../../common/Image';
+import { getFavorites, removeFromFavorites } from '../../../utils/favorites';
 
 interface FavoritesListProps {
   theme: "matrix" | "material";

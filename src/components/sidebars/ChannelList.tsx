@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { getPinnedChannels, addPinnedChannel, removePinnedChannel } from "../utils/pinnedChannels";
-import { EVENT_KINDS } from "../constants/eventKinds";
+import { getPinnedChannels, addPinnedChannel, removePinnedChannel } from "../../utils/pinnedChannels";
+import { EVENT_KINDS } from "../../constants/eventKinds";
 
 type ChannelMeta = {
   key: string;

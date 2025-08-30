@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { NostrEvent } from "../types";
+import { NostrEvent } from "../../types";
 import {
   parseSearchQuery,
   addGeohashToSearch,
   addUserToSearch,
   ParsedSearch,
-} from "../utils/searchParser";
-import { renderTextWithLinks } from "../utils/linkRenderer";
-import { colorForPeerSeed } from "../utils/userColor";
-import { hasImageUrl, extractImageUrl } from "../utils/imageUtils";
-import { Image } from "./Image";
+} from "../../utils/searchParser";
+import { renderTextWithLinks } from "../../utils/linkRenderer";
+import { colorForPeerSeed } from "../../utils/userColor";
+import { hasImageUrl, extractImageUrl } from "../../utils/imageUtils";
+import { Image } from "../common/Image";
 import React from "react"; // Added missing import
 
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;

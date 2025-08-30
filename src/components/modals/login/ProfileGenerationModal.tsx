@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
-import { colorForPeerSeed } from "../utils/userColor";
-import { ThemedInput } from "./ThemedInput";
-import { ThemedButton } from "./ThemedButton";
-import { ThemedProgressBar } from "./ThemedProgressBar";
+import { colorForPeerSeed } from "../../../utils/userColor";
+import { ThemedInput } from "../../common/ThemedInput";
+import { ThemedButton } from "../../common/ThemedButton";
+import { ThemedProgressBar } from "../../chat/ThemedProgressBar";
 
 interface SavedProfile {
   username: string;

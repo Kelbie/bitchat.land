@@ -1,6 +1,6 @@
-import { PROJECTIONS } from "../constants/projections";
-import { CornerOverlay } from "./CornerOverlay";
-import { ThemedButton } from "./ThemedButton";
+import { PROJECTIONS } from "../../constants/projections";
+import { CornerOverlay } from "../common/CornerOverlay";
+import { ThemedButton } from "../common/ThemedButton";
 
 interface ProjectionSelectorProps {
   projection: string;

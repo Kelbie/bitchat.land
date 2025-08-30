@@ -16,20 +16,20 @@ import { GeoMercatorProps } from "./types";
 import { useDrag } from "./hooks/useDrag";
 import { useZoom } from "./hooks/useZoom";
 import { useNostr } from "./hooks/useNostr";
-import { EventHierarchy } from "./components/EventHierarchy";
-import { RecentEvents } from "./components/RecentEvents";
-import { Map } from "./components/Map";
-import { MobileHeader } from "./components/MobileHeader";
-import { ProfileGenerationModal } from "./components/ProfileGenerationModal";
-import { ChatInput } from "./components/ChatInput";
-import { ProjectionSelector } from "./components/ProjectionSelector";
-import { MarqueeBanner } from "./components/MarqueeBanner";
-import { CornerOverlay } from "./components/CornerOverlay";
-import { ChannelList, ChannelMeta } from "./components/ChannelList";
-import { UserList, UserMeta } from "./components/UserList";
-import { Connections } from "./components/Connections";
-import { NostrImageSearch } from "./components/NostrImageSearch";
-import { FavoritesModal } from "./components/FavoritesModal";
+import { EventHierarchy } from "./components/panel/EventHierarchy";
+import { RecentEvents } from "./components/chat/RecentEvents";
+import { Map } from "./components/map/Map";
+import { MobileHeader } from "./components/header/MobileHeader";
+import { ProfileGenerationModal } from "./components/modals/login/ProfileGenerationModal";
+import { ChatInput } from "./components/chat/ChatInput";
+import { ProjectionSelector } from "./components/map/ProjectionSelector";
+import { MarqueeBanner } from "./components/header/MarqueeBanner";
+import { CornerOverlay } from "./components/common/CornerOverlay";
+import { ChannelList, ChannelMeta } from "./components/sidebars/ChannelList";
+import { UserList, UserMeta } from "./components/sidebars/UserList";
+import { Connections } from "./components/map/Connections";
+import { NostrImageSearch } from "./components/modals/image/NostrImageSearch";
+import { FavoritesModal } from "./components/modals/image/FavoritesModal";
 import {
   addGeohashToSearch,
   parseSearchQuery,
@@ -53,7 +53,7 @@ import {
   removePinnedChannel,
 } from "./utils/pinnedChannels";
 import { sendJoinMessage } from "./utils/systemMessageSender";
-import { RadioPage } from "./components/RadioPage";
+import { RadioPage } from "./components/radio/RadioPage";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
