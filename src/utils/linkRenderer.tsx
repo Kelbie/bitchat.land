@@ -1,4 +1,5 @@
 import React from 'react';
+import { globalStyles } from '../styles';
 
 
 const URL_REGEX = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi;
@@ -57,10 +58,7 @@ function sanitizeUrlText(url: string): string {
   return url;
 }
 
-const styles = {
-  matrix: "text-[#00ff00] underline cursor-pointer break-all",
-  material: "text-blue-600 underline cursor-pointer break-all",
-} as const;
+const styles = globalStyles["LinkRenderer"];
 
 /**
  * Renders text with clickable links while keeping everything else as plain text

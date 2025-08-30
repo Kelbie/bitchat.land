@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { globalStyles } from "../../styles";
 
 interface CornerOverlayProps {
   position: "bottom-left" | "bottom-right" | "top-left";
@@ -6,16 +7,7 @@ interface CornerOverlayProps {
   children: ReactNode;
 }
 
-const styles = {
-  matrix: {
-    base:
-      "fixed z-[9999] opacity-70 hover:opacity-100 transition-opacity duration-200 font-mono text-[#00aa00] drop-shadow-[0_0_3px_rgba(0,255,0,0.3)]",
-  },
-  material: {
-    base:
-      "fixed z-[9999] opacity-70 hover:opacity-100 transition-opacity duration-200 font-sans text-blue-600",
-  },
-} as const;
+  const styles = globalStyles["CornerOverlay"];
 
 export function CornerOverlay({
   position,

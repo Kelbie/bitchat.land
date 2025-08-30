@@ -5,6 +5,7 @@ import topology from "../../data/world-topo.json";
 import { FeatureShape } from "../../types";
 import { GeohashLayer } from "./GeohashLayer";
 import { PROJECTIONS } from "../../constants/projections";
+import { globalStyles } from "../../styles";
 
 // @ts-expect-error
 const world = topojson.feature(topology, topology.objects.units) as {
@@ -46,23 +47,7 @@ interface MapProps {
   theme?: "matrix" | "material";
 }
 
-const styles = {
-  matrix: {
-    svg: "absolute top-0 left-0",
-    rectFill: "url(#matrixLines)",
-    pathFill: "#001100",
-    timezoneStroke: "rgba(0,255,0,0.05)",
-    regionStroke: "rgba(0,255,0,0.1)",
-  },
-  material: {
-    svg: "absolute top-0 left-0",
-    rectFill: "#f1f5f9",
-    pathFill: "#e5e7eb",
-    timezoneStroke: "rgba(59,130,246,0.2)",
-    regionStroke: "rgba(59,130,246,0.3)",
-  },
-} as const;
-
+const styles = globalStyles["Map"];
 export function Map({
   width,
   height,

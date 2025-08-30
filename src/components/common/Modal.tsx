@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { globalStyles } from "../../styles";
 
 export type ModalTab<T = string> = {
   id: T;
@@ -30,38 +31,7 @@ export type ModalProps<T = string> = {
   className?: string;
 };
 
-const styles = {
-  matrix: {
-    overlay: "fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[10000] p-5",
-    container: "bg-[#111] border-2 border-[#00ff00] rounded-lg shadow-[0_0_20px_rgba(0,255,0,0.3)] font-mono text-[#00ff00]",
-    header: "p-4 border-b border-[#003300]",
-    title: "text-lg font-bold text-[#00ff00]",
-    closeButton: "p-2 rounded hover:bg-opacity-20 hover:bg-[#00ff00] text-[#00ff00] transition-colors",
-    tabContainer: "flex gap-1 mt-4",
-    tabButton: "px-4 py-2 text-sm font-medium rounded-t-lg transition-colors",
-    tabButtonActive: "bg-[#00ff00] text-black",
-    tabButtonInactive: "bg-[#003300] text-[#00ff00] hover:bg-[#004400]",
-    body: "p-4",
-    flowContainer: "space-y-4",
-    flowTitle: "text-lg font-bold text-[#00ff00] mb-4",
-    flowActions: "flex gap-2 pt-4 border-t border-[#003300]",
-  },
-  material: {
-    overlay: "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000] p-5",
-    container: "bg-white border-2 border-blue-600 rounded-lg shadow-xl font-sans text-gray-800",
-    header: "p-4 border-b border-blue-200",
-    title: "text-lg font-bold text-gray-800",
-    closeButton: "p-2 rounded hover:bg-opacity-20 hover:bg-blue-100 text-blue-600 transition-colors",
-    tabContainer: "flex gap-1 mt-4",
-    tabButton: "px-4 py-2 text-sm font-medium rounded-t-lg transition-colors",
-    tabButtonActive: "bg-blue-600 text-white",
-    tabButtonInactive: "bg-gray-200 text-gray-700 hover:bg-gray-300",
-    body: "p-4",
-    flowContainer: "space-y-4",
-    flowTitle: "text-lg font-bold text-gray-800 mb-4",
-    flowActions: "flex gap-2 pt-4 border-t border-gray-200",
-  },
-} as const;
+const styles = globalStyles["Modal"];
 
 const sizeClasses = {
   sm: "max-w-sm w-full max-h-[60vh]",

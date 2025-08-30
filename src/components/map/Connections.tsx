@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { GeoRelayDirectory } from "../../utils/geoRelayDirectory";
 import { ThemedButton } from "../common/ThemedButton";
 import { DEFAULT_RELAYS } from "../../constants/projections";
+import { globalStyles } from "../../styles";
 
 export const truncate = (value: string, options: { length: number }): string => {
   if (value.length > options.length) {
@@ -38,58 +39,9 @@ export function Connections({
   // Debounce ref to prevent rapid clicking
   const lastClickTimeRef = useRef<number>(0);
 
-  const styles = {
-    matrix: {
-      container:
-        "bg-black/90 text-green-500 border border-green-500/30 rounded-lg p-3 shadow-lg",
-      title: "text-[#00aa00] text-xs mb-1 font-mono font-bold",
-      status: "text-xs font-mono text-green-400 text-center",
-      statusConnected: "text-green-400",
-      statusDisconnected: "text-red-400",
-      statusConnecting: "text-yellow-400",
-      relayButton:
-        "w-full text-left px-2 py-1 text-xs font-mono border border-green-500/30 rounded hover:bg-green-500/20 transition-colors",
-      relayButtonActive:
-        "w-full text-left px-2 py-1 text-xs font-mono border border-green-500 rounded bg-green-500/20",
-      actionButton:
-        "w-full text-center px-3 py-2 text-xs font-bold",
-      actionButtonDisabled:
-        "w-full bg-gray-600 text-gray-400 px-3 py-2 rounded text-xs font-mono cursor-not-allowed font-bold",
-      geoRelayButton:
-        "w-full text-center px-3 py-2 text-xs font-bold",
-      geoRelayButtonDisabled:
-        "w-full bg-gray-400 text-gray-600 px-3 py-2 rounded text-xs font-mono cursor-not-allowed font-bold",
-    },
-    material: {
-      container:
-        "bg-white/95 text-gray-800 border border-gray-300 rounded-lg p-3 shadow-lg",
-      title: "text-blue-600 text-xs mb-1 font-semibold",
-      status: "text-xs text-gray-600 text-center",
-      statusConnected: "text-green-600",
-      statusDisconnected: "text-red-600",
-      statusConnecting: "text-yellow-600",
-      relayButton:
-        "w-full text-left px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 transition-colors",
-      relayButtonActive:
-        "w-full text-left px-2 py-1 text-xs border border-blue-500 rounded bg-blue-50",
-      actionButton:
-        "w-full bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-xs font-medium transition-colors font-bold",
-      actionButtonDisabled:
-        "w-full bg-gray-400 text-gray-600 px-3 py-2 rounded text-xs font-medium cursor-not-allowed font-bold",
-      geoRelayButton:
-        "w-full bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-xs font-medium transition-colors font-bold",
-      geoRelayButtonDisabled:
-        "w-full bg-gray-400 text-gray-600 px-3 py-2 rounded text-xs font-medium cursor-not-allowed font-bold",
-    },
-  };
+  const styles = globalStyles["Connections"];
 
   const t = styles[theme];
-
-  const getStatusClass = (status: string) => {
-    if (status.includes("Connected")) return t.statusConnected;
-    if (status.includes("Connecting")) return t.statusConnecting;
-    return t.statusDisconnected;
-  };
 
   const connectToGeoRelays = async () => {
     // Debounce rapid clicks - prevent clicking more than once every 500ms

@@ -12,6 +12,7 @@ import { colorForPeerSeed } from "../../utils/userColor";
 import { hasImageUrl, extractImageUrl } from "../../utils/imageUtils";
 import { Image } from "../common/Image";
 import React from "react"; // Added missing import
+import { globalStyles } from "../../styles";
 
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
 
@@ -257,39 +258,7 @@ const EventItem = React.memo(({
 
 EventItem.displayName = 'EventItem';
 
-const styles = {
-  matrix: {
-    container:
-      "relative w-full h-full z-[1000] bg-black text-[14px] flex flex-col",
-    noEvents:
-      "flex items-center justify-center h-full text-green-600 font-mono text-sm text-center p-5",
-    noEventsMessage: "mb-2",
-    scrollButton:
-      "absolute bottom-[32px] right-[30px] bg-green-500 text-black rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,255,0,0.3)] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110 flex items-center justify-center",
-    scrollButtonWithCount:
-      "absolute bottom-[32px] right-[30px] bg-green-500 text-black rounded-full min-w-[50px] h-[50px] px-2 cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,255,0,0.3)] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110 flex items-center justify-center",
-    messageCard: "mx-3 px-3 py-2 bg-black/30 rounded-lg transition-all",
-    hashTag: "text-gray-500 text-[10px] font-mono",
-    replyButton:
-      "bg-transparent text-gray-500 rounded text-[10px] font-mono cursor-pointer transition-colors hover:bg-black/20 hover:text-gray-300",
-  },
-  material: {
-    container:
-      "relative w-full h-full z-[1000] bg-white text-gray-900 text-[14px] flex flex-col",
-    noEvents:
-      "flex items-center justify-center h-full text-gray-500 font-mono text-sm text-center p-5",
-    noEventsMessage: "mb-2",
-    scrollButton:
-      "absolute bottom-[32px] right-[30px] bg-blue-500 text-white rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all duration-200 z-[1000] hover:bg-blue-600 hover:scale-110 flex items-center justify-center",
-    scrollButtonWithCount:
-      "absolute bottom-[32px] right-[30px] bg-blue-500 text-white rounded-full min-w-[50px] h-[50px] px-2 cursor-pointer font-bold shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all duration-200 z-[1000] hover:bg-blue-600 hover:scale-110 flex items-center justify-center",
-    messageCard:
-      "mx-3 px-3 py-2 rounded-lg transition-all hover:bg-gray-200 hover:shadow-sm",
-    hashTag: "text-gray-500 text-[10px] font-mono",
-    replyButton:
-      "bg-transparent text-gray-500 rounded text-[10px] font-mono cursor-pointer transition-colors hover:bg-gray-200 hover:text-gray-700",
-  },
-} as const;
+const styles = globalStyles["RecentEvents"];
 
 export function RecentEvents({
   nostrEnabled,

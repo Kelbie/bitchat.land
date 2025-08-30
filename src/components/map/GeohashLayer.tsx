@@ -2,6 +2,7 @@
 import { decodeGeohash, createGeohashPath } from "../../utils/geohashUtils";
 import { parseSearchQuery } from "../../utils/searchParser";
 import { GeohashActivity } from "../../types";
+import { globalStyles } from "../../styles";
 
 interface GeohashLayerProps {
   currentGeohashes: string[];
@@ -40,18 +41,7 @@ export function GeohashLayer({
 }: GeohashLayerProps) {
   if (!showSingleCharGeohashes) return null;
 
-  const styles = {
-    matrix: {
-      base: "0,255,0",
-      text: "font-mono font-bold fill-[#00ff00]",
-      count: "fill-[#00aa00]",
-    },
-    material: {
-      base: "59,130,246",
-      text: "font-sans font-bold fill-blue-600",
-      count: "fill-blue-700",
-    },
-  } as const;
+  const styles = globalStyles["GeohashLayer"];
   const t = styles[theme];
 
   // Parse search to get geohash info for display logic

@@ -3,6 +3,7 @@ import { getPinnedChannels, addPinnedChannel, removePinnedChannel } from "../../
 import { EVENT_KINDS } from "../../constants/eventKinds";
 import { List, ListItem } from "../common/List";
 import { SectionHeader } from "../common/SectionHeader";
+import { globalStyles } from "../../styles";
 
 type ChannelMeta = {
   key: string;
@@ -119,46 +120,7 @@ const ChannelItem = React.memo(({
 
 ChannelItem.displayName = 'ChannelItem';
 
-const styles = {
-  matrix: {
-    buttonBase:
-      "w-full text-left rounded px-2 py-2 text-sm mb-2 flex items-center justify-between gap-2 transition",
-    selected:
-      "border bg-[#00ff00]/10 border-[#00ff00] text-[#00ff00] font-bold shadow-inner shadow-[#00ff00]/15",
-    pinned: "bg-yellow-400/5 border-yellow-400 text-yellow-300",
-    geohash: "bg-blue-400/5 border-blue-400 text-blue-300",
-    standard: "bg-gray-400/5 border-gray-400 text-gray-300",
-    hover: "hover:bg-[#00ff00]/10 hover:border-[#00ff00]",
-    unreadContainer: "flex items-center gap-1",
-    unreadDot:
-      "w-2 h-2 rounded-full bg-red-600 shadow-[0_0_6px_rgba(255,0,51,0.6)]",
-    unreadCount: "text-xs text-red-500",
-    heartButton: "w-5 h-5 flex items-center justify-center transition-all hover:scale-110",
-    heartIcon: "text-red-500",
-    heartIconPinned: "text-red-400",
-    channelInfo: "flex-1",
-    channelName: "break-words",
-    eventKind: "text-[10px] opacity-60 font-mono",
-  },
-  material: {
-    buttonBase:
-      "w-full text-left border rounded px-2 py-2 text-sm mb-2 flex items-center justify-between gap-2 transition",
-    selected: "bg-blue-100 border-blue-500 text-blue-700 font-bold",
-    pinned: "bg-yellow-100 border-yellow-400 text-yellow-800",
-    geohash: "bg-blue-100 border-blue-400 text-blue-700",
-    standard: "bg-gray-100 border-gray-400 text-gray-700",
-    hover: "hover:bg-blue-50 hover:border-blue-500",
-    unreadContainer: "flex items-center gap-1",
-    unreadDot: "w-2 h-2 rounded-full bg-red-600",
-    unreadCount: "text-xs text-red-600",
-    heartButton: "w-5 h-5 flex items-center justify-center transition-all hover:scale-110",
-    heartIcon: "text-red-500",
-    heartIconPinned: "text-red-400",
-    channelInfo: "flex-1",
-    channelName: "break-words",
-    eventKind: "text-[10px] opacity-60 font-mono",
-  },
-} as const;
+const styles = globalStyles["ChannelList"];
 
 export function ChannelList({
   channels,

@@ -28,7 +28,7 @@ import { CornerOverlay } from "./components/common/CornerOverlay";
 import { ChannelList, ChannelMeta } from "./components/sidebars/ChannelList";
 import { UserList, UserMeta } from "./components/sidebars/UserList";
 import { Connections } from "./components/map/Connections";
-import { NostrImageSearch } from "./components/modals/image/NostrImageSearch";
+import { NostrImageSearch } from "./components/modals/image/DiscoverPage";
 import { FavoritesModal } from "./components/modals/image/FavoritesModal";
 import {
   addGeohashToSearch,
@@ -54,35 +54,14 @@ import {
 } from "./utils/pinnedChannels";
 import { sendJoinMessage } from "./utils/systemMessageSender";
 import { RadioPage } from "./components/radio/RadioPage";
+import { globalStyles } from "./styles";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
 
 export const background = "#000000";
 
-const styles = {
-  matrix: {
-    appContainer:
-      "flex flex-col w-screen h-screen overflow-hidden bg-black text-[#00ff00] font-mono",
-    mainArea: "flex-1 relative w-full overflow-hidden",
-    chatViewContainer:
-      "absolute inset-0 w-full h-full bg-black flex flex-row overflow-hidden",
-    chatColumn: "flex-1 flex flex-col",
-    subHeader: "bg-black/95 text-[#00aa00] px-4 py-3 border-b border-[#003300]",
-    subHeaderTitle:
-      "text-base uppercase tracking-wider [text-shadow:0_0_10px_rgba(0,255,0,0.5)]",
-  },
-  material: {
-    appContainer:
-      "flex flex-col w-screen h-screen overflow-hidden bg-white text-gray-800 font-sans",
-    mainArea: "flex-1 relative w-full overflow-hidden",
-    chatViewContainer:
-      "absolute inset-0 w-full h-full bg-white flex flex-row overflow-hidden",
-    chatColumn: "flex-1 flex flex-col",
-    subHeader: "bg-white text-blue-600 px-4 py-3 border-b border-blue-200",
-    subHeaderTitle: "text-base uppercase tracking-wider",
-  },
-} as const;
+const styles = globalStyles["App"];
 
 // Add array prototype extensions
 declare global {

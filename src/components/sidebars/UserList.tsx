@@ -3,6 +3,7 @@ import { colorForPeerSeed } from "../../utils/userColor";
 import { truncate } from "../map/Connections";
 import { List, ListItem } from "../common/List";
 import { SectionHeader } from "../common/SectionHeader";
+import { globalStyles } from "../../styles";
 
 type UserMeta = {
   pubkey: string;
@@ -100,33 +101,7 @@ const UserItem = React.memo(({
 
 UserItem.displayName = 'UserItem';
 
-const styles = {
-  matrix: {
-    buttonBase:
-      "w-full text-left rounded px-2 py-2 text-sm mb-2 flex items-center justify-between gap-2 transition",
-    selected:
-      "border bg-[#00ff00]/10 border-[#00ff00] text-[#00ff00] font-bold shadow-inner shadow-[#00ff00]/15",
-    hover: "hover:bg-[#00ff00]/10 hover:border-[#00ff00]",
-    userInfo: "flex-1",
-    userName: "break-words font-medium",
-    userDetails: "text-[10px] opacity-60 font-mono",
-    messageCount: "text-xs text-blue-400",
-    lastSeen: "text-[10px] opacity-50",
-
-  },
-  material: {
-    buttonBase:
-      "w-full text-left border rounded px-2 py-2 text-sm mb-2 flex items-center justify-between gap-2 transition",
-    selected: "bg-blue-100 border-blue-500 text-blue-700 font-bold",
-    hover: "hover:bg-blue-50 hover:border-blue-500",
-    userInfo: "flex-1",
-    userName: "break-words font-medium",
-    userDetails: "text-[10px] opacity-60 font-mono",
-    messageCount: "text-xs text-blue-600",
-    lastSeen: "text-[10px] opacity-50",
-
-  },
-} as const;
+const styles = globalStyles["UserList"];
 
 export function UserList({
   users,

@@ -1,4 +1,5 @@
 import { PROJECTIONS } from "../../constants/projections";
+import { globalStyles } from "../../styles";
 import { CornerOverlay } from "../common/CornerOverlay";
 import { ThemedButton } from "../common/ThemedButton";
 
@@ -8,14 +9,7 @@ interface ProjectionSelectorProps {
   theme?: "matrix" | "material";
 }
 
-const styles = {
-  matrix: {
-    label: "text-[#00aa00] text-xs mb-1",
-  },
-  material: {
-    label: "text-blue-600 text-xs mb-1",
-  },
-} as const;
+const styles = globalStyles["ProjectionSelector"];
 
 export function ProjectionSelector({
   projection,

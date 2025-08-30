@@ -2,6 +2,7 @@ import React from "react";
 import { ThemedButton } from "../../common/ThemedButton";
 import { ThemedProgressBar } from "../../chat/ThemedProgressBar";
 import { GeneratedProfile } from "./types";
+import { globalStyles } from "../../../styles";
 
 interface ProfileSelectionPageProps {
   theme: "matrix" | "material";
@@ -12,17 +13,7 @@ interface ProfileSelectionPageProps {
   onChangeName: () => void;
 }
 
-const styles = {
-  matrix: {
-    progressText: "text-center text-xs text-[#888]",
-    profileOption: "border-[#00ff00]",
-  },
-  material: {
-    progressText: "text-center text-xs text-gray-500",
-    profileOption: "border-blue-600",
-  },
-} as const;
-
+const styles = globalStyles["ProfileSelectionPage"];
 export function ProfileSelectionPage({
   theme,
   generatedProfiles,
@@ -40,12 +31,11 @@ export function ProfileSelectionPage({
           <ThemedProgressBar progress={progress} theme={theme} />
           <div className={t.progressText}>
             Found {generatedProfiles.length} profile
-            {generatedProfiles.length !== 1 ? "s" : ""}... searching
-            for more
+            {generatedProfiles.length !== 1 ? "s" : ""}... searching for more
           </div>
         </div>
       )}
-      
+
       <div className="grid grid-cols-8 auto-rows-fr gap-3 mb-5">
         {generatedProfiles.map((profile, idx) => (
           <button
@@ -58,7 +48,7 @@ export function ProfileSelectionPage({
           />
         ))}
       </div>
-      
+
       <ThemedButton
         onClick={onChangeName}
         theme={theme}

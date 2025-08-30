@@ -1,4 +1,5 @@
 import { ElementType, forwardRef } from "react";
+import { globalStyles } from "../../styles";
 
 interface ThemedInputProps<T extends ElementType = 'input'> {
   as?: T;
@@ -6,12 +7,7 @@ interface ThemedInputProps<T extends ElementType = 'input'> {
   className?: string;
 }
 
-const styles = {
-  matrix:
-    'bg-black/80 text-[#00ff00] placeholder-[#00ff00]/50 border border-[#00ff00] rounded outline-none',
-  material:
-    'bg-white text-gray-800 placeholder-gray-400 border border-blue-600 rounded outline-none',
-} as const;
+const styles =  globalStyles["ThemedInput"];
 
 export const ThemedInput = forwardRef(<T extends ElementType = 'input'>(
   {

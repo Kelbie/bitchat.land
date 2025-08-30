@@ -3,6 +3,7 @@ import { getHierarchicalCounts } from "../../utils/geohashUtils";
 import { getCachedLocationFromGeohash, LocationInfo } from "../../utils/geocoder";
 import { parseSearchQuery, addGeohashToSearch } from "../../utils/searchParser";
 import { HierarchyItem } from "./HierarchyItem";
+import { globalStyles } from "../../styles";
 
 interface EventHierarchyProps {
   searchText: string;
@@ -11,20 +12,7 @@ interface EventHierarchyProps {
   theme?: "matrix" | "material";
 }
 
-const styles = {
-  matrix: {
-    container:
-      "relative top-0 left-0 w-full h-full z-[1000] bg-black text-[#00ff00] font-mono flex flex-col overflow-x-hidden", 
-    list: "flex-1 overflow-y-auto p-5 pt-5",
-    section: "text-xs text-[#00aa00] mb-2 font-bold border-b border-[#00aa00]/30 pb-1",
-  },
-  material: {
-    container:
-      "relative top-0 left-0 w-full h-full z-[1000] bg-white text-gray-800 font-sans flex flex-col overflow-x-hidden", 
-    list: "flex-1 overflow-y-auto p-5 pt-5",
-    section: "text-xs text-blue-600 mb-2 font-bold border-b border-blue-200 pb-1",
-  },
-} as const;
+const styles = globalStyles["EventHierarchy"];
 
 export function EventHierarchy({
   searchText,

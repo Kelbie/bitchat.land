@@ -1,4 +1,5 @@
 import { ElementType, ReactNode } from "react";
+import { globalStyles } from "../../styles";
 
 type ThemedButtonProps<T extends ElementType = 'button'> = {
   as?: T;
@@ -8,20 +9,7 @@ type ThemedButtonProps<T extends ElementType = 'button'> = {
   children: ReactNode;
 } & Omit<React.ComponentPropsWithoutRef<T>, 'as' | 'className'>;
 
-const styles = {
-  matrix: {
-    base: 'border font-mono font-bold uppercase transition-colors',
-    active:
-      'bg-[#00ff00] text-black shadow-[0_0_10px_rgba(0,255,0,0.5)] border-[#00ff00]',
-    inactive:
-      'bg-black/70 text-[#00ff00] border-[#00ff00] hover:bg-[#00ff00]/10 hover:shadow-[0_0_5px_rgba(0,255,0,0.3)]',
-  },
-  material: {
-    base: 'border font-sans font-bold uppercase transition-colors',
-    active: 'bg-blue-600 text-white border-blue-600',
-    inactive: 'bg-white text-blue-600 border-blue-600 hover:bg-blue-50',
-  },
-} as const;
+const styles = globalStyles["ThemedButton"];
 
 export function ThemedButton<T extends ElementType = 'button'>({
   as,

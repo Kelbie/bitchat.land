@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import { SimplePool, Event, Filter } from "nostr-tools";
 import { addToFavorites, isFavorited } from "../../../utils/favorites";
 import { MasonryGrid, MasonryImage as BaseMasonryImage } from "../../common/MasonryGrid";
+import { globalStyles } from "../../../styles";
 
 interface NostrImageSearchProps {
   theme: "matrix" | "material";
@@ -430,47 +431,7 @@ export function DiscoverPage({
 
   const selectedTopic = getSelectedTopic();
 
-  const styles = {
-    matrix: {
-      container: "space-y-4",
-      searchContainer: "space-y-4 mb-6",
-      topicLabel: "text-sm font-medium text-[#00ff00]",
-      topicButton: "px-3 py-1 text-xs rounded-full transition-all duration-200",
-      topicButtonActive:
-        "bg-[#00ff00] text-black shadow-[0_0_8px_rgba(0,255,0,0.5)]",
-      topicButtonInactive:
-        "bg-[#003300] text-[#00aa00] hover:bg-[#004400] border border-[#00ff00]/20",
-      searchInput:
-        "w-full px-4 py-2 rounded border bg-black border-[#003300] text-[#00ff00] placeholder-[#00aa00] focus:border-[#00ff00] focus:outline-none focus:shadow-[0_0_8px_rgba(0,255,0,0.3)]",
-      errorContainer:
-        "text-center py-4 text-red-400 bg-red-900/20 rounded border border-red-500/20",
-      noResultsContainer: "text-center py-8 text-[#00aa00]",
-      imageGrid: "grid grid-cols-3 gap-4 auto-rows-max",
-      imageButton:
-        "w-full rounded-lg border-none cursor-pointer hover:border-blue-400 hover:shadow-lg transition-all duration-200 overflow-hidden",
-      loadMoreButton:
-        "w-full px-6 py-3 rounded-lg font-medium transition-all bg-[#003300] text-[#00ff00] border border-[#00ff00] hover:bg-[#004400] hover:shadow-[0_0_8px_rgba(0,255,0,0.3)] disabled:opacity-50 disabled:cursor-not-allowed",
-    },
-    material: {
-      container: "space-y-4",
-      searchContainer: "space-y-4 mb-6",
-      topicLabel: "text-sm font-medium text-gray-700",
-      topicButton: "px-3 py-1 text-xs rounded-full transition-all duration-200",
-      topicButtonActive: "bg-blue-600 text-white shadow-lg",
-      topicButtonInactive:
-        "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300",
-      searchInput:
-        "w-full px-4 py-2 rounded-lg border border-gray-300 text-gray-800 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white",
-      errorContainer:
-        "text-center py-4 text-red-600 bg-red-50 rounded-lg border border-red-200",
-      noResultsContainer: "text-center py-8 text-gray-500",
-      imageGrid: "grid grid-cols-3 gap-4 auto-rows-max",
-      imageButton:
-        "w-full rounded-lg border-none cursor-pointer hover:border-blue-400 hover:shadow-lg transition-all duration-200 overflow-hidden",
-      loadMoreButton:
-        "w-full px-6 py-3 rounded-lg font-medium transition-all bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed",
-    },
-  };
+  const styles = globalStyles["DiscoverPage"];
 
   const s = styles[theme];
 

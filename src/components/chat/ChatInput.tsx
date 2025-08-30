@@ -6,6 +6,7 @@ import { generateSecretKey, getPublicKey } from "nostr-tools";
 import { sha256 } from "@noble/hashes/sha256";
 import { ThemedInput } from "../common/ThemedInput";
 import { GeoRelayDirectory } from "../../utils/geoRelayDirectory";
+import { globalStyles } from "../../styles";
 
 // Extend Window interface to include our custom method
 declare global {
@@ -63,51 +64,7 @@ interface SavedProfile {
   createdAt: number;
 }
 
-const styles = {
-  matrix: {
-    container:
-      "px-4 py-3 bg-black/95 border-t border-[#003300] flex flex-col gap-2 font-mono text-[#00ff00]",
-    channelInfo: "text-[11px] text-[#888] font-mono flex items-center gap-2",
-    channelPill:
-      "text-[#00ff00] bg-[rgba(0,255,0,0.1)] px-1.5 py-0.5 rounded border border-[rgba(0,255,0,0.3)]",
-    username: "text-[#00aaaa]",
-    error:
-      "text-[#ff6666] bg-[rgba(255,0,0,0.1)] px-2 py-1 rounded border border-[rgba(255,0,0,0.3)]",
-    inputWrapper: "flex-1 relative flex flex-col",
-    charCount: "absolute -bottom-4 right-0 text-[10px] font-mono text-[#888]",
-    charCountExceeded: "text-[#ff6666]",
-    sendButton:
-      "px-4 py-2 bg-[#003300] text-[#00ff00] border border-[#00ff00] rounded text-xs font-mono uppercase font-bold transition-colors",
-    sendButtonHover: "hover:bg-[#004400] hover:shadow-[0_0_8px_rgba(0,255,0,0.3)]",
-    sendButtonDisabled: "bg-[#333] text-[#666] border-[#666] cursor-not-allowed",
-    hint: "text-right text-[10px] text-[#666] font-mono mt-1",
-    noProfileContainer:
-      "p-4 bg-black/95 border-t border-[#003300] flex items-center justify-center",
-    noProfileButton:
-      "text-[#00ff00] text-sm font-mono bg-[#001100] border-2 border-[#00ff00] rounded-lg px-5 py-3 cursor-pointer [text-shadow:0_0_10px_rgba(0,255,0,0.5)] shadow-[0_0_15px_rgba(0,255,0,0.3)] transition-all duration-200 hover:bg-[#003300] hover:shadow-[0_0_20px_rgba(0,255,0,0.5)]",
-  },
-  material: {
-    container:
-      "px-4 py-3 bg-white border-t border-gray-200 flex flex-col gap-2 font-sans text-gray-800",
-    channelInfo: "text-[11px] text-gray-500 font-sans flex items-center gap-2",
-    channelPill:
-      "text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200",
-    username: "text-blue-600",
-    error: "text-red-600 bg-red-100 px-2 py-1 rounded border border-red-300",
-    inputWrapper: "flex-1 relative flex flex-col",
-    charCount: "absolute -bottom-4 right-0 text-[10px] text-gray-500",
-    charCountExceeded: "text-red-600",
-    sendButton:
-      "px-4 py-2 bg-blue-600 text-white border border-blue-600 rounded text-xs uppercase font-bold transition-colors",
-    sendButtonHover: "hover:bg-blue-700",
-    sendButtonDisabled: "bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed",
-    hint: "text-right text-[10px] text-gray-500 mt-1",
-    noProfileContainer:
-      "p-4 bg-white border-t border-gray-200 flex items-center justify-center",
-    noProfileButton:
-      "text-blue-600 text-sm font-sans bg-blue-50 border-2 border-blue-600 rounded-lg px-5 py-3 cursor-pointer transition-colors duration-200 hover:bg-blue-100",
-  },
-} as const;
+const styles = globalStyles["ChatInput"];
 
 export function ChatInput({
   currentChannel,

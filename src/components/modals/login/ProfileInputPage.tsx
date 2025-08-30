@@ -2,6 +2,7 @@ import React from "react";
 import { ThemedInput } from "../../common/ThemedInput";
 import { ThemedButton } from "../../common/ThemedButton";
 import { ThemedProgressBar } from "../../chat/ThemedProgressBar";
+import { globalStyles } from "../../../styles";
 
 interface ProfileInputPageProps {
   theme: "matrix" | "material";
@@ -14,18 +15,7 @@ interface ProfileInputPageProps {
   onGenerateKeys: (identityInput?: string) => void;
 }
 
-const styles = {
-  matrix: {
-    historyButton: "px-2 py-1 bg-black text-[#00ff00] border border-[#00ff00] rounded text-xs font-mono",
-    error: "bg-[#330000] border border-[#ff0000] text-[#ff6666] p-2 rounded mb-5 text-sm",
-    progressText: "text-center text-xs text-[#888]",
-  },
-  material: {
-    historyButton: "px-2 py-1 bg-white text-blue-600 border border-blue-600 rounded text-xs",
-    error: "bg-red-50 border border-red-400 text-red-600 p-2 rounded mb-5 text-sm",
-    progressText: "text-center text-xs text-gray-500",
-  },
-} as const;
+const styles = globalStyles["ProfileInputPage"];
 
 export function ProfileInputPage({
   theme,

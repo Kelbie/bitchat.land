@@ -1,21 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
+import { globalStyles } from "../../styles";
 
 interface MarqueeBannerProps {
   theme: "matrix" | "material";
 }
 
-const styles = {
-  matrix: {
-    container: "bg-[#001100] border-[#00aa00] hover:bg-[#002200]",
-    text: "text-[#00ff00] [text-shadow:0_0_5px_rgba(0,255,0,0.5)]",
-    highlight: "text-[#ffaa00] [text-shadow:0_0_5px_rgba(255,170,0,0.5)]",
-  },
-  material: {
-    container: "bg-blue-50 border-blue-300 hover:bg-blue-100",
-    text: "text-blue-700",
-    highlight: "text-indigo-600",
-  },
-} as const;
+  const styles = globalStyles["MarqueeBanner"];
 
 export function MarqueeBanner({ theme }: MarqueeBannerProps) {
   const marqueeRef = useRef<HTMLDivElement>(null);
