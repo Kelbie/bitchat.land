@@ -89,6 +89,11 @@ export const globalStyles = {
       hashTag: "text-gray-500 text-[10px] font-mono",
       replyButton:
         "bg-transparent text-gray-500 rounded text-[10px] font-mono cursor-pointer transition-colors hover:bg-black/20 hover:text-gray-300",
+      title: `text-[${colors.matrix.c2}] font-mono`,
+      subtitle: `text-[${colors.matrix.c3}] font-mono`,
+      countryCard: `bg-[${colors.matrix.c4}] border-[${colors.matrix.c1}] hover:border-[${colors.matrix.c2}] hover:bg-[${colors.matrix.c5}]`,
+      countryCode: `text-[${colors.matrix.c2}]`,
+      countryName: `text-[${colors.matrix.c3}]`,
     },
     material: {
       container:
@@ -105,6 +110,11 @@ export const globalStyles = {
       hashTag: "text-gray-500 text-[10px] font-mono",
       replyButton:
         "bg-transparent text-gray-500 rounded text-[10px] font-mono cursor-pointer transition-colors hover:bg-gray-200 hover:text-gray-700",
+      title: "text-gray-800 font-sans",
+      subtitle: "text-gray-600 font-sans",
+      countryCard: "bg-white border border-gray-200 hover:border-blue-500 hover:bg-blue-50",
+      countryCode: "text-blue-600",
+      countryName: "text-gray-600",
     },
   },
   ThemedProgressBar: {

@@ -82,7 +82,7 @@ const UserItem = React.memo(({
       <div className={t.userInfo}>
         <div 
           className={t.userName}
-          style={{ color: colorForPeerSeed('nostr:'+ user.pubkey, isDark).hex }}
+          style={{ color: colorForPeerSeed('nostr:'+ user.pubkey.toLowerCase(), isDark).hex }}
         >
           {formattedName}
         </div>

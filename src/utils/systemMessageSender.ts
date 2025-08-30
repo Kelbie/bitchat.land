@@ -1,6 +1,6 @@
 import { finalizeEvent, validateEvent, verifyEvent } from 'nostr-tools/pure';
 import { SimplePool } from 'nostr-tools/pool';
-import { DEFAULT_RELAYS } from '../constants/projections';
+
 import { GeoRelayDirectory } from './geoRelayDirectory';
 
 // Helper function to convert hex string to Uint8Array
@@ -52,7 +52,7 @@ export async function sendJoinMessage({
     } else {
       kind = 23333; // Standard channels use kind 23333
       tags.push(["d", channelKey.toLowerCase()]);
-      tags.push(["relay", DEFAULT_RELAYS[0]]);
+      tags.push(["relay", "wss://relay.damus.io"]);
       console.log(`💬 Added group tag: d=${channelKey.toLowerCase()}`);
     }
     
@@ -84,8 +84,8 @@ export async function sendJoinMessage({
     console.log("✅ Join event validated successfully");
     
     // Get relays for publishing
-    let allRelays = [...DEFAULT_RELAYS];
-    console.log(`📡 Starting with ${DEFAULT_RELAYS.length} default relays:`, DEFAULT_RELAYS);
+    let allRelays = ["wss://relay.damus.io"];
+    console.log(`📡 Starting with 1 fallback relay: wss://relay.damus.io`);
     
     // Add georelay relays if available
     try {
@@ -127,7 +127,7 @@ export async function sendJoinMessage({
     // Ensure allRelays is always an array
     if (!Array.isArray(allRelays)) {
       console.error(`❌ allRelays is not an array:`, allRelays);
-      allRelays = DEFAULT_RELAYS; // Fallback to default relays
+      allRelays = ["wss://relay.damus.io"]; // Fallback to single relay
     }
     
     // Create pool and publish

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { SimplePool } from "nostr-tools/pool";
 import { finalizeEvent, validateEvent, verifyEvent } from "nostr-tools/pure";
-import { NOSTR_RELAYS, DEFAULT_RELAYS } from "../../constants/projections";
+import { NOSTR_RELAYS } from "../../constants/projections";
 import { generateSecretKey, getPublicKey } from "nostr-tools";
 import { sha256 } from "@noble/hashes/sha256";
 import { ThemedInput } from "../common/ThemedInput";
@@ -50,7 +50,7 @@ interface ChatInputProps {
   onMessageSent?: (message: string) => void;
   onOpenProfileModal?: () => void;
   prefillText?: string;
-  savedProfile?: any; // Profile data passed from parent
+  savedProfile?: SavedProfile; // Profile data passed from parent
   theme?: "matrix" | "material";
   onInsertImage?: (imageUrl: string) => void;
 }
@@ -194,7 +194,7 @@ export function ChatInput({
     const eventTemplate = {
       kind,
       created_at: Math.floor(Date.now() / 1000),
-      content: `@${savedProfile.username}#${savedProfile.publicKey.slice(-4)} rolled ${result} point(s) via bitchat.land`,
+              content: `@${savedProfile?.username}#${savedProfile?.publicKey.slice(-4)} rolled ${result} point(s) via bitchat.land`,
       tags,
     };
   
@@ -315,7 +315,7 @@ export function ChatInput({
       console.log("✅ Event validated successfully");
   
       // Get ALL available relays for maximum distribution
-      let allRelays = [...DEFAULT_RELAYS]; // Start with default relays
+      let allRelays = ["wss://relay.damus.io"]; // Start with single fallback relay
       
       // Add georelay relays if available
       try {

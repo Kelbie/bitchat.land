@@ -13,14 +13,15 @@ export interface GeoRelayEntry {
 export class GeoRelayDirectory {
   private static instance: GeoRelayDirectory;
   private entries: GeoRelayEntry[] = [];
+  private readyPromise: Promise<void>;
   private readonly cacheFileName = "georelays_cache.csv";
   private readonly lastFetchKey = "georelay.lastFetchAt";
   private readonly remoteURL = "https://raw.githubusercontent.com/permissionlesstech/georelays/refs/heads/main/nostr_relays.csv";
   private readonly fetchInterval = 60 * 60 * 24; // 24h
 
   private constructor() {
-    // Load cached or bundled data asynchronously
-    this.loadLocalEntries().then(entries => {
+    // Initialize ready promise
+    this.readyPromise = this.loadLocalEntries().then(entries => {
       this.entries = entries;
     });
     // Fire-and-forget remote refresh if stale
@@ -32,6 +33,20 @@ export class GeoRelayDirectory {
       GeoRelayDirectory.instance = new GeoRelayDirectory();
     }
     return GeoRelayDirectory.instance;
+  }
+
+  /**
+   * Wait for the directory to be ready (data loaded)
+   */
+  async waitForReady(): Promise<void> {
+    return this.readyPromise;
+  }
+
+  /**
+   * Check if the directory is ready (has data)
+   */
+  isReady(): boolean {
+    return this.entries.length > 0;
   }
 
   /**
@@ -121,7 +136,7 @@ export class GeoRelayDirectory {
           return arr;
         }
       }
-    } catch (error) {
+    } catch {
       console.log("GeoRelayDirectory: bundled CSV not available");
     }
 
@@ -164,8 +179,8 @@ export class GeoRelayDirectory {
    * Mirrors the Swift implementation.
    */
   private decodeCenter(geohash: string): { lat: number; lon: number } {
-    let latInterval: [number, number] = [-90.0, 90.0];
-    let lonInterval: [number, number] = [-180.0, 180.0];
+    const latInterval: [number, number] = [-90.0, 90.0];
+    const lonInterval: [number, number] = [-180.0, 180.0];
 
     let isEven = true;
     for (const ch of geohash.toLowerCase()) {
