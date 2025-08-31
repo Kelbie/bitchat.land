@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal } from '../../common/Modal';
 import { SettingsPage } from './SettingsPage';
+import { NostrEvent } from '../../../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface SettingsModalProps {
   onPowToggle: (enabled: boolean) => void;
   powDifficulty: number;
   onPowDifficultyChange: (difficulty: number) => void;
+  recentEvents: NostrEvent[];
+  allStoredEvents: NostrEvent[];
 }
 
 export function SettingsModal({ 
@@ -21,7 +24,9 @@ export function SettingsModal({
   powEnabled,
   onPowToggle,
   powDifficulty,
-  onPowDifficultyChange
+  onPowDifficultyChange,
+  recentEvents,
+  allStoredEvents
 }: SettingsModalProps) {
   return (
     <Modal
@@ -38,6 +43,8 @@ export function SettingsModal({
         onPowToggle={onPowToggle}
         powDifficulty={powDifficulty}
         onPowDifficultyChange={onPowDifficultyChange}
+        recentEvents={recentEvents}
+        allStoredEvents={allStoredEvents}
       />
     </Modal>
   );

@@ -4,6 +4,7 @@ import { GeohashService } from "../../services/geohashService";
 import { CountryService } from "../../services/countryService";
 import { RadioService } from "../../services/radioService";
 import { StationWithDistance } from "../../types/radio";
+import { Slider } from "../common/Slider";
 
 interface RadioPageProps {
   searchText: string;
@@ -336,33 +337,33 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
 
   const t =
     theme === "matrix"
-      ? {
-          container: "min-h-screen bg-black text-[#00ff00] p-4",
+              ? {
+          container: "min-h-screen bg-gray-900 text-green-400 p-4",
           header: "text-2xl font-bold mb-6 text-center",
-          searchPrompt: "text-center text-[#00ff00]/70 mb-8",
+          searchPrompt: "text-center text-green-400/70 mb-8",
           stationGrid:
             "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-24",
           stationCard:
-            "bg-black/80 border border-[#00ff00]/30 rounded-lg p-4 hover:border-[#00ff00] transition-colors cursor-pointer",
+            "bg-gray-900/80 border border-green-400/30 rounded-lg p-4 hover:border-green-400 transition-colors cursor-pointer",
           stationCardActive:
-            "bg-black/80 border-2 border-[#00ff00] rounded-lg p-4",
-          stationName: "text-[#00ff00] font-bold text-lg mb-2",
-          stationInfo: "text-[#00ff00]/70 text-sm mb-2",
-          stationTags: "text-[#00ff00]/50 text-xs",
+            "bg-gray-900/80 border-2 border-green-400 rounded-lg p-4",
+          stationName: "text-green-400 font-bold text-lg mb-2",
+          stationInfo: "text-green-400/70 text-sm mb-2",
+          stationTags: "text-green-400/50 text-xs",
           playerBar:
-            "fixed bottom-0 left-0 right-0 bg-black/95 border-t border-[#00ff00] p-4 backdrop-blur",
+            "fixed bottom-0 left-0 right-0 bg-gray-900/95 border-t border-green-400 p-4 backdrop-blur",
           playerContent: "mx-auto flex items-center justify-between",
           playerInfo: "flex-1 min-w-0",
           playerControls: "flex items-center gap-3 flex-1 grow",
           volumeControls: "flex items-center gap-2",
           button:
-            "p-3 rounded border border-[#00ff00] text-[#00ff00] hover:bg-[#00ff00]/20 transition-colors",
+            "p-3 rounded border border-green-400 text-green-400 hover:bg-green-400/20 transition-colors",
           buttonActive:
-            "p-3 rounded border border-[#00ff00] text-black bg-[#00ff00] hover:bg-[#00ff00]/80 transition-colors",
+            "p-3 rounded border border-green-400 text-gray-900 bg-green-400 hover:bg-green-400/80 transition-colors",
           volumeSlider:
-            "w-20 h-2 bg-[#00ff00]/30 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#00ff00] [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#00ff00] [&::-moz-range-thumb]:cursor-pointer",
+            "w-20 h-2 bg-green-400/30 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-green-400 [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-green-400 [&::-moz-range-thumb]:cursor-pointer",
           error: "text-red-400 text-center p-4",
-          loading: "text-[#00ff00] text-center p-8",
+          loading: "text-green-400 text-center p-8",
         }
       : {
           container: "min-h-screen bg-gray-50 text-gray-800 p-4",
@@ -430,7 +431,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className={`text-lg font-semibold ${
-                theme === "matrix" ? "text-[#00ff00]" : "text-gray-800"
+                theme === "matrix" ? "text-green-400" : "text-gray-800"
               }`}>
                 Filter by Tags
               </h3>
@@ -439,7 +440,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                   onClick={clearTagFilters}
                   className={`text-sm px-3 py-1 rounded-full border ${
                     theme === "matrix"
-                      ? "text-[#00ff00]/70 border-[#00ff00]/30 hover:border-[#00ff00] hover:text-[#00ff00]"
+                      ? "text-green-400/70 border-green-400/30 hover:border-green-400 hover:text-green-400"
                       : "text-gray-600 border-gray-300 hover:border-gray-400 hover:text-gray-800"
                   } transition-colors`}
                 >
@@ -450,7 +451,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
             
             {/* Tag popularity summary */}
             <div className={`mb-3 text-sm ${
-              theme === "matrix" ? "text-[#00ff00]/70" : "text-gray-600"
+              theme === "matrix" ? "text-green-400/70" : "text-gray-600"
             }`}>
               <span>Tags ordered by popularity • </span>
               <span>Total votes: {Object.values(tagPopularity).reduce((sum, tag) => sum + tag.totalVotes, 0).toLocaleString()}</span>
@@ -472,10 +473,10 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                           className={`px-3 py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 flex items-center gap-2 ${
                             isSelected
                               ? theme === "matrix"
-                                ? "bg-[#00ff00] text-black border border-[#00ff00]"
+                                ? "bg-green-400 text-gray-900 border border-green-400"
                                 : "bg-blue-600 text-white border border-blue-600"
                               : theme === "matrix"
-                              ? "bg-black/50 text-[#00ff00]/70 border border-[#00ff00]/30 hover:border-[#00ff00]/50 hover:text-[#00ff00]"
+                              ? "bg-gray-900/50 text-green-400/70 border border-green-400/30 hover:border-green-400/50 hover:text-green-400"
                               : "bg-gray-100 text-gray-700 border border-gray-300 hover:border-gray-400 hover:text-gray-900"
                           }`}
                           title={`${tagData.totalVotes} total votes • ${tagData.stationCount} stations`}
@@ -484,10 +485,10 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                           <div className={`text-xs px-1.5 py-0.5 rounded-full ${
                             isSelected
                               ? theme === "matrix"
-                                ? "bg-black/20 text-black"
+                                ? "bg-gray-900/20 text-gray-900"
                                 : "bg-white/20 text-white"
                               : theme === "matrix"
-                              ? "bg-[#00ff00]/20 text-[#00ff00]"
+                              ? "bg-green-400/20 text-green-400"
                               : "bg-gray-200 text-gray-600"
                           }`}>
                             {tagData.totalVotes}
@@ -508,10 +509,10 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                           className={`px-3 py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 flex items-center gap-2 ${
                             isSelected
                               ? theme === "matrix"
-                                ? "bg-[#00ff00] text-black border border-[#00ff00]"
+                                ? "bg-green-400 text-gray-900 border border-green-400"
                                 : "bg-blue-600 text-white border border-blue-600"
                               : theme === "matrix"
-                              ? "bg-black/50 text-[#00ff00]/70 border border-[#00ff00]/30 hover:border-[#00ff00]/50 hover:text-[#00ff00]"
+                              ? "bg-gray-900/50 text-green-400/70 border border-green-400/30 hover:border-green-400/50 hover:text-green-400"
                               : "bg-gray-100 text-gray-700 border border-gray-300 hover:border-gray-400 hover:text-gray-900"
                           }`}
                           title={`${tagData.totalVotes} total votes • ${tagData.stationCount} stations`}
@@ -520,10 +521,10 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                           <div className={`text-xs px-1.5 py-0.5 rounded-full ${
                             isSelected
                               ? theme === "matrix"
-                                ? "bg-black/20 text-black"
+                                ? "bg-gray-900/20 text-gray-900"
                                 : "bg-white/20 text-white"
                               : theme === "matrix"
-                              ? "bg-[#00ff00]/20 text-[#00ff00]"
+                              ? "bg-green-400/20 text-green-400"
                               : "bg-gray-200 text-gray-600"
                           }`}>
                             {tagData.totalVotes}
@@ -540,18 +541,18 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
             <div className="mb-2 mt-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className={`text-lg font-semibold ${
-                  theme === "matrix" ? "text-[#00ff00]" : "text-gray-800"
+                  theme === "matrix" ? "text-green-400" : "text-gray-800"
                 }`}>
                   Filter by Countries
                 </h3>
                 {selectedCountries.size > 0 && (
                   <button
                     onClick={clearCountryFilters}
-                    className={`text-sm px-3 py-1 rounded-full border ${
-                      theme === "matrix"
-                        ? "text-[#00ff00]/70 border-[#00ff00]/30 hover:border-[#00ff00] hover:text-[#00ff00]"
-                        : "text-gray-600 border-gray-300 hover:border-gray-400 hover:text-gray-800"
-                    } transition-colors`}
+                                      className={`text-sm px-3 py-1 rounded-full border ${
+                    theme === "matrix"
+                      ? "text-green-400/70 border-green-400/30 hover:border-green-400 hover:text-green-400"
+                      : "text-gray-600 border-gray-300 hover:border-gray-400 hover:text-gray-800"
+                  } transition-colors`}
                   >
                     Clear All
                   </button>
@@ -570,10 +571,10 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                         className={`px-3 py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 ${
                           isSelected
                             ? theme === "matrix"
-                              ? "bg-[#00ff00] text-black border border-[#00ff00]"
+                              ? "bg-green-400 text-gray-900 border border-green-400"
                               : "bg-blue-600 text-white border border-blue-600"
                             : theme === "matrix"
-                            ? "bg-black/50 text-[#00ff00]/70 border border-[#00ff00]/30 hover:border-[#00ff00]/50 hover:text-[#00ff00]"
+                            ? "bg-gray-900/50 text-green-400/70 border border-green-400/30 hover:border-green-400/50 hover:text-green-400"
                             : "bg-gray-100 text-gray-700 border border-gray-300 hover:border-gray-400 hover:text-gray-900"
                         }`}
                       >
@@ -588,7 +589,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
             
             {
               <div className={`mt-3 text-sm ${
-                theme === "matrix" ? "text-[#00ff00]/70" : "text-gray-600"
+                theme === "matrix" ? "text-green-400/70" : "text-gray-600"
               }`}>
                 Showing {filteredStations.length} of {stations.length} stations
               </div>
@@ -608,12 +609,12 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                   onClick={() => handleStationPlay(station)}
                   className={`flex items-center gap-4 p-3 rounded-md ${
                     theme === "matrix"
-                      ? "hover:bg-[#00ff00]/10"
+                      ? "hover:bg-green-400/10"
                       : "hover:bg-gray-100"
                   } cursor-pointer group transition-colors ${
                     currentStation?.id === station.id
                       ? theme === "matrix"
-                        ? "bg-[#00ff00]/20"
+                        ? "bg-green-400/20"
                         : "bg-blue-50"
                       : ""
                   }`}
@@ -626,14 +627,14 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                         <div
                           className={`w-1 h-3 ${
                             theme === "matrix"
-                              ? "bg-[#00ff00]"
+                              ? "bg-green-400"
                               : "bg-green-500"
                           } animate-pulse`}
                         ></div>
                         <div
                           className={`w-1 h-4 ${
                             theme === "matrix"
-                              ? "bg-[#00ff00]"
+                              ? "bg-green-400"
                               : "bg-green-500"
                           } animate-pulse`}
                           style={{ animationDelay: "0.2s" }}
@@ -641,7 +642,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                         <div
                           className={`w-1 h-3 ${
                             theme === "matrix"
-                              ? "bg-[#00ff00]"
+                              ? "bg-green-400"
                               : "bg-green-500"
                           } animate-pulse`}
                           style={{ animationDelay: "0.4s" }}
@@ -651,7 +652,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                       <span
                         className={`text-sm ${
                           theme === "matrix"
-                            ? "text-[#00ff00]/70"
+                            ? "text-green-400/70"
                             : "text-gray-500"
                         } group-hover:hidden`}
                       >
@@ -661,7 +662,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                     <svg
                       className={`w-4 h-4 ${
                         theme === "matrix"
-                          ? "text-[#00ff00]"
+                          ? "text-green-400"
                           : "text-gray-800"
                       } hidden group-hover:block`}
                       viewBox="0 0 24 24"
@@ -686,13 +687,13 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                       />
                     ) : null}
                     {/* Fallback icon when no favicon or favicon fails */}
-                    <div className={`w-12 h-12 rounded-md flex items-center justify-center ${
-                      station.favicon ? 'hidden' : ''
-                    } ${
-                      theme === "matrix"
-                        ? "bg-[#00ff00]/10 text-[#00ff00]"
-                        : "bg-gray-100 text-gray-400"
-                    }`}>
+                                            <div className={`w-12 h-12 rounded-md flex items-center justify-center ${
+                          station.favicon ? 'hidden' : ''
+                        } ${
+                          theme === "matrix"
+                            ? "bg-green-400/10 text-green-400"
+                            : "bg-gray-100 text-gray-400"
+                        }`}>
                       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
                       </svg>
@@ -702,47 +703,47 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                   {/* Station Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <div
-                        className={`font-medium truncate ${
-                          currentStation?.id === station.id
+                                              <div
+                          className={`font-medium truncate ${
+                            currentStation?.id === station.id
+                              ? theme === "matrix"
+                                ? "text-green-400"
+                                : "text-green-600"
+                              : theme === "matrix"
+                              ? "text-green-400"
+                              : "text-gray-900"
+                          }`}
+                        >
+                          {station.name}
+                        </div>
+                        {/* Online Status Indicator */}
+                                                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                          station.lastCheckOk
                             ? theme === "matrix"
-                              ? "text-[#00ff00]"
-                              : "text-green-600"
-                            : theme === "matrix"
-                            ? "text-[#00ff00]"
-                            : "text-gray-900"
-                        }`}
-                      >
-                        {station.name}
-                      </div>
-                      {/* Online Status Indicator */}
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                        station.lastCheckOk
-                          ? theme === "matrix"
-                            ? "bg-[#00ff00]"
-                            : "bg-green-500"
-                          : "bg-red-500"
-                      }`} 
-                      title={station.lastCheckOk ? "Online" : "Offline"}
-                      />
+                              ? "bg-green-400"
+                              : "bg-green-500"
+                            : "bg-red-500"
+                        }`} 
+                        title={station.lastCheckOk ? "Online" : "Offline"}
+                        />
                     </div>
                     
                     {/* Location and Tags */}
-                    <div
-                      className={`text-sm truncate ${
-                        theme === "matrix"
-                          ? "text-[#00ff00]/70"
-                          : "text-gray-600"
-                      }`}
-                    >
-                      {station.country}
-                      {station.state && station.state !== station.country && (
-                        <span>, {station.state}</span>
-                      )}
-                      {station.tags && station.tags.length > 0 && (
-                        <span> • {station.tags.slice(0, 2).join(", ")}</span>
-                      )}
-                    </div>
+                                      <div
+                    className={`text-sm truncate ${
+                      theme === "matrix"
+                        ? "text-green-400/70"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    {station.country}
+                    {station.state && station.state !== station.country && (
+                      <span>, {station.state}</span>
+                    )}
+                    {station.tags && station.tags.length > 0 && (
+                      <span> • {station.tags.slice(0, 2).join(", ")}</span>
+                    )}
+                  </div>
 
                     {/* Technical Info */}
                     <div className="flex items-center gap-3 mt-1">
@@ -750,7 +751,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                       {station.codec && (
                         <span className={`text-xs px-2 py-1 rounded ${
                           theme === "matrix"
-                            ? "bg-[#00ff00]/10 text-[#00ff00]/80"
+                            ? "bg-green-400/10 text-green-400/80"
                             : "bg-blue-50 text-blue-600"
                         }`}>
                           {station.codec}
@@ -762,7 +763,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                       {station.language && station.language.length > 0 && (
                         <span className={`text-xs px-2 py-1 rounded ${
                           theme === "matrix"
-                            ? "bg-[#00ff00]/10 text-[#00ff00]/80"
+                            ? "bg-green-400/10 text-green-400/80"
                             : "bg-gray-100 text-gray-600"
                         }`}>
                           {station.language[0]}
@@ -777,7 +778,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                     <div
                       className={`text-sm ${
                         theme === "matrix"
-                          ? "text-[#00ff00]/70"
+                          ? "text-green-400/70"
                           : "text-gray-500"
                       }`}
                     >
@@ -790,7 +791,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                       {station.votes > 0 && (
                         <span className={`text-xs flex items-center gap-1 ${
                           theme === "matrix"
-                            ? "text-[#00ff00]/70"
+                            ? "text-green-400/70"
                             : "text-gray-500"
                         }`}>
                           <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
@@ -804,7 +805,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                       {station.clickCount > 0 && (
                         <span className={`text-xs flex items-center gap-1 ${
                           theme === "matrix"
-                            ? "text-[#00ff00]/70"
+                            ? "text-green-400/70"
                             : "text-gray-500"
                         }`}>
                           <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
@@ -819,7 +820,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                         <span className={`text-xs flex items-center gap-1 ${
                           station.clickTrend > 0
                             ? theme === "matrix"
-                              ? "text-[#00ff00]"
+                              ? "text-green-400"
                               : "text-green-600"
                             : theme === "matrix"
                               ? "text-red-400"
@@ -848,7 +849,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
         {/* Empty state when no stations - expand to fill space */}
         {!isLoading && !error && stations.length === 0 && (
           <div className="flex-1 flex items-center justify-center">
-            <div className={`text-center ${theme === "matrix" ? "text-[#00ff00]/50" : "text-gray-400"}`}>
+            <div className={`text-center ${theme === "matrix" ? "text-green-400/50" : "text-gray-400"}`}>
               <svg
                 width="48"
                 height="48"
@@ -870,7 +871,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
         <div
           className={`z-50 fixed bottom-0 left-0 right-0 ${
             theme === "matrix"
-              ? "bg-black/95 border-t border-[#00ff00]/30"
+              ? "bg-gray-900/95 border-t border-green-400/30"
               : "bg-white border-t border-gray-200"
           } p-4 backdrop-blur`}
         >
@@ -896,7 +897,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                   currentStation?.favicon ? 'hidden' : ''
                 } ${
                   theme === "matrix"
-                    ? "bg-[#00ff00]/20 border border-[#00ff00]/30 text-[#00ff00]/50"
+                    ? "bg-green-400/20 border border-green-400/30 text-green-400/50"
                     : "bg-gray-200 text-gray-400"
                 }`}>
                   <svg
@@ -916,7 +917,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                   <>
                     <div
                       className={`font-medium truncate ${
-                        theme === "matrix" ? "text-[#00ff00]" : "text-gray-900"
+                        theme === "matrix" ? "text-green-400" : "text-gray-900"
                       }`}
                     >
                       {currentStation.name}
@@ -924,7 +925,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                     <div
                       className={`text-sm truncate ${
                         theme === "matrix"
-                          ? "text-[#00ff00]/70"
+                          ? "text-green-400/70"
                           : "text-gray-600"
                       }`}
                     >
@@ -934,7 +935,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                 ) : (
                   <div
                     className={`text-sm ${
-                      theme === "matrix" ? "text-[#00ff00]/70" : "text-gray-600"
+                      theme === "matrix" ? "text-green-400/70" : "text-gray-600"
                     }`}
                   >
                     Select a station to play
@@ -946,7 +947,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
               <button
                 className={`p-2 ${
                   theme === "matrix"
-                    ? "text-[#00ff00]/70 hover:text-[#00ff00]"
+                    ? "text-green-400/70 hover:text-green-400"
                     : "text-gray-500 hover:text-gray-700"
                 } transition-colors`}
               >
@@ -990,7 +991,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                   onClick={handlePrevious}
                   className={`${
                     theme === "matrix"
-                      ? "text-[#00ff00]/70 hover:text-[#00ff00]"
+                      ? "text-green-400/70 hover:text-green-400"
                       : "text-gray-500 hover:text-gray-700"
                   } transition-colors`}
                 >
@@ -1009,7 +1010,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                   onClick={handlePlayPause}
                   className={`w-8 h-8 rounded-full flex items-center justify-center ${
                     theme === "matrix"
-                      ? "bg-[#00ff00] text-black hover:bg-[#00ff00]/80"
+                      ? "bg-green-400 text-gray-900 hover:bg-green-400/80"
                       : "bg-gray-900 text-white hover:bg-black"
                   } transition-colors`}
                 >
@@ -1039,7 +1040,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                   onClick={handleNext}
                   className={`${
                     theme === "matrix"
-                      ? "text-[#00ff00]/70 hover:text-[#00ff00]"
+                      ? "text-green-400/70 hover:text-green-400"
                       : "text-gray-500 hover:text-gray-700"
                   } transition-colors`}
                 >
@@ -1076,14 +1077,14 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
               <div className="flex items-center gap-2 w-full max-w-md">
                 <span
                   className={`text-xs ${
-                    theme === "matrix" ? "text-[#00ff00]/70" : "text-gray-500"
+                    theme === "matrix" ? "text-green-400/70" : "text-gray-500"
                   } w-10 text-right`}
                 >
                   {audioPlayer.formatTime(audioPlayer.currentTime)}
                 </span>
                 <div
                   className={`flex-1 h-1 ${
-                    theme === "matrix" ? "bg-[#00ff00]/30" : "bg-gray-300"
+                    theme === "matrix" ? "bg-green-400/30" : "bg-gray-300"
                   } rounded-full cursor-pointer relative group`}
                   onClick={(e) => {
                     if (audioPlayer.duration > 0) {
@@ -1104,7 +1105,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                   </div>
                   <div
                     className={`h-full ${
-                      theme === "matrix" ? "bg-[#00ff00]" : "bg-gray-600"
+                      theme === "matrix" ? "bg-green-400" : "bg-gray-600"
                     } rounded-full transition-all duration-100`}
                     style={{
                       width: audioPlayer.duration > 0 
@@ -1116,7 +1117,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                   {audioPlayer.duration > 0 && (
                     <div
                       className={`absolute top-1/2 transform -translate-y-1/2 w-3 h-3 ${
-                        theme === "matrix" ? "bg-[#00ff00]" : "bg-gray-600"
+                        theme === "matrix" ? "bg-green-400" : "bg-gray-600"
                       } rounded-full shadow-lg transition-all duration-100`}
                       style={{
                         left: `${(audioPlayer.currentTime / audioPlayer.duration) * 100}%`,
@@ -1127,7 +1128,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                 </div>
                 <span
                   className={`text-xs ${
-                    theme === "matrix" ? "text-[#00ff00]/70" : "text-gray-500"
+                    theme === "matrix" ? "text-green-400/70" : "text-gray-500"
                   } w-10`}
                 >
                   {audioPlayer.formatTime(audioPlayer.duration)}
@@ -1196,7 +1197,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                 <button
                   className={`${
                     theme === "matrix"
-                      ? "text-[#00ff00]/70 hover:text-[#00ff00]"
+                      ? "text-green-400/70 hover:text-green-400"
                       : "text-gray-500 hover:text-gray-700"
                   } transition-colors`}
                 >
@@ -1210,19 +1211,18 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
                   </svg>
                 </button>
 
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
+                <Slider
                   value={audioPlayer.volume * 100}
-                  onChange={(e) =>
-                    audioPlayer.setVolume(parseInt(e.target.value) / 100)
-                  }
-                  className={`w-20 h-1 rounded-lg appearance-none cursor-pointer ${
-                    theme === "matrix"
-                      ? "bg-[#00ff00]/30 [&::-webkit-slider-thumb]:bg-[#00ff00]"
-                      : "bg-gray-300 [&::-webkit-slider-thumb]:bg-gray-600"
-                  } [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer`}
+                  min={0}
+                  max={100}
+                  onChange={(value) => audioPlayer.setVolume(value / 100)}
+                  theme={theme}
+                  showDots={false}
+                  showValue={false}
+                  className="w-20"
+                  trackColor={theme === "matrix" ? "bg-green-400/30" : "bg-gray-300"}
+                  fillColor={theme === "matrix" ? "bg-green-400" : "bg-blue-600"}
+                  indicatorColor={theme === "matrix" ? "bg-green-400" : "bg-blue-600"}
                 />
               </div>
             </div>

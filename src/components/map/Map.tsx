@@ -121,10 +121,10 @@ export function Map({
           height="20"
           patternUnits="userSpaceOnUse"
         >
-          <rect width="20" height="20" fill="#000000" />
+          <rect width="20" height="20" fill="rgb(17 24 39)" />
           <path
             d="M 0 10 L 20 10 M 10 0 L 10 20"
-            stroke="#003300"
+            stroke="rgb(6 78 59)"
             strokeWidth="0.5"
             opacity="0.3"
           />

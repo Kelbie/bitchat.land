@@ -944,6 +944,8 @@ export default function App({
                   savedProfile={savedProfile}
                   theme={theme}
                   onInsertImage={handleInsertImage}
+                  powEnabled={settings.powEnabled}
+                  powDifficulty={settings.powDifficulty}
                 />
               </div>
 
@@ -1046,6 +1048,8 @@ export default function App({
         onPowToggle={(enabled) => updateSettings({ powEnabled: enabled })}
         powDifficulty={settings.powDifficulty}
         onPowDifficultyChange={(difficulty) => updateSettings({ powDifficulty: difficulty })}
+        recentEvents={recentEvents}
+        allStoredEvents={allStoredEvents}
       />
 
       {/* Favorites Modal */}

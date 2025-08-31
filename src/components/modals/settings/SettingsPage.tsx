@@ -1,4 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { Slider } from '../../common/Slider';
+import { PowDistributionGraph } from '../../common/PowDistributionGraph';
+import { NostrEvent } from '../../../types';
+import { getPow } from 'nostr-tools/nip13';
 
 interface SettingsPageProps {
   theme: "matrix" | "material";
@@ -7,6 +11,8 @@ interface SettingsPageProps {
   onPowToggle: (enabled: boolean) => void;
   powDifficulty: number;
   onPowDifficultyChange: (difficulty: number) => void;
+  recentEvents: NostrEvent[];
+  allStoredEvents: NostrEvent[];
 }
 
 export function SettingsPage({
@@ -15,8 +21,36 @@ export function SettingsPage({
   powEnabled,
   onPowToggle,
   powDifficulty,
-  onPowDifficultyChange
+  onPowDifficultyChange,
+  recentEvents,
+  allStoredEvents
 }: SettingsPageProps) {
+  // Calculate POW difficulty distribution from recent events
+  const powDistribution = useMemo(() => {
+    // Use recent events if available, otherwise fall back to all stored events
+    const eventsToAnalyze = recentEvents.length > 0 ? recentEvents : allStoredEvents;
+    
+    if (eventsToAnalyze.length === 0) {
+      return []; // Return empty array if no events
+    }
+    
+    // Calculate POW difficulty for each event
+    const powValues: number[] = [];
+    eventsToAnalyze.forEach(event => {
+      try {
+        const pow = getPow(event.id);
+        if (pow > 0) { // Only include events with valid POW
+          powValues.push(pow);
+        }
+      } catch (error) {
+        // Skip events where POW calculation fails
+        console.warn('Failed to calculate POW for event:', event.id, error);
+      }
+    });
+    
+    return powValues;
+  }, [recentEvents, allStoredEvents]);
+
   const getDifficultyInfo = (difficulty: number) => {
     const hashAttempts = Math.pow(2, difficulty);
     let description = '';
@@ -113,95 +147,30 @@ export function SettingsPage({
               difficulty: {powDifficulty} bits (~{Math.pow(2, powDifficulty - 8) < 1 ? '< 1' : Math.pow(2, powDifficulty - 8)} second{Math.pow(2, powDifficulty - 8) === 1 ? '' : 's'})
             </div>
             
-            {/* Difficulty Slider */}
-            <div className="relative">
-              {/* Slider Track */}
-              <div className="relative h-4 bg-gray-800 rounded-full">
-                {/* Green filled section */}
-                <div 
-                  className="h-full bg-green-400 rounded-l-full"
-                  style={{ width: `${(powDifficulty / 40) * 100}%` }}
-                />
-                
-                {/* All dots evenly spaced across entire slider */}
-                <div className="absolute inset-0 flex justify-between items-center px-2">
-                  {Array.from({ length: 20 }, (_, i) => {
-                    const dotPosition = (i / 19) * 100; // Position from 0% to 100%
-                    const currentPosition = (powDifficulty / 40) * 100;
-                    const isInGreenSection = dotPosition <= currentPosition;
-                    
-                    return (
-                      <div 
-                        key={i}
-                        className={`w-1 h-1 rounded-full ${
-                          isInGreenSection ? 'bg-black' : 'bg-green-400'
-                        }`}
-                      />
-                    );
-                  })}
-                </div>
-                
-                {/* Vertical Position Indicator Bar */}
-                <div 
-                  className="absolute -top-2 -bottom-2 w-1 bg-green-400 rounded-full pointer-events-none"
-                  style={{ 
-                    left: `${(powDifficulty / 40) * 100}%`, 
-                    transform: 'translateX(-50%)',
-                    boxShadow: '0 0 0 4px rgb(17, 24, 39)'
-                  }}
-                />
-                
-                {/* Invisible clickable area for interaction */}
-                <div 
-                  className="absolute inset-0 cursor-pointer"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    const handleMouseMove = (moveEvent: MouseEvent) => {
-                      moveEvent.preventDefault();
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      if (rect) {
-                        const x = moveEvent.clientX - rect.left;
-                        const percentage = Math.max(0, Math.min(1, x / rect.width));
-                        const newDifficulty = Math.round(percentage * 40);
-                        const clampedDifficulty = Math.max(1, Math.min(40, newDifficulty));
-                        onPowDifficultyChange(clampedDifficulty);
-                      }
-                    };
-                    
-                    const handleMouseUp = () => {
-                      document.removeEventListener('mousemove', handleMouseMove);
-                      document.removeEventListener('mouseup', handleMouseUp);
-                    };
-                    
-                    document.addEventListener('mousemove', handleMouseMove);
-                    document.addEventListener('mouseup', handleMouseUp);
-                  }}
-                  onClick={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const percentage = Math.max(0, Math.min(1, x / rect.width));
-                    const newDifficulty = Math.round(percentage * 40);
-                    const clampedDifficulty = Math.max(1, Math.min(40, newDifficulty));
-                    onPowDifficultyChange(clampedDifficulty);
-                  }}
-                />
+            {/* POW Distribution Graph */}
+            <PowDistributionGraph
+              powData={powDistribution.length > 0 ? powDistribution : [12, 12, 12, 16, 16, 20, 20, 20, 24, 24, 28, 32, 8, 8, 8, 8, 16, 16, 20, 24, 28, 32, 36, 40]}
+              theme={theme}
+              height={50}
+            />
+            
+            {/* POW Analysis Info */}
+            {powDistribution.length > 0 && (
+              <div className="text-xs text-gray-400">
+                Analyzed {powDistribution.length} events with valid POW from {recentEvents.length > 0 ? 'recent' : 'stored'} events
               </div>
-              
-              {/* Clickable track for easier interaction */}
-              <div 
-                className="absolute inset-0 cursor-pointer"
-                onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const percentage = Math.max(0, Math.min(1, x / rect.width));
-                  const newDifficulty = Math.round(percentage * 40);
-                  const clampedDifficulty = Math.max(1, Math.min(40, newDifficulty));
-                  onPowDifficultyChange(clampedDifficulty);
-                }}
-              />
-            </div>
+            )}
+            
+            {/* Difficulty Slider */}
+            <Slider
+              value={powDifficulty}
+              min={1}
+              max={40}
+              onChange={onPowDifficultyChange}
+              theme={theme}
+              showDots={true}
+              showValue={false}
+            />
             
             {/* Difficulty Info */}
             <div className="text-sm text-green-400 space-y-1">

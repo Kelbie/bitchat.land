@@ -53,6 +53,8 @@ interface ChatInputProps {
   savedProfile?: SavedProfile; // Profile data passed from parent
   theme?: "matrix" | "material";
   onInsertImage?: (imageUrl: string) => void;
+  powEnabled?: boolean;
+  powDifficulty?: number;
 }
 
 interface SavedProfile {
@@ -62,6 +64,31 @@ interface SavedProfile {
   npub: string;
   nsec: string;
   createdAt: number;
+}
+
+interface EventTemplate {
+  kind: number;
+  created_at: number;
+  content: string;
+  tags: string[][];
+}
+
+interface PowWorkerMessage {
+  type: 'POW_COMPLETE' | 'POW_ERROR' | 'POW_STOPPED';
+  data: {
+    success?: boolean;
+    minedEvent?: {
+      id: string;
+      kind: number;
+      created_at: number;
+      content: string;
+      tags: string[][];
+    };
+    difficulty?: number;
+    eventId?: string;
+    error?: string;
+    message?: string;
+  };
 }
 
 const styles = globalStyles["ChatInput"];
@@ -74,12 +101,17 @@ export function ChatInput({
   savedProfile,
   theme = "matrix",
   onInsertImage,
+  powEnabled = true,
+  powDifficulty = 8,
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isMiningPow, setIsMiningPow] = useState(false);
   const [error, setError] = useState("");
+  const [eventTemplateForPow, setEventTemplateForPow] = useState<EventTemplate | null>(null);
   const lastPrefillRef = useRef<string>("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const powWorkerRef = useRef<Worker | null>(null);
 
   // Debug: Log when ref is set
   useEffect(() => {
@@ -158,6 +190,237 @@ export function ChatInput({
       });
     }
   }, [message]);
+
+  // Initialize POW worker
+  useEffect(() => {
+    // Create worker with ES module support
+    powWorkerRef.current = new Worker(
+      new URL('../../workers/powWorker.js', import.meta.url),
+      { type: 'module' }
+    );
+
+    // Handle messages from worker
+    powWorkerRef.current.onmessage = function(e) {
+      const { type, data } = e.data as PowWorkerMessage;
+      
+      switch (type) {
+        case 'POW_COMPLETE':
+          handlePowComplete(data);
+          break;
+        case 'POW_ERROR':
+          handlePowError(data);
+          break;
+        case 'POW_STOPPED':
+          handlePowStopped(data);
+          break;
+        default:
+          console.log('Unknown worker message type:', type);
+      }
+    };
+
+    // Handle worker errors
+    powWorkerRef.current.onerror = function(error) {
+      console.error('POW Worker error:', error);
+      setIsMiningPow(false);
+      setError('POW worker error: ' + error.message);
+    };
+
+    // Cleanup worker on unmount
+    return () => {
+      if (powWorkerRef.current) {
+        powWorkerRef.current.terminate();
+      }
+    };
+  }, []);
+
+  // POW message handlers
+  const handlePowComplete = (data: PowWorkerMessage['data']) => {
+    console.log('✅ POW completed successfully:', data);
+    setIsMiningPow(false);
+    // Continue with message sending using the mined event
+    if (data.minedEvent) {
+      continueWithMinedEvent(data.minedEvent);
+    }
+  };
+
+  const handlePowError = (data: PowWorkerMessage['data']) => {
+    console.error('❌ POW failed:', data.error);
+    setIsMiningPow(false);
+    setError(`POW mining failed: ${data.error}`);
+    // Continue without POW
+    continueWithoutPow();
+  };
+
+  const handlePowStopped = (data: PowWorkerMessage['data']) => {
+    console.log('⏹️ POW stopped:', data.message);
+    setIsMiningPow(false);
+    // Continue without POW
+    continueWithoutPow();
+  };
+
+  // Continue functions for POW flow
+  const continueWithMinedEvent = (minedEvent: NonNullable<PowWorkerMessage['data']['minedEvent']>) => {
+    console.log('🚀 Continuing with mined event:', minedEvent.id);
+    
+    // Create event template from mined event
+    const eventWithPow: EventTemplate = {
+      kind: minedEvent.kind,
+      created_at: minedEvent.created_at,
+      content: minedEvent.content,
+      tags: minedEvent.tags,
+    };
+    
+    // Continue with the normal flow
+    continueWithEvent(eventWithPow);
+  };
+
+  const continueWithoutPow = () => {
+    console.log('🚀 Continuing without POW');
+    // Continue with the original event template
+    if (eventTemplateForPow) {
+      continueWithEvent(eventTemplateForPow);
+    } else {
+      // Create a basic event template if none exists
+      const basicTemplate: EventTemplate = {
+        kind: 20000, // Default to geohash
+        created_at: Math.floor(Date.now() / 1000),
+        content: message.trim(),
+        tags: [["n", savedProfile?.username || "Anonymous"], ["client", "bitchat.land"]]
+      };
+      continueWithEvent(basicTemplate);
+    }
+  };
+
+  const continueWithEvent = (eventToUse: EventTemplate) => {
+    if (!savedProfile) {
+      setError("No profile found");
+      return;
+    }
+    
+    // Sign the event
+    const signedEvent = finalizeEvent(eventToUse, hexToBytes(savedProfile.privateKey));
+    console.log("✍️ Signed event:", signedEvent);
+    
+    // Continue with publishing
+    publishEvent(signedEvent);
+  };
+
+  const publishEvent = (signedEvent: ReturnType<typeof finalizeEvent>) => {
+    // Get ALL available relays for maximum distribution
+    let allRelays = ["wss://relay.damus.io"]; // Start with single fallback relay
+    
+    // Add georelay relays if available
+    try {
+      const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
+      
+      if (isGeohash) {
+        // For geohash channels, get relays closest to that geohash
+        const geoRelays = GeoRelayDirectory.shared.closestRelays(currentChannel, 10);
+        if (geoRelays.length > 0) {
+          allRelays = [...new Set([...allRelays, ...geoRelays])];
+          console.log(`🌍 Added ${geoRelays.length} georelay relays for geohash ${currentChannel}`);
+        }
+      } else {
+        // For group channels, get relays closest to current location (if available)
+        try {
+          const geoRelays = GeoRelayDirectory.shared.closestRelays("u", 5); // Use global fallback
+          if (geoRelays.length > 0) {
+            allRelays = [...new Set([...allRelays, ...geoRelays])];
+            console.log(`🌍 Added ${geoRelays.length} georelay relays for current location`);
+          }
+        } catch (geoError) {
+          console.warn("Could not get georelay relays for current location:", geoError);
+        }
+      }
+    } catch (geoError) {
+      console.warn("Could not get georelay relays:", geoError);
+    }
+    
+    // Remove duplicates and ensure we have valid relay URLs
+    allRelays = [...new Set(allRelays)].filter(relay => 
+      relay && relay.startsWith('wss://') && relay.length > 0
+    );
+    
+    console.log(`📡 Total relays for publishing: ${allRelays.length}`);
+    console.log("📡 Relays:", allRelays);
+
+    // Create pool and publish
+    const pool = new SimplePool();
+
+    try {
+      console.log("Attempting to publish event to ALL relays:", allRelays);
+
+      // Publish to ALL relays - pool.publish returns an array of promises
+      const publishPromises = pool.publish(allRelays, signedEvent);
+
+      console.log("Publish promises created:", publishPromises.length);
+
+      // Use Promise.allSettled to wait for all attempts, then check if at least one succeeded
+      Promise.allSettled(publishPromises).then((results) => {
+        const successful = results.filter(result => result.status === 'fulfilled');
+        
+        if (successful.length === 0) {
+          // All relays failed - collect error messages for debugging
+          const errors = results
+            .filter(result => result.status === 'rejected')
+            .map(result => result.reason?.message || 'Unknown error');
+          
+          console.error("❌ Failed to publish to any relay. Errors:", errors);
+          setError(`Failed to publish message to any relay: ${errors.join(', ')}`);
+        } else {
+          // At least one relay succeeded
+          console.log(`✅ Message published successfully to ${successful.length}/${results.length} relays`);
+          
+          // Log any failed relays for debugging (but don't throw)
+          const failed = results.filter(result => result.status === 'rejected');
+          if (failed.length > 0) {
+            console.warn(`⚠️ Some relays failed (${failed.length}/${results.length}):`, 
+              failed.map(result => result.reason?.message || 'Unknown error'));
+          }
+
+          // Clear input and notify parent
+          setMessage("");
+          onMessageSent?.(signedEvent.content);
+
+          // Focus the textarea after clearing the message
+          setTimeout(() => {
+            console.log("🔍 Attempting to focus textarea after send");
+            if (textareaRef.current) {
+              textareaRef.current.focus();
+              console.log("✅ Textarea focused successfully");
+              // Try to focus again after a short delay to ensure it sticks
+              setTimeout(() => {
+                if (textareaRef.current) {
+                  textareaRef.current.focus();
+                  console.log("🔄 Refocusing textarea to ensure focus sticks");
+                }
+              }, 50);
+            } else {
+              console.warn("⚠️ textareaRef.current is null");
+              // Fallback: try to find textarea by data attribute
+              const textarea = document.querySelector('textarea[data-chat-input="true"]') as HTMLTextAreaElement;
+              if (textarea) {
+                textarea.focus();
+                console.log("✅ Textarea focused via fallback DOM query");
+              }
+            }
+          }, 100);
+        }
+      }).catch((error) => {
+        console.error("Error during publishing:", error);
+        setError(`Publishing error: ${error.message}`);
+      }).finally(() => {
+        setIsSending(false);
+        pool.close(allRelays);
+      });
+      
+    } catch (err) {
+      console.error("Failed to publish event:", err);
+      setError(`Failed to publish event: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setIsSending(false);
+      pool.close(allRelays);
+    }
+  };
 
   const t = styles[theme];
 
@@ -258,9 +521,6 @@ export function ChatInput({
   
       const rollRange = parseRollCommand(message.trim());
   
-      // Convert hex private key to Uint8Array
-      const privateKeyHex = savedProfile.privateKey;
-  
       // Determine event kind and tags based on channel
       const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
   
@@ -287,147 +547,58 @@ export function ChatInput({
         console.log(`💬 Using kind 23333 with group tag: d=${currentChannel.toLowerCase()}`);
       }
   
-      // Create event template (don't include pubkey, finalizeEvent adds it)
+            // Create event template (don't include pubkey, finalizeEvent adds it)
       const eventTemplate = {
         kind: kind,
         created_at: Math.floor(Date.now() / 1000),
         content: message.trim(),
         tags: tags,
       };
-  
+
       console.log("📄 Event template:", eventTemplate);
-  
-      // Sign the event
-      const signedEvent = finalizeEvent(eventTemplate, hexToBytes(privateKeyHex));
-      console.log("✍️ Signed event:", signedEvent);
-  
-      // Validate the event before publishing
-      const valid = validateEvent(signedEvent);
-      const verified = verifyEvent(signedEvent);
-  
-      if (!valid) {
-        throw new Error("Event validation failed");
-      }
-      if (!verified) {
-        throw new Error("Event signature verification failed");
-      }
-  
-      console.log("✅ Event validated successfully");
-  
-      // Get ALL available relays for maximum distribution
-      let allRelays = ["wss://relay.damus.io"]; // Start with single fallback relay
-      
-      // Add georelay relays if available
-      try {
-        if (isGeohash) {
-          // For geohash channels, get relays closest to that geohash
-          const geoRelays = GeoRelayDirectory.shared.closestRelays(currentChannel, 10);
-          if (geoRelays.length > 0) {
-            allRelays = [...new Set([...allRelays, ...geoRelays])];
-            console.log(`🌍 Added ${geoRelays.length} georelay relays for geohash ${currentChannel}`);
-          }
-        } else {
-          // For group channels, get relays closest to current location (if available)
-          try {
-            const geoRelays = GeoRelayDirectory.shared.closestRelays("u", 5); // Use global fallback
-            if (geoRelays.length > 0) {
-              allRelays = [...new Set([...allRelays, ...geoRelays])];
-              console.log(`🌍 Added ${geoRelays.length} georelay relays for current location`);
-            }
-          } catch (geoError) {
-            console.warn("Could not get georelay relays for current location:", geoError);
-          }
-        }
-      } catch (geoError) {
-        console.warn("Could not get georelay relays:", geoError);
-      }
-      
-      // Remove duplicates and ensure we have valid relay URLs
-      allRelays = [...new Set(allRelays)].filter(relay => 
-        relay && relay.startsWith('wss://') && relay.length > 0
-      );
-      
-      console.log(`📡 Total relays for publishing: ${allRelays.length}`);
-      console.log("📡 Relays:", allRelays);
-  
-      // Create pool and publish
-      const pool = new SimplePool();
-  
-      try {
-        console.log("Attempting to publish event to ALL relays:", allRelays);
-  
-        // Publish to ALL relays - pool.publish returns an array of promises
-        const publishPromises = pool.publish(allRelays, signedEvent);
-  
-        console.log("Publish promises created:", publishPromises.length);
-  
-        // Use Promise.allSettled to wait for all attempts, then check if at least one succeeded
-        const results = await Promise.allSettled(publishPromises);
-        const successful = results.filter(result => result.status === 'fulfilled');
+
+      // Apply proof of work if enabled
+      if (powEnabled && powDifficulty > 0) {
+        console.log(`⛏️ Starting POW mining with difficulty ${powDifficulty}...`);
+        setIsMiningPow(true);
         
-        if (successful.length === 0) {
-          // All relays failed - collect error messages for debugging
-          const errors = results
-            .filter(result => result.status === 'rejected')
-            .map(result => result.reason?.message || 'Unknown error');
+        // Create a complete event template with pubkey for POW mining
+        const eventForPow = {
+          ...eventTemplate,
+          pubkey: savedProfile.publicKey,
+        };
+        
+        // Send work to worker
+        if (powWorkerRef.current) {
+          powWorkerRef.current.postMessage({
+            command: 'START_POW',
+            data: {
+              eventTemplate: eventForPow,
+              difficulty: powDifficulty
+            }
+          });
           
-          console.error("❌ Failed to publish to any relay. Errors:", errors);
-          throw new Error(`Failed to publish message to any relay: ${errors.join(', ')}`);
+          // Store the event template for later use
+          setEventTemplateForPow(eventTemplate);
+          return; // Exit early, worker will handle the rest
+        } else {
+          console.warn("⚠️ POW worker not available, continuing without POW");
+          setIsMiningPow(false);
         }
-  
-        // At least one relay succeeded
-        console.log(`✅ Message published successfully to ${successful.length}/${results.length} relays`);
-        
-        // Log any failed relays for debugging (but don't throw)
-        const failed = results.filter(result => result.status === 'rejected');
-        if (failed.length > 0) {
-          console.warn(`⚠️ Some relays failed (${failed.length}/${results.length}):`, 
-            failed.map(result => result.reason?.message || 'Unknown error'));
-        }
-  
-                // Clear input and notify parent
-        setMessage("");
-        onMessageSent?.(message.trim());
-
-        // Focus the textarea after clearing the message
-        setTimeout(() => {
-          console.log("🔍 Attempting to focus textarea after send");
-          if (textareaRef.current) {
-            textareaRef.current.focus();
-            console.log("✅ Textarea focused successfully");
-            // Try to focus again after a short delay to ensure it sticks
-            setTimeout(() => {
-              if (textareaRef.current) {
-                textareaRef.current.focus();
-                console.log("🔄 Refocusing textarea to ensure focus sticks");
-              }
-            }, 50);
-          } else {
-            console.warn("⚠️ textareaRef.current is null");
-            // Fallback: try to find textarea by data attribute
-            const textarea = document.querySelector('textarea[data-chat-input="true"]') as HTMLTextAreaElement;
-            if (textarea) {
-              textarea.focus();
-              console.log("✅ Textarea focused via fallback DOM query");
-            }
-          }
-        }, 100);
-
-        if (rollRange) {
-          setTimeout(() => {
-            handleRoll(rollRange).catch(console.error);
-          }, 1000);
-        }
-  
-      } finally {
-        // Always close the pool
-        pool.close(allRelays);
       }
-      
+
+      // If no POW or POW failed, continue with normal flow
+      continueWithoutPow();
+  
+      if (rollRange) {
+        setTimeout(() => {
+          handleRoll(rollRange).catch(console.error);
+        }, 1000);
+      }
+  
     } catch (err) {
       console.error("Failed to send message:", err);
       setError(`Failed to send message: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    } finally {
       setIsSending(false);
     }
   };
@@ -474,6 +645,11 @@ export function ChatInput({
         <span className={t.username}>
           @{savedProfile.username}#{savedProfile.publicKey.slice(-4)}
         </span>
+        {powEnabled && powDifficulty > 0 && (
+          <span className="ml-2 text-xs text-gray-400">
+            ⛏️ POW {powDifficulty}
+          </span>
+        )}
       </div>
 
       {/* Error message */}
@@ -519,7 +695,7 @@ export function ChatInput({
           }}
           className={`px-3 py-2 rounded text-xs font-bold transition-colors ${
             theme === "matrix"
-              ? "bg-[#003300] text-[#00ff00] border border-[#00ff00] hover:bg-[#004400] hover:shadow-[0_0_8px_rgba(0,255,0,0.3)]"
+              ? "bg-green-950 text-green-400 border border-green-400 hover:bg-green-900 hover:shadow-[0_0_8px_rgba(34,197,94,0.3)]"
               : "bg-blue-600 text-white border border-blue-600 hover:bg-blue-700"
           }`}
           title="Open favorite images"
@@ -547,12 +723,17 @@ export function ChatInput({
             sendDisabled ? t.sendButtonDisabled : t.sendButtonHover
           }`}
         >
-          {isSending ? "..." : "Send"}
+          {isSending ? "..." : isMiningPow ? "⛏️ Mining..." : "Send"}
         </button>
       </div>
 
       <div className={t.hint}>
         Press Enter to send, Shift+Enter for new line
+        {powEnabled && powDifficulty > 0 && (
+          <span className="ml-2 text-xs text-gray-400">
+            • POW: {powDifficulty} bits
+          </span>
+        )}
       </div>
     </section>
   );

@@ -4,6 +4,9 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  worker: {
+    format: 'es', // Use ES modules in workers
+  },
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
