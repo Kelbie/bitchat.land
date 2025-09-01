@@ -19,7 +19,6 @@ const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
 interface RecentEventsProps {
   nostrEnabled: boolean;
   searchText: string;
-  allStoredEvents: NostrEvent[];
   filteredEvents: NostrEvent[];
   onSearch?: (text: string) => void;
   forceScrollToBottom?: boolean;
@@ -373,7 +372,6 @@ const styles = globalStyles["RecentEvents"];
 export function RecentEvents({
   nostrEnabled,
   searchText,
-  allStoredEvents,
   filteredEvents,
   onSearch,
   onReply,
@@ -400,8 +398,7 @@ export function RecentEvents({
     parsedSearch.colors.length > 0 ||
     parsedSearch.has.length > 0;
 
-  const eventsToShow = hasSearchTerms ? allStoredEvents : filteredEvents;
-  const searchFilteredEvents = eventsToShow.filter((event) => {
+  const searchFilteredEvents = filteredEvents.filter((event) => {
     if (!hasSearchTerms) return true;
 
     const messageContent = (event.content || "").toLowerCase();

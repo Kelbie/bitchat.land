@@ -689,8 +689,7 @@ export default function App({
     parsedSearch.clients.length > 0 ||
     parsedSearch.colors.length > 0 ||
     parsedSearch.has.length > 0;
-  const eventsForHeader = hasSearchTerms ? allStoredEvents : filteredEvents;
-  const searchFilteredEvents = eventsForHeader.filter((event) => {
+  const searchFilteredEvents = filteredEvents.filter((event) => {
     if (!hasSearchTerms) return true;
 
     // Extract event data
@@ -905,7 +904,6 @@ export default function App({
                   <RecentEvents
                     nostrEnabled={nostrEnabled}
                     searchText={searchText}
-                    allStoredEvents={allStoredEvents}
                     filteredEvents={filteredEvents}
                     onSearch={handleTextSearch}
                     onReply={handleReply}
