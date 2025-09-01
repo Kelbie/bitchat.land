@@ -67,6 +67,9 @@ export const globalStyles = {
       countryCard: 'bg-green-950 border-green-900 hover:border-green-400 hover:bg-green-900',
       countryCode: 'text-green-400',
       countryName: 'text-green-600',
+      // Add styles to prevent layout issues
+      eventItemContainer: 'min-h-[60px] box-border w-full p-[1px_0]',
+      eventContent: 'img { max-width: 100%; height: auto; display: block; }',
     },
     material: {
       container:
@@ -88,6 +91,9 @@ export const globalStyles = {
       countryCard: "bg-white border border-gray-200 hover:border-blue-500 hover:bg-blue-50",
       countryCode: "text-blue-600",
       countryName: "text-gray-600",
+      // Add styles to prevent layout issues
+      eventItemContainer: 'min-h-[60px] box-border w-full p-[1px_0]',
+      eventContent: 'img { max-width: 100%; height: auto; display: block; }',
     },
   },
   ThemedProgressBar: {

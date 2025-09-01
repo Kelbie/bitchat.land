@@ -91,8 +91,8 @@ const EventItem = React.memo(({
 
   if (isActionMessage(event.content)) {
     return (
-      <div className="pb-4">
-        <div className={t.messageCard}>
+      <div className={`pb-4 ${t.eventItemContainer}`}>
+        <div className={`${t.messageCard} ${t.eventContent}`}>
           {/* Header with location/client info - same as regular messages */}
           <div className="flex justify-start items-center h-4">
             <div className="flex items-center gap-2">
@@ -149,8 +149,8 @@ const EventItem = React.memo(({
   }
 
   return (
-    <div className="pb-4">
-      <div className={t.messageCard}>
+    <div className={`pb-4 ${t.eventItemContainer}`}>
+      <div className={`${t.messageCard} ${t.eventContent}`}>
         <div className="flex justify-start items-center h-4">
           <div className="flex items-center gap-2">
             <span className={t.hashTag}>
@@ -384,7 +384,6 @@ export function RecentEvents({
   const [isUserAtBottom, setIsUserAtBottom] = useState(true);
 
   const prevEventsLengthRef = useRef(0);
-  const measurementCache = useRef<Map<number, number>>(new Map());
 
   const t = styles[theme];
 
@@ -507,26 +506,15 @@ export function RecentEvents({
     }
   }, [isUserAtBottom, sortedEvents, lastSeenEventId]);
 
-  // Custom measureElement function that prevents scroll jumps when scrolling up
+  // Simplified measureElement function - remove the caching logic that might cause issues
   const measureElement = useCallback(
-    (
-      element: Element,
-      entry: ResizeObserverEntry | undefined,
-      instance: { scrollDirection?: string | null }
-    ) => {
+    (element: Element) => {
+      if (!element) return 180; // fallback to estimate
+      
       const height = element.getBoundingClientRect().height;
-      const index = Number(element.getAttribute("data-index"));
-
-      // Cache the measurement
-      measurementCache.current.set(index, height);
-
-      // Critical fix: When scrolling backward, use cached measurements to prevent jumps
-      if (instance.scrollDirection === "backward") {
-        const cachedHeight = measurementCache.current.get(index);
-        return cachedHeight || height;
-      }
-
-      return height;
+      
+      // Simple validation - ensure we have a reasonable height
+      return Math.max(height, 60); // minimum height to prevent zero/negative heights
     },
     []
   );
@@ -535,16 +523,26 @@ export function RecentEvents({
   const virtualizer = useVirtualizer({
     count: sortedEvents.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 120, // Overestimate to prevent jumps
+    estimateSize: () => 180, // Increased from 120 - accounts for images/buttons
     overscan: 5,
     measureElement,
+    // Add this to ensure proper measurement timing
+    lanes: 1,
   });
 
-  // Recompute virtual measurements whenever the PoW filter changes
+  // Clear measurements when content significantly changes
   useEffect(() => {
-    measurementCache.current.clear();
-    virtualizer.measure();
-  }, [filteredEvents, virtualizer]);
+    // Clear cache and remeasure when events change significantly
+    const currentLength = sortedEvents.length;
+    const prevLength = prevEventsLengthRef.current;
+    
+    if (Math.abs(currentLength - prevLength) > 5) {
+      // Significant change - remeasure everything
+      virtualizer.measure();
+    }
+    
+    prevEventsLengthRef.current = currentLength;
+  }, [sortedEvents.length, virtualizer]);
 
   // Disable automatic scroll position adjustment - the root cause of the issue
   virtualizer.shouldAdjustScrollPositionOnItemSizeChange = () => false;
@@ -598,6 +596,29 @@ export function RecentEvents({
     element.addEventListener("scroll", handleScroll, { passive: true });
     return () => element.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
+
+  // Add a useEffect to handle dynamic content changes (images loading, etc.)
+  useEffect(() => {
+    const handleImageLoad = () => {
+      // Remeasure when images finish loading
+      virtualizer.measure();
+    };
+
+    const images = parentRef.current?.querySelectorAll('img');
+    images?.forEach(img => {
+      if (!img.complete) {
+        img.addEventListener('load', handleImageLoad);
+        img.addEventListener('error', handleImageLoad);
+      }
+    });
+
+    return () => {
+      images?.forEach(img => {
+        img.removeEventListener('load', handleImageLoad);
+        img.removeEventListener('error', handleImageLoad);
+      });
+    };
+  }, [virtualizer, sortedEvents]);
 
   // Image grid view
   if (hasImageFilter) {
@@ -726,12 +747,16 @@ export function RecentEvents({
                     key={virtualItem.key}
                     data-index={virtualItem.index}
                     ref={virtualizer.measureElement}
+                    className={t.eventItemContainer}
                     style={{
                       position: "absolute",
                       top: 0,
                       left: 0,
                       width: "100%",
                       transform: `translateY(${virtualItem.start}px)`,
+                      // Add these to ensure proper layout
+                      minHeight: "60px",
+                      boxSizing: "border-box",
                     }}
                   >
                     <EventItem
