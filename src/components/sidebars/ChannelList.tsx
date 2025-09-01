@@ -182,6 +182,11 @@ export function ChannelList({
     const standardSet = new Set<string>();
 
     allChannels.forEach(channel => {
+      // Skip if channel is pinned - it will only appear in pinned section
+      if (pinned.has(channel.key)) {
+        return;
+      }
+      
       // Use the actual event kind from the channel meta
       if (channel.eventKind === EVENT_KINDS.GEO_CHANNEL) {
         geohashSet.add(channel.key);
@@ -191,20 +196,11 @@ export function ChannelList({
     });
 
     // Generate top-level geohashes and add them to the geohash set (no duplicates)
+    // Only add top-level geohashes that aren't pinned
     const topLevelGeohashes = generateTopLevelGeohashes(Array.from(geohashSet));
     topLevelGeohashes.forEach(geohash => {
-      geohashSet.add(geohash);
-    });
-
-    // Also add any pinned geohash channels that aren't in the main channels list
-    // This handles the case where someone pins a geohash channel that has no events
-    pinnedChannels.forEach(channelKey => {
-      if (channelKey.startsWith('#')) {
-        const geohashValue = channelKey.slice(1);
-        const isValidGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(geohashValue);
-        if (isValidGeohash) {
-          geohashSet.add(channelKey);
-        }
+      if (!pinned.has(geohash)) {
+        geohashSet.add(geohash);
       }
     });
 
@@ -333,11 +329,35 @@ export function ChannelList({
       eventKind = pinnedChannel?.eventKind;
     }
     
+    // If still no eventKind, determine it based on the channel key and category
+    if (!eventKind) {
+      if (data.category === 'geohash' || data.channelKey.startsWith('#')) {
+        const geohashValue = data.channelKey.slice(1);
+        const isValidGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(geohashValue);
+        eventKind = isValidGeohash ? EVENT_KINDS.GEO_CHANNEL : EVENT_KINDS.STANDARD_CHANNEL;
+      } else if (data.category === 'standard') {
+        eventKind = EVENT_KINDS.STANDARD_CHANNEL;
+      } else {
+        // Default fallback for pinned channels
+        eventKind = data.channelKey.startsWith('#') ? EVENT_KINDS.GEO_CHANNEL : EVENT_KINDS.STANDARD_CHANNEL;
+      }
+    }
+    
+    // Debug logging to help identify the selection issue
+    const isSelected = selectedChannel === data.channelKey;
+    
+    // Log all channel keys and selection state for debugging
+    console.log(`Channel: "${data.channelKey}" | Category: ${data.category} | Selected: ${isSelected} | selectedChannel: "${selectedChannel}"`);
+    
+    if (isSelected) {
+      console.log('✅ Channel selected:', data.channelKey, 'selectedChannel:', selectedChannel);
+    }
+    
     return (
       <ChannelItem
         channelKey={data.channelKey}
         category={data.category}
-        isSelected={selectedChannel === data.channelKey}
+        isSelected={isSelected}
         unread={unreadCounts[data.channelKey] || 0}
         isPinned={pinnedChannels.includes(data.channelKey)}
         onOpenChannel={onOpenChannel}

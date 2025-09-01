@@ -78,18 +78,18 @@ class NostrConnection {
 
   getHierarchicalEventCount(targetGeohash: string): number {
     let totalCount = 0;
-    
+
     // Count all events that have geohashes starting with the target geohash
     this._geohashStats.forEach((stats, eventGeohash) => {
       if (eventGeohash.startsWith(targetGeohash)) {
         totalCount += stats.totalEvents;
       }
     });
-    
+
     return totalCount;
   }
 
-  
+
 
   // Public getter for the complete connection state
   get connectionState(): ConnectionState {
@@ -120,18 +120,18 @@ class NostrConnection {
 
   get allEventsByGeohash(): Map<string, number> {
     const eventCounts = new Map<string, number>();
-    
+
     // Get all unique geohash prefixes that we need to calculate counts for
     const allGeohashes = Array.from(this._geohashStats.keys());
     const prefixesNeeded = new Set<string>();
-    
+
     // For each geohash, add all its prefixes
     allGeohashes.forEach(geohash => {
       for (let i = 1; i <= geohash.length; i++) {
         prefixesNeeded.add(geohash.substring(0, i));
       }
     });
-    
+
     // Calculate hierarchical counts for each prefix
     prefixesNeeded.forEach(prefix => {
       const hierarchicalCount = this.getHierarchicalEventCount(prefix);
@@ -139,7 +139,7 @@ class NostrConnection {
         eventCounts.set(prefix, hierarchicalCount);
       }
     });
-    
+
     return eventCounts;
   }
 
@@ -250,8 +250,8 @@ class NostrConnection {
     // Create subscription for both kind 20000 (geohash) and 23333 (group) events
     const unsubscribe = this.relayPool.subscribe(
       [{
-        kinds: [20000, 23333], since:
-          Math.floor(Date.now() / 1000) - (60 * 60)
+        kinds: [20000, 23333], 
+        since: Math.floor(Date.now() / 1000) - (60 * 60)
       }],
       relays,
       (event: NostrEventOriginal, isAfterEose: boolean, relayURL?: string) => {

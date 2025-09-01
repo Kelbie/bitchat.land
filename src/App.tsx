@@ -923,6 +923,9 @@ export default function App({
                   onInsertImage={handleInsertImage}
                   powEnabled={settings.powEnabled}
                   powDifficulty={settings.powDifficulty}
+                  onPowSettingsChange={(enabled, difficulty) => 
+                    updateSettings({ powEnabled: enabled, powDifficulty: difficulty })
+                  }
                 />
               </div>
 
