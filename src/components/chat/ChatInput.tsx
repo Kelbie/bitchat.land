@@ -117,19 +117,31 @@ export function ChatInput({
   const lastPrefillRef = useRef<string>("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const powWorkerRef = useRef<Worker | null>(null);
+  const syncingFromProps = useRef(false);
+  const powSettingsChangeRef = useRef(onPowSettingsChange);
+
+  // Keep a ref to the latest onPowSettingsChange handler
+  useEffect(() => {
+    powSettingsChangeRef.current = onPowSettingsChange;
+  }, [onPowSettingsChange]);
 
   // Sync local PoW settings with props
   useEffect(() => {
+    syncingFromProps.current = true;
     setLocalPowEnabled(powEnabled);
     setLocalPowDifficulty(powDifficulty);
   }, [powEnabled, powDifficulty]);
 
-  // Update parent when local settings change
+  // Update parent when local settings change from user interaction
   useEffect(() => {
-    if (onPowSettingsChange && (localPowEnabled !== powEnabled || localPowDifficulty !== powDifficulty)) {
-      onPowSettingsChange(localPowEnabled, localPowDifficulty);
+    if (syncingFromProps.current) {
+      syncingFromProps.current = false;
+      return;
     }
-  }, [localPowEnabled, localPowDifficulty, powEnabled, powDifficulty, onPowSettingsChange]);
+    if (powSettingsChangeRef.current) {
+      powSettingsChangeRef.current(localPowEnabled, localPowDifficulty);
+    }
+  }, [localPowEnabled, localPowDifficulty]);
 
   // Handle prefillText changes - only apply when it's a new prefill
   useEffect(() => {
