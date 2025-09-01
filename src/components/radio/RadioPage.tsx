@@ -338,7 +338,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
   const t =
     theme === "matrix"
               ? {
-          container: "min-h-screen bg-gray-900 text-green-400 p-4",
+          container: "h-full bg-gray-900 text-green-400 p-4",
           header: "text-2xl font-bold mb-6 text-center",
           searchPrompt: "text-center text-green-400/70 mb-8",
           stationGrid:
@@ -366,7 +366,7 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
           loading: "text-green-400 text-center p-8",
         }
       : {
-          container: "min-h-screen bg-gray-50 text-gray-800 p-4",
+          container: "h-full bg-gray-50 text-gray-800 p-4",
           header: "text-2xl font-bold mb-6 text-center text-blue-600",
           searchPrompt: "text-center text-gray-600 mb-8",
           stationGrid:

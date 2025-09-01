@@ -954,7 +954,7 @@ export default function App({
           <div
             className={`${t.chatViewContainer} h-full ${
               activeView === "radio" ? "block" : "hidden"
-            }`}
+            } pb-[97px]`}
           >
             <ChannelList
               channels={channels}
