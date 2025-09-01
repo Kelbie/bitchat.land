@@ -30,16 +30,13 @@ export function MobileHeader({
   nostrEnabled = false,
   filteredEventsCount = 0,
   totalEventsCount = 0,
-  hierarchicalCounts = { direct: 0, total: 0 },
   allStoredEvents = [],
   onLoginClick,
   onSettingsClick,
   theme = "matrix",
-  onThemeChange,
 }: MobileHeaderProps) {
   // avoid unused warnings for props not yet used
   void zoomedGeohash;
-  void hierarchicalCounts;
   void allStoredEvents;
 
   const t = styles[theme];

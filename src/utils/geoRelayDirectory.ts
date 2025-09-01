@@ -100,7 +100,6 @@ export class GeoRelayDirectory {
           this.entries = parsed;
           this.persistCache(text);
           localStorage.setItem(this.lastFetchKey, Date.now().toString());
-          console.log(`GeoRelayDirectory: refreshed ${parsed.length} relays from remote`);
         }
       }
     } catch (error) {
@@ -132,7 +131,6 @@ export class GeoRelayDirectory {
         const text = await response.text();
         const arr = GeoRelayDirectory.parseCSV(text);
         if (arr.length > 0) {
-          console.log(`GeoRelayDirectory: loaded ${arr.length} relays from bundled CSV`);
           return arr;
         }
       }
@@ -141,7 +139,6 @@ export class GeoRelayDirectory {
     }
 
     // Return empty array - will be populated by remote fetch
-    console.log("GeoRelayDirectory: no local CSV found; entries empty");
     return [];
   }
 

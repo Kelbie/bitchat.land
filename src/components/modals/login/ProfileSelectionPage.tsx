@@ -31,7 +31,7 @@ export function ProfileSelectionPage({
           <ThemedProgressBar progress={progress} theme={theme} />
           <div className={t.progressText}>
             Found {generatedProfiles.length} profile
-            {generatedProfiles.length !== 1 ? "s" : ""}... searching for more
+            {generatedProfiles.length !== 1 ? "s" : ""}... searching for more, this is computationally intensive
           </div>
         </div>
       )}

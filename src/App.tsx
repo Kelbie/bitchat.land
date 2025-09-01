@@ -9,7 +9,6 @@ import React, {
 import {
   generateGeohashes,
   generateLocalizedGeohashes,
-  getHierarchicalCounts,
 } from "./utils/geohashUtils";
 
 import { GeoMercatorProps } from "./types";
@@ -47,13 +46,13 @@ import {
 import {
   isFirstTimeOpeningThisHour,
   markChannelOpenedThisHour,
-  debugChannelJoinStorage,
 } from "./utils/channelJoinTracker";
 import {
   getPinnedChannels,
   addPinnedChannel,
   removePinnedChannel,
 } from "./utils/pinnedChannels";
+import { EVENT_KINDS } from "./constants/eventKinds";
 import { sendJoinMessage } from "./utils/systemMessageSender";
 import { RadioPage } from "./components/radio/RadioPage";
 import { globalStyles } from "./styles";
@@ -242,17 +241,13 @@ export default function App({
 
   // Initialize Nostr with animation callback
   const {
-    connectedRelays,
     recentEvents,
     geohashActivity,
     nostrEnabled,
-    connectionStatus,
     allStoredEvents,
     allEventsByGeohash,
     toggleNostr,
-    getGeorelayRelays,
-    connectToGeoRelays,
-    disconnectFromGeoRelays,
+    connectionInfo
   } = useNostr(
     searchGeohash,
     currentGeohashes,
@@ -261,9 +256,6 @@ export default function App({
     settings.powEnabled,
     settings.powDifficulty
   );
-
-  // Debug logging for settings
-  console.log('App settings state:', settings);
 
   // Build users list from events - moved here after useNostr hook
   const users = useMemo<UserMeta[]>(() => {
@@ -378,9 +370,6 @@ export default function App({
     } catch (err) {
       console.warn("Failed to load saved profile:", err);
     }
-
-    // Debug channel join storage on mount
-    debugChannelJoinStorage();
   }, []);
 
   // Handle profile saved - update state immediately
@@ -543,41 +532,28 @@ export default function App({
   const handleOpenChannel = useCallback(
     (ch: string) => {
       const channelValue = ch.slice(1).toLowerCase();
-      console.log(`🔍 Opening channel: ${ch}, channelValue: ${channelValue}`);
-      console.log(`🔍 Channel type: ${typeof ch}, length: ${ch.length}`);
-      console.log(`🔍 Channel starts with #: ${ch.startsWith("#")}`);
 
       handleTextSearch(`in:${channelValue}`);
 
-      // Check if this is the first time opening the channel this hour
-      console.log(`🔍 About to call isFirstTimeOpeningThisHour with: ${ch}`);
       const isFirstTime = isFirstTimeOpeningThisHour(ch);
-      console.log(`🕐 Is first time opening this hour: ${isFirstTime}`);
 
       if (isFirstTime) {
-        console.log(`👤 User profile exists: ${!!savedProfile}`);
         // Send join message if user has a profile
         if (savedProfile) {
           const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(
             channelValue
           );
-          console.log(`🌍 Is geohash channel: ${isGeohash}`);
-          console.log(`📤 Sending join message for channel: ${channelValue}`);
+
           sendJoinMessage({
             channelKey: channelValue,
             username: savedProfile.username,
             privateKey: savedProfile.privateKey,
             isGeohash,
           });
-        } else {
-          console.log(`❌ No saved profile found, cannot send join message`);
         }
       }
 
-      // Mark channel as opened this hour
-      console.log(`🔍 About to call markChannelOpenedThisHour with: ${ch}`);
       markChannelOpenedThisHour(ch);
-      console.log(`✅ Marked channel ${ch} as opened this hour`);
 
       const nowSec = Math.floor(Date.now() / 1000);
       setChannelLastReadMap((prev) => {
@@ -597,15 +573,35 @@ export default function App({
       removePinnedChannel(currentChannelKey);
       setPinnedChannels((prev) => prev.filter((k) => k !== currentChannelKey));
     } else {
-      addPinnedChannel(currentChannelKey);
+      // Determine the event kind for the channel
+      let eventKind: number;
+      
+      if (currentChannelKey === "global") {
+        // Global channel is a standard channel
+        eventKind = EVENT_KINDS.STANDARD_CHANNEL;
+      } else if (currentChannelKey.startsWith('#')) {
+        // Geohash channel - determine if it's a valid geohash
+        const geohashValue = currentChannelKey.slice(1);
+        const isValidGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(geohashValue);
+        
+        if (isValidGeohash) {
+          eventKind = EVENT_KINDS.GEO_CHANNEL;
+        } else {
+          // Not a valid geohash - treat as standard channel
+          eventKind = EVENT_KINDS.STANDARD_CHANNEL;
+        }
+      } else {
+        // Standard channel (doesn't start with #)
+        eventKind = EVENT_KINDS.STANDARD_CHANNEL;
+      }
+      
+      addPinnedChannel(currentChannelKey, eventKind);
       setPinnedChannels((prev) => [...prev, currentChannelKey]);
     }
   }, [pinnedChannels, selectedChannelKey]);
 
   const handleSelectUser = useCallback((pubkey: string) => {
     setSelectedUser(pubkey);
-    // Could add user-specific search functionality here
-    console.log("Selected user:", pubkey);
   }, []);
 
   // When selected channel changes, mark the previous channel as read at switch-away time
@@ -701,20 +697,6 @@ export default function App({
     const pubkeyHash = event.pubkey.slice(-4).toLowerCase();
     const hasFilters = parsedSearch.has;
 
-    // Check for invalid geohash and log it
-    if (eventGeohash && !VALID_GEOHASH_CHARS.test(eventGeohash)) {
-      // console.log(
-      //   `Invalid geohash detected in message: "${eventGeohash}" from user ${
-      //     username || "anonymous"
-      //   } (${pubkeyHash})`
-      // );
-      // console.log(
-      //   `Message content: "${event.content?.slice(0, 100)}${
-      //     event.content && event.content.length > 100 ? "..." : ""
-      //   }"`
-      // );
-    }
-
     let matches = true;
 
     // Check text content if specified (only search message content, not usernames)
@@ -785,11 +767,6 @@ export default function App({
     return matches;
   });
 
-  // Debug logging for header updates
-  // console.log(
-  //   `Header update: search="${searchText}", filteredCount=${filteredEvents.length}, totalStored=${allStoredEvents.length}, recent=${recentEvents.length}`
-  // );
-
   const topLevelCounts: { [key: string]: number } = {};
   for (const [geohash, count] of allEventsByGeohash.entries()) {
     const firstChar = geohash.charAt(0);
@@ -800,10 +777,6 @@ export default function App({
     0
   );
 
-  // Get hierarchical counts for current search
-  const hierarchicalCounts = searchGeohash
-    ? getHierarchicalCounts(searchGeohash.toLowerCase(), allEventsByGeohash)
-    : { direct: 0, total: 0 };
 
   return (
     <div className={t.appContainer}>
@@ -812,6 +785,7 @@ export default function App({
 
       {/* Mobile Header */}
       <header>
+
         <MobileHeader
           activeView={activeView}
           onViewChange={setActiveView}
@@ -821,7 +795,6 @@ export default function App({
           nostrEnabled={nostrEnabled}
           filteredEventsCount={filteredEvents.length}
           totalEventsCount={totalEventsCount}
-          hierarchicalCounts={hierarchicalCounts}
           allStoredEvents={allStoredEvents}
           onLoginClick={() => setShowProfileModal(true)}
           onSettingsClick={() => setShowSettingsModal(true)}
@@ -833,6 +806,7 @@ export default function App({
       {/* Main Content Area */}
       <main className={t.mainArea}>
         {/* Map - Always rendered, but might be hidden on mobile */}
+
         <section
           aria-label="Interactive World Map with Geohash Heatmap"
           className={`${
@@ -840,6 +814,7 @@ export default function App({
           } w-full h-full`}
         >
           <Map
+            recentEvents={recentEvents}
             width={mapWidth || 800}
             height={mapHeight || 600}
             projection={projection || "natural_earth"}
@@ -1009,14 +984,10 @@ export default function App({
       {activeView === "map" && (
         <CornerOverlay position="bottom-right" theme={theme}>
           <Connections
+            connectionInfo={connectionInfo}
             theme={theme}
-            connectedRelays={connectedRelays}
-            connectionStatus={connectionStatus}
             onToggleNostr={toggleNostr}
-            nostrEnabled={nostrEnabled}
-            getGeorelayRelays={getGeorelayRelays}
-            connectToGeoRelays={connectToGeoRelays}
-            disconnectFromGeoRelays={disconnectFromGeoRelays}
+
           />
         </CornerOverlay>
       )}

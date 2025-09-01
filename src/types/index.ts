@@ -6,6 +6,7 @@ export interface NostrEvent {
   tags: string[][];
   content: string;
   sig: string;
+  relayUrl?: string; // URL of the relay that sent this event
 }
 
 export type GeoMercatorProps = {

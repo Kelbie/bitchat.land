@@ -182,11 +182,6 @@ export function ChannelList({
     const standardSet = new Set<string>();
 
     allChannels.forEach(channel => {
-      if (pinned.has(channel.key)) {
-        // Pinned channels go in their own section - don't add to geo/standard
-        return;
-      }
-      
       // Use the actual event kind from the channel meta
       if (channel.eventKind === EVENT_KINDS.GEO_CHANNEL) {
         geohashSet.add(channel.key);
@@ -196,11 +191,20 @@ export function ChannelList({
     });
 
     // Generate top-level geohashes and add them to the geohash set (no duplicates)
-    // Only add top-level geohashes that aren't already pinned
     const topLevelGeohashes = generateTopLevelGeohashes(Array.from(geohashSet));
     topLevelGeohashes.forEach(geohash => {
-      if (!pinned.has(geohash)) {
-        geohashSet.add(geohash);
+      geohashSet.add(geohash);
+    });
+
+    // Also add any pinned geohash channels that aren't in the main channels list
+    // This handles the case where someone pins a geohash channel that has no events
+    pinnedChannels.forEach(channelKey => {
+      if (channelKey.startsWith('#')) {
+        const geohashValue = channelKey.slice(1);
+        const isValidGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(geohashValue);
+        if (isValidGeohash) {
+          geohashSet.add(channelKey);
+        }
       }
     });
 
@@ -297,13 +301,20 @@ export function ChannelList({
       if (channel) {
         // Real channel - use its actual eventKind
         eventKind = channel.eventKind;
-      } else if (channelKey.startsWith('#') && channelKey.length === 2) {
-        // Top-level geohash - treat as GEO_CHANNEL for pinning purposes
-        eventKind = EVENT_KINDS.GEO_CHANNEL;
+      } else if (channelKey.startsWith('#')) {
+        // Geohash channel - determine if it's a valid geohash and treat as GEO_CHANNEL
+        const geohashValue = channelKey.slice(1);
+        const isValidGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(geohashValue);
+        
+        if (isValidGeohash) {
+          eventKind = EVENT_KINDS.GEO_CHANNEL;
+        } else {
+          // Not a valid geohash - treat as standard channel
+          eventKind = EVENT_KINDS.STANDARD_CHANNEL;
+        }
       } else {
-        // Unknown channel type - can't pin
-        console.warn(`Cannot pin unknown channel type: ${channelKey}`);
-        return;
+        // Standard channel (doesn't start with #)
+        eventKind = EVENT_KINDS.STANDARD_CHANNEL;
       }
       
       addPinnedChannel(channelKey, eventKind);
@@ -313,6 +324,15 @@ export function ChannelList({
 
   const renderChannelItem = (data: { channelKey: string; category: 'pinned' | 'geohash' | 'standard' }) => {
     const channelMeta = channels.find(ch => ch.key === data.channelKey);
+    
+    // For pinned channels, try to get eventKind from pinned channels storage if not in main channels
+    let eventKind = channelMeta?.eventKind;
+    if (!eventKind && pinnedChannels.includes(data.channelKey)) {
+      const pinnedChannelsData = getPinnedChannels();
+      const pinnedChannel = pinnedChannelsData.find(p => p.key === data.channelKey);
+      eventKind = pinnedChannel?.eventKind;
+    }
+    
     return (
       <ChannelItem
         channelKey={data.channelKey}
@@ -323,7 +343,7 @@ export function ChannelList({
         onOpenChannel={onOpenChannel}
         onHeartClick={handleHeartClick}
         theme={theme}
-        eventKind={channelMeta?.eventKind}
+        eventKind={eventKind}
       />
     );
   };

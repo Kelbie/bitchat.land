@@ -13,6 +13,7 @@ import { hasImageUrl, extractImageUrl } from "../../utils/imageUtils";
 import { Image } from "../common/Image";
 import React from "react"; // Added missing import
 import { globalStyles } from "../../styles";
+import { getPow } from "nostr-tools/nip13";
 
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
 
@@ -158,23 +159,42 @@ const EventItem = React.memo(({
                 : `#${groupTagValue.toUpperCase()}`}
             </span>
 
-            {clientName && <span className={t.hashTag}>•</span>}
             {clientName && (
-              <span className={t.hashTag}>via {clientName}</span>
+              <>
+                <span className={t.hashTag}>•</span>
+                <span className={t.hashTag}>via {clientName}</span>
+              </>
             )}
 
             {onReply && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onReply(username, pubkeyHash);
-                }}
-                className={t.replyButton}
-              >
-                ↪ Reply
-              </button>
+              <>
+                <span className={t.hashTag}>•</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onReply(username, pubkeyHash);
+                  }}
+                  className={t.replyButton}
+                >
+                  ↪ Reply
+                </button>
+              </>
+            )}
+
+            <span className={t.hashTag}>•</span>
+            <span className="text-[11px] font-mono text-gray-500">
+              PoW {getPow(event.id)}
+            </span>
+
+            {event.relayUrl && (
+              <>
+                <span className={t.hashTag}>•</span>
+                <span className="text-[11px] font-mono text-gray-500">
+                  relay {event.relayUrl.replace(/^wss?:\/\//, '').split('/')[0]}
+                </span>
+              </>
             )}
           </div>
         </div>
@@ -521,50 +541,50 @@ export function RecentEvents({
   }
 
   // Country grid view when no search terms (regardless of events)
-  if (!hasSearchTerms) {
-    const popularCountries = [
-      { code: 'US', name: 'United States', flag: '🇺🇸' },
-      { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
-      { code: 'ES', name: 'Spain', flag: '🇪🇸' },
-      { code: 'FR', name: 'France', flag: '🇫🇷' },
-      { code: 'DE', name: 'Germany', flag: '🇩🇪' },
-      { code: 'IT', name: 'Italy', flag: '🇮🇹' },
-      { code: 'JP', name: 'Japan', flag: '🇯🇵' },
-      { code: 'AU', name: 'Australia', flag: '🇦🇺' },
-      { code: 'CA', name: 'Canada', flag: '🇨🇦' },
-      { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
-      { code: 'IN', name: 'India', flag: '🇮🇳' },
-      { code: 'NL', name: 'Netherlands', flag: '🇳🇱' }
-    ];
+  // if (!hasSearchTerms) {
+  //   const popularCountries = [
+  //     { code: 'US', name: 'United States', flag: '🇺🇸' },
+  //     { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+  //     { code: 'ES', name: 'Spain', flag: '🇪🇸' },
+  //     { code: 'FR', name: 'France', flag: '🇫🇷' },
+  //     { code: 'DE', name: 'Germany', flag: '🇩🇪' },
+  //     { code: 'IT', name: 'Italy', flag: '🇮🇹' },
+  //     { code: 'JP', name: 'Japan', flag: '🇯🇵' },
+  //     { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+  //     { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+  //     { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
+  //     { code: 'IN', name: 'India', flag: '🇮🇳' },
+  //     { code: 'NL', name: 'Netherlands', flag: '🇳🇱' }
+  //   ];
 
-    return (
-      <div className={styles[theme].container}>
-        <div className="p-6">
-          <div className="text-center mb-6">
-            <h2 className={`text-xl font-bold mb-2 ${t.title}`}>Popular Countries</h2>
-            <p className={`text-sm opacity-70 ${t.subtitle}`}>
-              Click on a country to explore local channels and events
-            </p>
-          </div>
+  //   return (
+  //     <div className={styles[theme].container}>
+  //       <div className="p-6">
+  //         <div className="text-center mb-6">
+  //           <h2 className={`text-xl font-bold mb-2 ${t.title}`}>Popular Countries</h2>
+  //           <p className={`text-sm opacity-70 ${t.subtitle}`}>
+  //             Click on a country to explore local channels and events
+  //           </p>
+  //         </div>
           
-          <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
-            {popularCountries.map((country) => (
-              <button
-                key={country.code}
-                onClick={() => onSearch?.(`#${country.code.toLowerCase()}+`)}
-                className={`p-4 rounded-lg border transition-all duration-200 hover:scale-105 ${t.countryCard}`}
-                title={`Explore ${country.name}`}
-              >
-                <div className="text-3xl mb-2">{country.flag}</div>
-                <div className={`font-bold ${t.countryCode}`}>{country.code}</div>
-                <div className={`text-xs opacity-70 ${t.countryName}`}>{country.name}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  //         <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
+  //           {popularCountries.map((country) => (
+  //             <button
+  //               key={country.code}
+  //               onClick={() => onSearch?.(`#${country.code.toLowerCase()}+`)}
+  //               className={`p-4 rounded-lg border transition-all duration-200 hover:scale-105 ${t.countryCard}`}
+  //               title={`Explore ${country.name}`}
+  //             >
+  //               <div className="text-3xl mb-2">{country.flag}</div>
+  //               <div className={`font-bold ${t.countryCode}`}>{country.code}</div>
+  //               <div className={`text-xs opacity-70 ${t.countryName}`}>{country.name}</div>
+  //             </button>
+  //           ))}
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   // Empty state for search results
   if (sortedEvents.length === 0 && hasSearchTerms) {

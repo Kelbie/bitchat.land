@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
+import { nip19 } from "nostr-tools";
 import { colorForPeerSeed } from "../../../utils/userColor";
 import { ProfileGenerationState, ProfileGenerationContext, GeneratedProfile } from "./types";
 
@@ -13,6 +13,7 @@ export function useProfileGenerationState() {
   const [error, setError] = useState("");
   const [recentIdentities, setRecentIdentities] = useState<string[]>([]);
   const cancelRef = useRef(false);
+  const workerRef = useRef<Worker | null>(null);
 
   // Load recent identities on mount
   useEffect(() => {
@@ -26,9 +27,42 @@ export function useProfileGenerationState() {
     }
   }, []);
 
+  // Cleanup worker on unmount
+  useEffect(() => {
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
+    };
+  }, []);
+
   // Reset state when modal opens/closes
-  const resetState = useCallback(() => {
+  const resetState = useCallback(async () => {
     cancelRef.current = true;
+    
+    // Stop the worker if it's running
+    if (workerRef.current) {
+      try {
+        // Send stop command
+        workerRef.current.postMessage({ command: 'STOP_GENERATION' });
+        
+        // Wait a bit for the worker to process the stop command
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Terminate the worker completely
+        workerRef.current.terminate();
+        workerRef.current = null;
+      } catch (error) {
+        console.error('Error stopping worker:', error);
+        // Force terminate if there's an error
+        if (workerRef.current) {
+          workerRef.current.terminate();
+          workerRef.current = null;
+        }
+      }
+    }
+    
     setState("input");
     setInput("");
     setIsGenerating(false);
@@ -95,48 +129,100 @@ export function useProfileGenerationState() {
       setIsGenerating(true);
       cancelRef.current = false;
 
-      let attempts = 0;
-
-      while (profiles.length < 64 && !cancelRef.current) {
-        const privateKey = generateSecretKey();
-        const publicKey = getPublicKey(privateKey);
-        if (!targetSuffix || publicKey.endsWith(targetSuffix)) {
-          if (!profiles.some((p) => p.publicKeyHex === publicKey)) {
-            const color = colorForPeerSeed('nostr' + publicKey.toLowerCase(), true);
-            const hue = color.hsv.h;
-            const npub = nip19.npubEncode(publicKey);
-            const nsec = nip19.nsecEncode(privateKey);
-            profiles.push({
-              username,
-              privateKeyHex: Array.from(privateKey, (byte) =>
-                byte.toString(16).padStart(2, "0")
-              ).join(""),
-              publicKeyHex: publicKey,
-              npub,
-              nsec,
-              color: color.hex,
-              hue,
-            });
-            const sorted = [...profiles].sort((a, b) => a.hue - b.hue);
-            setGeneratedProfiles(sorted);
-            setProgress((sorted.length / 64) * 100);
-            localStorage.setItem(cacheKey, JSON.stringify(sorted));
-          }
-        }
-
-        attempts++;
-        if (attempts % 1000 === 0) {
-          await new Promise((resolve) => setTimeout(resolve, 1));
-        }
+      // Create or reuse worker
+      if (!workerRef.current) {
+        workerRef.current = new Worker(new URL('../../../workers/profileGenerationWorker.js', import.meta.url), {
+          type: 'module'
+        });
       }
 
-      setIsGenerating(false);
+      // Set up worker message handler
+      const handleWorkerMessage = (e: MessageEvent) => {
+        const { type, data } = e.data;
+        
+        switch (type) {
+          case 'PROFILE_GENERATED': {
+            // Add color and encoding to the profile
+            const profileWithColor = addProfileMetadata(data.profile, username);
+            
+            // Use functional update to get the current state
+            setGeneratedProfiles(prevProfiles => {
+              const updatedProfiles = [...prevProfiles, profileWithColor];
+              const sorted = updatedProfiles.sort((a, b) => a.hue - b.hue);
+              
+              // Update localStorage with the new sorted profiles
+              localStorage.setItem(cacheKey, JSON.stringify(sorted));
+              
+              // Update progress
+              setProgress((sorted.length / 64) * 100);
+              
+              return sorted;
+            });
+            break;
+          }
+            
+          case 'GENERATION_PROGRESS':
+            // Update progress based on attempts
+            setProgress(Math.min((data.found / 64) * 100, 99));
+            break;
+            
+          case 'GENERATION_COMPLETE':
+            setIsGenerating(false);
+            setProgress(100);
+            break;
+            
+          case 'GENERATION_CANCELLED':
+            setIsGenerating(false);
+            break;
+            
+          case 'GENERATION_ERROR':
+            setError(data.error || 'Profile generation failed');
+            setIsGenerating(false);
+            setProgress(0);
+            break;
+        }
+      };
+
+      workerRef.current.onmessage = handleWorkerMessage;
+
+      // Start generation
+      workerRef.current.postMessage({
+        command: 'START_GENERATION',
+        data: {
+          username,
+          targetSuffix,
+          maxProfiles: 64
+        }
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       setIsGenerating(false);
       setProgress(0);
     }
   }, [input, addIdentityToHistory]);
+
+  // Helper function to add color and encoding metadata to profiles
+  const addProfileMetadata = useCallback((profile: { privateKeyHex: string; publicKeyHex: string }, username: string): GeneratedProfile => {
+    const color = colorForPeerSeed('nostr' + profile.publicKeyHex.toLowerCase(), true);
+    const hue = color.hsv.h;
+    const npub = nip19.npubEncode(profile.publicKeyHex);
+    
+    // Convert hex string back to Uint8Array for nsecEncode
+    const privateKeyBytes = new Uint8Array(
+      profile.privateKeyHex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+    );
+    const nsec = nip19.nsecEncode(privateKeyBytes);
+    
+    return {
+      username,
+      privateKeyHex: profile.privateKeyHex,
+      publicKeyHex: profile.publicKeyHex,
+      npub,
+      nsec,
+      color: color.hex,
+      hue,
+    };
+  }, []);
 
   const selectProfile = useCallback((profile: GeneratedProfile) => {
     setGeneratedProfile(profile);

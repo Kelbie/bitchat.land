@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ThemedButton } from "../common/ThemedButton";
-
 import { globalStyles } from "../../styles";
 
 export const truncate = (value: string, options: { length: number }): string => {
@@ -10,36 +9,48 @@ export const truncate = (value: string, options: { length: number }): string => 
   return value;
 };
 
+// Simple interface that useNostr should export
+interface ConnectionInfo {
+  relays: Array<{
+    url: string;
+    geohash: string;
+    type: 'initial' | 'local';
+    isConnected: boolean; // This is what we actually need to know
+  }>;
+  status: string;
+  isEnabled: boolean;
+  totalConnected: number;
+  totalConfigured: number;
+}
+
 interface ConnectionsProps {
   theme: "matrix" | "material";
-  connectedRelays: Array<{url: string, geohash: string}>;
-  connectionStatus: string;
+  connectionInfo: ConnectionInfo; // Single prop with all connection data
   onToggleNostr: () => void;
-  nostrEnabled: boolean;
 }
 
 export function Connections({
   theme,
-  connectedRelays,
-  connectionStatus,
+  connectionInfo,
   onToggleNostr,
-  nostrEnabled,
 }: ConnectionsProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const styles = globalStyles["Connections"];
-
   const t = styles[theme];
 
+  const { relays, status, isEnabled, totalConnected, totalConfigured } = connectionInfo;
 
   return (
     <div className={`${t.container} w-48`}>
-      <div className={t.title}>{connectionStatus}</div>
+      <div className={t.title}>{status}</div>
 
       {/* Connected Relays List */}
       <div className="space-y-2 mb-4">
         <div className="flex items-center justify-between mb-2">
-          <span className={`text-xs font-mono ${t.status}`}>Relays ({connectedRelays.length})</span>
+          <span className={`text-xs font-mono ${t.status}`}>
+            Relays ({totalConnected}/{totalConfigured})
+          </span>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className={`text-xs p-1 rounded hover:bg-opacity-20 transition-colors ${t.status}`}
@@ -51,16 +62,37 @@ export function Connections({
         
         {/* Scrollable relay list with max height */}
         <div className="max-h-[50vh] overflow-y-auto pr-2 space-y-2">
-          {connectedRelays.map((relay, index) => {
+          {relays.map((relay, index) => {
             const host = relay.url.replace(/^wss:\/\//, "");
             const displayName = truncate(host, { length: 12 });
 
             return (
               <div key={index} className="space-y-1">
                 <div className="flex items-center gap-2 align-middle">
-                  <div className={`w-3 h-3 rounded-full ${nostrEnabled ? "bg-green-400" : "bg-red-400"}`}></div>
-                  <span className={`text-xs font-mono ${t.status}`} title={host}>
+                  <div 
+                    className={`w-3 h-3 rounded-full ${
+                      isEnabled && relay.isConnected 
+                        ? "bg-green-400" 
+                        : isEnabled 
+                          ? "bg-yellow-400" 
+                          : "bg-red-400"
+                    }`}
+                    title={
+                      isEnabled && relay.isConnected 
+                        ? "Connected" 
+                        : isEnabled 
+                          ? "Connecting..." 
+                          : "Disconnected"
+                    }
+                  />
+                  <span 
+                    className={`text-xs font-mono ${
+                      relay.type === 'local' ? 'text-blue-400' : t.status
+                    }`} 
+                    title={host}
+                  >
                     {index + 1}. {displayName}
+                    {relay.type === 'local' && ' (local)'}
                   </span>
                 </div>
                 
@@ -68,11 +100,21 @@ export function Connections({
                   <div className="ml-5 space-y-1 text-xs opacity-70">
                     <div className="flex items-center gap-2">
                       <span className="text-gray-400">📍</span>
-                      <span className="font-mono">#{relay.geohash}</span>
+                      <span className="font-mono">
+                        {relay.geohash ? `#${relay.geohash}` : '#global'}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-gray-400">🔗</span>
                       <span className="font-mono text-xs break-all">{relay.url}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400">⚡</span>
+                      <span className={`font-mono text-xs ${
+                        relay.type === 'local' ? 'text-blue-400' : 'text-gray-400'
+                      }`}>
+                        {relay.type}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -82,8 +124,6 @@ export function Connections({
         </div>
       </div>
 
-
-
       {/* Action Buttons */}
       <div className="space-y-2">
         <ThemedButton
@@ -92,20 +132,8 @@ export function Connections({
           disabled={false}
           className={t.actionButton}
         >
-          {nostrEnabled ? "DISCONNECT" : "CONNECT"}
+          {isEnabled ? "DISCONNECT" : "CONNECT"}
         </ThemedButton>
-{/* 
-        <ThemedButton
-          as="button"
-          onClick={connectToGeoRelays}
-          disabled={isConnectingToGeoRelays}
-          className={isConnectingToGeoRelays ? t.actionButtonDisabled : t.geoRelayButton}
-        >
-          {isConnectingToGeoRelays 
-            ? "CONNECTING..." 
-            : "USE GEORELAY"
-          }
-        </ThemedButton> */}
         
         <ThemedButton
           onClick={() => {

@@ -94,22 +94,31 @@ export function Slider({
           style={{ width: `${percentage}%` }}
         />
         
-        {/* Dots (optional) */}
+        {/* Dots container with overflow hidden - only clips the dots */}
         {showDots && (
-          <div className="absolute inset-0 flex justify-between items-center px-2">
-            {Array.from({ length: 20 }, (_, i) => {
-              const dotPosition = (i / 19) * 100;
-              const isInFilledSection = dotPosition <= percentage;
-              
-              return (
-                <div 
-                  key={i}
-                  className={`w-1 h-1 rounded-full ${
-                    isInFilledSection ? 'bg-black' : colors.dots
-                  }`}
-                />
-              );
-            })}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="relative w-full h-full">
+              {Array.from({ length: max - min - 1 }, (_, i) => {
+                const dotValue = min + i + 1;
+                const dotPosition = ((dotValue - min) / (max - min)) * 100;
+                const isInFilledSection = dotPosition <= percentage;
+                
+                return (
+                  <div 
+                    key={i}
+                    className={`w-1 h-1 rounded-full ${
+                      isInFilledSection ? 'bg-black' : colors.dots
+                    }`}
+                    style={{ 
+                      position: 'absolute',
+                      left: `${dotPosition}%`,
+                      top: '50%',
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                  />
+                );
+              })}
+            </div>
           </div>
         )}
         

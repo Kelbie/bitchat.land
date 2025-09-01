@@ -25,6 +25,7 @@
     "latlon-geohash": "^2.0.0",
     "lucide-react": "^0.541.0",
     "ngeohash": "^0.6.3",
+    "nostr-relaypool": "^0.6.30",
     "nostr-tools": "^2.16.2",
     "polished": "^4.2.2",
     "react": "^18",

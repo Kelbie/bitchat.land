@@ -137,28 +137,3 @@ export function renderTextWithLinks(
   
   return parts;
 }
-
-/**
- * Test function to verify URL regex matching (for development/debugging)
- * This can be removed in production
- */
-export function testUrlRegex() {
-  const testUrls = [
-    'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    'https://youtu.be/dQw4w9WgXcQ',
-    'https://www.youtube.com/channel/UC-9-kyTW8ZkZNDHQJ6FgpwQ',
-    'https://www.youtube.com/user/username',
-    'https://example.com/path-with-hyphens',
-    'https://sub-domain.example.com/path/to/page',
-    'http://localhost:3000',
-    'https://api.github.com/users/username',
-    'https://stackoverflow.com/questions/12345/how-to-do-something',
-    'https://medium.com/@username/article-title-with-hyphens'
-  ];
-  
-  console.log('Testing URL regex patterns:');
-  testUrls.forEach(url => {
-    const matches = url.match(URL_REGEX);
-    console.log(`${url}: ${matches ? '✅ MATCHES' : '❌ NO MATCH'}`);
-  });
-}

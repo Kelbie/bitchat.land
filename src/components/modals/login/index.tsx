@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import { Modal } from "../../common/Modal";
 import { ProfileInputPage } from "./ProfileInputPage";
 import { ProfileSelectionPage } from "./ProfileSelectionPage";
@@ -21,21 +21,26 @@ export function ProfileGenerationModal({
 }: ProfileGenerationModalProps) {
   const { context, actions } = useProfileGenerationState();
 
+  // Memoize the reset function to prevent it from changing on every render
+  const resetState = useCallback(() => {
+    actions.resetState();
+  }, [actions.resetState]);
+
   // Reset state when modal opens/closes
   useEffect(() => {
     if (!isOpen) {
-      actions.resetState();
+      resetState();
     }
-  }, [isOpen, actions]);
+  }, [isOpen, resetState]);
 
-  // Handle profile save
-  const handleSaveProfile = () => {
+  // Memoize the profile save handler
+  const handleSaveProfile = useCallback(() => {
     const profileData = actions.saveProfile();
     if (profileData && onProfileSaved) {
       onProfileSaved(profileData);
       onClose();
     }
-  };
+  }, [actions.saveProfile, onProfileSaved, onClose]);
 
   // Render the appropriate page based on state
   const renderContent = () => {
@@ -53,7 +58,6 @@ export function ProfileGenerationModal({
             onGenerateKeys={actions.generateKeys}
           />
         );
-
       case "selection":
         return (
           <ProfileSelectionPage
@@ -65,7 +69,6 @@ export function ProfileGenerationModal({
             onChangeName={actions.changeName}
           />
         );
-
       case "preview":
         if (!context.generatedProfile) return null;
         return (
@@ -76,7 +79,6 @@ export function ProfileGenerationModal({
             onChangeColor={actions.changeColor}
           />
         );
-
       default:
         return null;
     }

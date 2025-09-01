@@ -5,13 +5,15 @@ interface PowDistributionGraphProps {
   theme: "matrix" | "material";
   width?: number;
   height?: number;
+  threshold?: number; // Current POW difficulty threshold
 }
 
 export function PowDistributionGraph({ 
   powData, 
   theme, 
   width = 200, 
-  height = 50 
+  height = 50,
+  threshold
 }: PowDistributionGraphProps) {
   // Calculate distribution of POW difficulties
   const maxBits = 40; // Maximum POW difficulty
@@ -30,11 +32,13 @@ export function PowDistributionGraph({
   const colors = {
     matrix: {
       fill: "rgb(74, 222, 128)", // green-400
-      background: "rgb(17, 24, 39)" // gray-900
+      background: "rgb(17, 24, 39)", // gray-900
+      belowThreshold: "rgb(239, 68, 68)" // red-500
     },
     material: {
       fill: "rgb(59, 130, 246)", // blue-500
-      background: "rgb(255, 255, 255)" // white
+      background: "rgb(255, 255, 255)", // white
+      belowThreshold: "rgb(239, 68, 68)" // red-500
     }
   };
   
@@ -75,6 +79,9 @@ export function PowDistributionGraph({
           const x = bits; // Direct mapping: bit 0 at x=0, bit 40 at x=40
           const barWidth = 1; // Full width of each bit slot
           
+          // Color bars based on threshold: red for below, theme color for above
+          const barColor = threshold !== undefined && bits < threshold ? color.belowThreshold : color.fill;
+          
           return (
             <rect
               key={bits}
@@ -82,11 +89,25 @@ export function PowDistributionGraph({
               y={height - barHeight}
               width={barWidth}
               height={barHeight}
-              fill={color.fill}
+              fill={barColor}
               opacity={0.8}
             />
           );
         })}
+        
+        {/* Threshold line (vertical line showing current difficulty setting) */}
+        {threshold !== undefined && (
+          <line
+            x1={threshold}
+            y1={0}
+            x2={threshold}
+            y2={height}
+            stroke={color.belowThreshold}
+            strokeWidth="0.5"
+            strokeDasharray="2,2"
+            opacity={0.8}
+          />
+        )}
         
         {/* X-axis line */}
         <line

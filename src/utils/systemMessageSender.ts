@@ -29,14 +29,8 @@ export async function sendJoinMessage({
   isGeohash
 }: SystemMessageOptions): Promise<void> {
   try {
-    console.log(`🚀 Sending join message for channel: ${channelKey}`);
-    console.log(`👤 Username: ${username}`);
-    console.log(`🔑 Private key length: ${privateKey.length}`);
-    console.log(`🌍 Is geohash: ${isGeohash}`);
-    
     // Create the system message content
     const messageContent = `* 👋 ${username} joined the channel via bitchat.land *`;
-    console.log(`📝 Message content: ${messageContent}`);
     
     // Determine event kind and tags based on channel type
     const tags = [
@@ -48,12 +42,10 @@ export async function sendJoinMessage({
     if (isGeohash) {
       kind = 20000; // Geohash channels use kind 20000
       tags.push(["g", channelKey.toLowerCase()]);
-      console.log(`📍 Added geohash tag: g=${channelKey.toLowerCase()}`);
     } else {
       kind = 23333; // Standard channels use kind 23333
       tags.push(["d", channelKey.toLowerCase()]);
       tags.push(["relay", "wss://relay.damus.io"]);
-      console.log(`💬 Added group tag: d=${channelKey.toLowerCase()}`);
     }
     
     // Create event template
@@ -64,11 +56,8 @@ export async function sendJoinMessage({
       tags: tags,
     };
     
-    console.log("📄 Join event template:", eventTemplate);
-    
     // Sign the event
     const signedEvent = finalizeEvent(eventTemplate, hexToBytes(privateKey));
-    console.log("✍️ Signed join event:", signedEvent);
     
     // Validate the event
     const valid = validateEvent(signedEvent);
@@ -81,48 +70,30 @@ export async function sendJoinMessage({
       throw new Error("Join event signature verification failed");
     }
     
-    console.log("✅ Join event validated successfully");
-    
     // Get relays for publishing
     let allRelays = ["wss://relay.damus.io"];
-    console.log(`📡 Starting with 1 fallback relay: wss://relay.damus.io`);
     
     // Add georelay relays if available
     try {
       if (isGeohash) {
-        console.log(`🌍 Attempting to get georelay relays for geohash: ${channelKey}`);
         const geoRelays = GeoRelayDirectory.shared.closestRelays(channelKey, 10);
-        console.log(`🌍 GeoRelay result:`, geoRelays);
         if (geoRelays && Array.isArray(geoRelays) && geoRelays.length > 0) {
           allRelays = [...new Set([...allRelays, ...geoRelays])];
-          console.log(`🌍 Added ${geoRelays.length} georelay relays for geohash ${channelKey}`);
-        } else {
-          console.log(`🌍 No georelay relays found for geohash ${channelKey}`);
         }
       } else {
-        console.log(`🌍 Attempting to get georelay relays for current location`);
         const geoRelays = GeoRelayDirectory.shared.closestRelays("u", 5);
-        console.log(`🌍 GeoRelay result:`, geoRelays);
         if (geoRelays && Array.isArray(geoRelays) && geoRelays.length > 0) {
           allRelays = [...new Set([...allRelays, ...geoRelays])];
-          console.log(`🌍 Added ${geoRelays.length} georelay relays for current location`);
-        } else {
-          console.log(`🌍 No georelay relays found for current location`);
         }
       }
     } catch (geoError) {
       console.warn("Could not get georelay relays:", geoError);
-      console.log(`🌍 Falling back to default relays only`);
     }
     
     // Remove duplicates and ensure valid relay URLs
     allRelays = [...new Set(allRelays)].filter(relay => 
       relay && relay.startsWith('wss://') && relay.length > 0
     );
-    
-    console.log(`📡 Total relays for publishing join message: ${allRelays.length}`);
-    console.log(`📡 Relay URLs:`, allRelays);
-    console.log(`📡 allRelays type:`, typeof allRelays, Array.isArray(allRelays));
     
     // Ensure allRelays is always an array
     if (!Array.isArray(allRelays)) {
@@ -134,8 +105,6 @@ export async function sendJoinMessage({
     const pool = new SimplePool();
     
     try {
-      console.log("Attempting to publish join event to relays:", allRelays);
-      
       // Publish to ALL relays - pool.publish returns an array of promises
       const publishPromises = pool.publish(allRelays, signedEvent);
       const results = await Promise.allSettled(publishPromises);
@@ -151,7 +120,6 @@ export async function sendJoinMessage({
         throw new Error("Failed to publish join message to any relay");
       }
       
-      console.log(`✅ Join message published successfully to ${successful.length}/${results.length} relays`);
     } finally {
       pool.close(allRelays);
     }

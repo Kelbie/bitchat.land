@@ -113,15 +113,6 @@ export function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const powWorkerRef = useRef<Worker | null>(null);
 
-  // Debug: Log when ref is set
-  useEffect(() => {
-    if (textareaRef.current) {
-      console.log("🔍 Textarea ref is now available");
-    }
-  }, []);
-
-
-
   // Handle prefillText changes - only apply when it's a new prefill
   useEffect(() => {
     if (prefillText && prefillText !== lastPrefillRef.current) {
@@ -181,11 +172,9 @@ export function ChatInput({
   // Focus textarea when message is cleared (after sending)
   useEffect(() => {
     if (message === "" && textareaRef.current) {
-      console.log("🔍 Message cleared, focusing textarea via useEffect");
       requestAnimationFrame(() => {
         if (textareaRef.current) {
           textareaRef.current.focus();
-          console.log("✅ Textarea focused via useEffect");
         }
       });
     }
@@ -235,7 +224,6 @@ export function ChatInput({
 
   // POW message handlers
   const handlePowComplete = (data: PowWorkerMessage['data']) => {
-    console.log('✅ POW completed successfully:', data);
     setIsMiningPow(false);
     // Continue with message sending using the mined event
     if (data.minedEvent) {
@@ -252,7 +240,6 @@ export function ChatInput({
   };
 
   const handlePowStopped = (data: PowWorkerMessage['data']) => {
-    console.log('⏹️ POW stopped:', data.message);
     setIsMiningPow(false);
     // Continue without POW
     continueWithoutPow();
@@ -260,8 +247,6 @@ export function ChatInput({
 
   // Continue functions for POW flow
   const continueWithMinedEvent = (minedEvent: NonNullable<PowWorkerMessage['data']['minedEvent']>) => {
-    console.log('🚀 Continuing with mined event:', minedEvent.id);
-    
     // Create event template from mined event
     const eventWithPow: EventTemplate = {
       kind: minedEvent.kind,
@@ -275,7 +260,6 @@ export function ChatInput({
   };
 
   const continueWithoutPow = () => {
-    console.log('🚀 Continuing without POW');
     // Continue with the original event template
     if (eventTemplateForPow) {
       continueWithEvent(eventTemplateForPow);
@@ -299,7 +283,6 @@ export function ChatInput({
     
     // Sign the event
     const signedEvent = finalizeEvent(eventToUse, hexToBytes(savedProfile.privateKey));
-    console.log("✍️ Signed event:", signedEvent);
     
     // Continue with publishing
     publishEvent(signedEvent);
@@ -318,15 +301,13 @@ export function ChatInput({
         const geoRelays = GeoRelayDirectory.shared.closestRelays(currentChannel, 10);
         if (geoRelays.length > 0) {
           allRelays = [...new Set([...allRelays, ...geoRelays])];
-          console.log(`🌍 Added ${geoRelays.length} georelay relays for geohash ${currentChannel}`);
         }
       } else {
         // For group channels, get relays closest to current location (if available)
         try {
-          const geoRelays = GeoRelayDirectory.shared.closestRelays("u", 5); // Use global fallback
+          const geoRelays = GeoRelayDirectory.shared.closestRelays("u", 10); // Use global fallback
           if (geoRelays.length > 0) {
             allRelays = [...new Set([...allRelays, ...geoRelays])];
-            console.log(`🌍 Added ${geoRelays.length} georelay relays for current location`);
           }
         } catch (geoError) {
           console.warn("Could not get georelay relays for current location:", geoError);
@@ -341,19 +322,12 @@ export function ChatInput({
       relay && relay.startsWith('wss://') && relay.length > 0
     );
     
-    console.log(`📡 Total relays for publishing: ${allRelays.length}`);
-    console.log("📡 Relays:", allRelays);
-
     // Create pool and publish
     const pool = new SimplePool();
 
     try {
-      console.log("Attempting to publish event to ALL relays:", allRelays);
-
       // Publish to ALL relays - pool.publish returns an array of promises
       const publishPromises = pool.publish(allRelays, signedEvent);
-
-      console.log("Publish promises created:", publishPromises.length);
 
       // Use Promise.allSettled to wait for all attempts, then check if at least one succeeded
       Promise.allSettled(publishPromises).then((results) => {
@@ -368,9 +342,6 @@ export function ChatInput({
           console.error("❌ Failed to publish to any relay. Errors:", errors);
           setError(`Failed to publish message to any relay: ${errors.join(', ')}`);
         } else {
-          // At least one relay succeeded
-          console.log(`✅ Message published successfully to ${successful.length}/${results.length} relays`);
-          
           // Log any failed relays for debugging (but don't throw)
           const failed = results.filter(result => result.status === 'rejected');
           if (failed.length > 0) {
@@ -384,15 +355,12 @@ export function ChatInput({
 
           // Focus the textarea after clearing the message
           setTimeout(() => {
-            console.log("🔍 Attempting to focus textarea after send");
             if (textareaRef.current) {
               textareaRef.current.focus();
-              console.log("✅ Textarea focused successfully");
               // Try to focus again after a short delay to ensure it sticks
               setTimeout(() => {
                 if (textareaRef.current) {
                   textareaRef.current.focus();
-                  console.log("🔄 Refocusing textarea to ensure focus sticks");
                 }
               }, 50);
             } else {
@@ -401,7 +369,6 @@ export function ChatInput({
               const textarea = document.querySelector('textarea[data-chat-input="true"]') as HTMLTextAreaElement;
               if (textarea) {
                 textarea.focus();
-                console.log("✅ Textarea focused via fallback DOM query");
               }
             }
           }, 100);
@@ -428,8 +395,6 @@ export function ChatInput({
     isSending || !message.trim() || message.length > 280 || currentChannel === "global";
 
   const handleRoll = async ({ min, max }: RollRange) => {
-    console.log("🎲 Roll command detected", { min, max });
-  
     const tempPriv = generateSecretKey();
     const tempPub = getPublicKey(tempPriv);
     const hash = sha256(hexToBytes(tempPub));
@@ -483,7 +448,6 @@ export function ChatInput({
         throw new Error(`Failed to publish to any relay: ${errors.join(', ')}`);
       }
       
-      console.log(`✅ Roll published successfully to ${successful.length}/${results.length} relays`);
       onMessageSent?.(eventTemplate.content);
     } finally {
       pool.close(NOSTR_RELAYS);
@@ -510,25 +474,10 @@ export function ChatInput({
     setError("");
   
     try {
-      console.log("🚀 Starting message send...");
-      console.log("📝 Message:", message.trim());
-      console.log("📍 Channel:", currentChannel);
-      console.log("👤 Profile:", {
-        username: savedProfile.username,
-        publicKey: savedProfile.publicKey.slice(0, 8) + "...",
-        privateKeyLength: savedProfile.privateKey.length
-      });
-  
       const rollRange = parseRollCommand(message.trim());
   
       // Determine event kind and tags based on channel
       const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
-  
-      console.log(`🔍 Channel analysis:`, {
-        channel: currentChannel,
-        isGeohash: isGeohash,
-        regex: /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel)
-      });
   
       const tags = [
         ["n", savedProfile.username], // username tag
@@ -539,12 +488,10 @@ export function ChatInput({
       if (isGeohash) {
         kind = 20000; // Geohash channels use kind 20000
         tags.push(["g", currentChannel.toLowerCase()]);
-        console.log(`📍 Using kind 20000 with geohash tag: g=${currentChannel.toLowerCase()}`);
       } else {
         kind = 23333; // Standard channels use kind 23333
         tags.push(["d", currentChannel.toLowerCase()]);
         tags.push(["relay", NOSTR_RELAYS[0]]);
-        console.log(`💬 Using kind 23333 with group tag: d=${currentChannel.toLowerCase()}`);
       }
   
             // Create event template (don't include pubkey, finalizeEvent adds it)
@@ -555,11 +502,9 @@ export function ChatInput({
         tags: tags,
       };
 
-      console.log("📄 Event template:", eventTemplate);
 
       // Apply proof of work if enabled
       if (powEnabled && powDifficulty > 0) {
-        console.log(`⛏️ Starting POW mining with difficulty ${powDifficulty}...`);
         setIsMiningPow(true);
         
         // Create a complete event template with pubkey for POW mining

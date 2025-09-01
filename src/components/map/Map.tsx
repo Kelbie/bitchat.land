@@ -49,6 +49,7 @@ interface MapProps {
 
 const styles = globalStyles["Map"];
 export function Map({
+  recentEvents,
   width,
   height,
   projection,
@@ -63,9 +64,6 @@ export function Map({
   onMouseMove,
   onMouseUp,
   currentGeohashes,
-  geohashActivity,
-  allEventsByGeohash,
-  animatingGeohashes,
   showSingleCharGeohashes,
   showGeohashText,
   effectivePrecision,
@@ -183,11 +181,9 @@ export function Map({
             })}
 
             <GeohashLayer
+              recentEvents={recentEvents}
               currentGeohashes={currentGeohashes}
               projection={mercator.projection}
-              geohashActivity={geohashActivity}
-              allEventsByGeohash={allEventsByGeohash}
-              animatingGeohashes={animatingGeohashes}
               isDragging={isDragging}
               hasDragged={hasDragged}
               events={events}

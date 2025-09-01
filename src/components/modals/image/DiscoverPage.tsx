@@ -32,10 +32,7 @@ const MasonryImage: React.FC<{
 
   const handleHeartClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isFavoritedState) {
-      // Already favorited, could remove if needed
-      console.log('Image already in favorites');
-    } else {
+    if (!isFavoritedState) {
       // Add to favorites
       addToFavorites(image.url, image.tags);
       setIsFavoritedState(true);
@@ -46,7 +43,6 @@ const MasonryImage: React.FC<{
     e.stopPropagation();
     // Copy image URL to clipboard
     navigator.clipboard.writeText(image.url);
-    console.log('Link copied to clipboard');
   };
 
   return (

@@ -26,12 +26,10 @@ self.onmessage = function(e) {
 
 function startProofOfWork({ eventTemplate, difficulty }) {
   if (isRunning) {
-    console.log('POW already running, ignoring start command');
     return;
   }
 
   isRunning = true;
-  console.log(`⛏️ Starting POW mining with difficulty ${difficulty}`);
   
   // Create abort controller for this mining session
   currentAbortController = new AbortController();
@@ -71,11 +69,9 @@ function startProofOfWork({ eventTemplate, difficulty }) {
 
 function stopProofOfWork() {
   if (!isRunning) {
-    console.log('POW not running, ignoring stop command');
     return;
   }
   
-  console.log('⛏️ Stopping POW mining...');
   isRunning = false;
   
   // Abort current mining operation if possible

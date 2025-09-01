@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { SimplePool } from "nostr-tools/pool";
+import { RelayPool } from "nostr-relaypool";
 import type { Event as NostrEventOriginal } from "nostr-tools";
 import { getPow } from "nostr-tools/nip13";
 import { NostrEvent, GeohashActivity } from "../types";
@@ -10,537 +10,632 @@ import { GeoRelayDirectory } from "../utils/geoRelayDirectory";
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
 
-export function useNostr(
-  searchGeohash: string,
-  currentGeohashes: string[],
-  onGeohashAnimate: (geohash: string) => void,
-  currentChannel: string = "", // Add currentChannel parameter
-  powEnabled: boolean = true,
-  powDifficulty: number = 8
-) {
-  // Debug logging for PoW settings
-  console.log('useNostr PoW settings:', { powEnabled, powDifficulty });
-  
-  // Log when PoW settings change
-  useEffect(() => {
-    console.log('PoW settings changed:', { powEnabled, powDifficulty });
-  }, [powEnabled, powDifficulty]);
-  
-  const [connectedRelays, setConnectedRelays] = useState<Array<{url: string, geohash: string}>>([]);
-  const [recentEvents, setRecentEvents] = useState<NostrEvent[]>([]);
-  const [geohashActivity, setGeohashActivity] = useState<Map<string, GeohashActivity>>(
-    new Map()
-  );
-  const [nostrEnabled, setNostrEnabled] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState("Disconnected");
-  const [allStoredEvents, setAllStoredEvents] = useState<NostrEvent[]>([]);
-  const [allEventsByGeohash, setAllEventsByGeohash] = useState<Map<string, number>>(
-    new Map()
-  );
+// Helper to extract tag value from event tags
+export const getTagValue = (event: NostrEventOriginal, tagName: string): string | null => {
+  const tag = event.tags.find((tag: string[]) => tag[0] === tagName);
+  return tag ? (tag[1] || null) : null;
+};
 
-  const poolRef = useRef<SimplePool | null>(null);
-  const subRef = useRef<ReturnType<SimplePool['subscribeMany']> | null>(null);
-  const statusIntervalRef = useRef<number | null>(null);
+interface RelayInfo {
+  url: string;
+  geohash: string;
+  type: 'initial' | 'local';
+  status: 'connecting' | 'connected' | 'disconnected';
+  lastPing: number;
+}
 
-  // Single event handler function to avoid duplication
-  const handleNostrEvent = useCallback((event: NostrEventOriginal) => {
-    console.log("Received Nostr event:", event);
-    console.log(`Current PoW settings in handler: enabled=${powEnabled}, difficulty=${powDifficulty}`);
+interface ConnectionState {
+  relays: RelayInfo[];
+  status: string;
+  isConnected: boolean;
+  isEnabled: boolean;
+}
 
-    // Proof of Work validation - only if enabled
-    if (powEnabled) {
-      const eventPow = getPow(event.id);
-      console.log(`PoW validation: event difficulty ${eventPow}, required ${powDifficulty}`);
+interface GeohashStats {
+  geohash: string;
+  lastActivity: number;
+  eventCount: number;
+  totalEvents: number; // Raw count of all events for this geohash
+}
+
+class NostrConnection {
+  private relayPool: RelayPool | null = null;
+  private relays: RelayInfo[] = [];
+  private powEnabled: boolean;
+  private powDifficulty: number;
+  private currentSubscriptions: Map<string, () => void> = new Map();
+  private _isEnabled: boolean = false;
+  private _isConnected: boolean = false;
+  private _status: string = "Disconnected";
+  private _events: NostrEvent[] = [];
+  private _geohashStats: Map<string, GeohashStats> = new Map();
+
+  // Search parameters
+  private searchGeohash: string;
+  private currentGeohashes: string[];
+  private onGeohashAnimate?: (geohash: string) => void;
+  private onStateChange?: () => void; // Add callback for state changes
+  private currentChannel: string = "";
+
+  constructor(
+    searchGeohash: string = "",
+    currentGeohashes: string[] = [],
+    onGeohashAnimate?: (geohash: string) => void,
+    onStateChange?: () => void, // Add this parameter
+    powEnabled: boolean = true,
+    powDifficulty: number = 8
+  ) {
+    this.searchGeohash = searchGeohash;
+    this.currentGeohashes = currentGeohashes;
+    this.onGeohashAnimate = onGeohashAnimate;
+    this.onStateChange = onStateChange;
+    this.powEnabled = powEnabled;
+    this.powDifficulty = powDifficulty;
+
+    // Auto-connect on creation
+    this.connect();
+  }
+
+  getHierarchicalEventCount(targetGeohash: string): number {
+    let totalCount = 0;
     
-      if (eventPow < powDifficulty) {
-        console.log(`Skipping event with insufficient PoW difficulty: ${eventPow} < ${powDifficulty}`, event.id);
-        return;
+    // Count all events that have geohashes starting with the target geohash
+    this._geohashStats.forEach((stats, eventGeohash) => {
+      if (eventGeohash.startsWith(targetGeohash)) {
+        totalCount += stats.totalEvents;
       }
-    } else {
-      console.log('PoW validation disabled, accepting all events');
-    }
-
-    // Extract geohash from 'g' tag and group from 'd' tag
-    const geoTag = event.tags.find((tag: string[]) => tag[0] === "g");
-    const groupTag = event.tags.find((tag: string[]) => tag[0] === "d");
-    const eventGeohash = geoTag ? (geoTag[1] || null) : null;
-    const eventGroup = groupTag ? (groupTag[1] || null) : null;
-
-    const eventKind = event.kind as number | undefined;
-
-    // Determine if we should include this event based on kind rules
-    // kind 20000: require a valid base32 geohash in 'g' tag
-    // kind 23333: no strict validation required (include regardless of g tag validity)
-    let allowEvent = true;
-    if (eventKind === 20000) {
-      const gh = (eventGeohash || "").toLowerCase();
-      if (!gh || !VALID_GEOHASH_CHARS.test(gh)) {
-        // For strict kind, skip events without a valid geohash
-        console.log("Skipping kind 20000 event without valid geohash:", event.id);
-        allowEvent = false;
-      }
-    }
-
-    // Check for invalid geohash and log it
-    if (eventGeohash && !VALID_GEOHASH_CHARS.test(eventGeohash)) {
-      const nameTag = event.tags.find((tag: string[]) => tag[0] === "n");
-      const username = nameTag ? nameTag[1] : "anonymous";
-      const pubkeyHash = event.pubkey.slice(-4);
-      console.log(`Invalid geohash detected in incoming message: "${eventGeohash}" from user ${username} (${pubkeyHash})`);
-      console.log(`Message content: "${event.content?.slice(0, 100)}${event.content && event.content.length > 100 ? '...' : ''}"`);
-    }
-
-    if (!allowEvent) {
-      return;
-    }
-
-    // Handle both geohash events (kind 20000) and group events (kind 23333)
-    const locationIdentifier = eventGeohash || eventGroup;
-    
-    if (locationIdentifier) {
-      // For geohash events, try to find matching geohash
-      if (eventGeohash) {
-        const matchingGeohash = findMatchingGeohash(
-          eventGeohash,
-          searchGeohash,
-          currentGeohashes
-        );
-
-        // Store the event in our hierarchical tracking using the full geohash
-        setAllEventsByGeohash((prev) => {
-          const newMap = new Map(prev);
-          newMap.set(eventGeohash, (newMap.get(eventGeohash) || 0) + 1);
-          return newMap;
-        });
-
-        if (matchingGeohash) {
-          console.log(
-            `Nostr event in geohash ${matchingGeohash}:`,
-            event.content
-          );
-
-          // Update activity tracking
-          setGeohashActivity((prev) => {
-            const newActivity = new Map(prev);
-            const current = newActivity.get(matchingGeohash) || {
-              geohash: matchingGeohash,
-              lastActivity: 0,
-              eventCount: 0,
-            };
-
-            newActivity.set(matchingGeohash, {
-              ...current,
-              lastActivity: Date.now(),
-              eventCount: current.eventCount + 1,
-            });
-
-            return newActivity;
-          });
-
-          // Trigger animation
-          onGeohashAnimate(matchingGeohash);
-        }
-      } else if (eventGroup) {
-        // For group events (kind 23333), log and process them
-        console.log(
-          `Nostr event in group ${eventGroup}:`,
-          event.content
-        );
-        
-        // Store group events in hierarchical tracking as well
-        setAllEventsByGeohash((prev) => {
-          const newMap = new Map(prev);
-          newMap.set(eventGroup, (newMap.get(eventGroup) || 0) + 1);
-          return newMap;
-        });
-      }
-    }
-
-    // Add to all stored events (no limit) - we'll filter dynamically
-    setAllStoredEvents((prev) => {
-      // Check for duplicates using event ID
-      if (prev.some(existingEvent => existingEvent.id === event.id)) {
-        return prev; // Event already exists, don't add duplicate
-      }
-      return [event, ...prev];
     });
     
-    // Always add to recent events for the live feed (no limit)
-    setRecentEvents((prev) => {
-      // Check for duplicates using event ID
-      if (prev.some(existingEvent => existingEvent.id === event.id)) {
-        return prev; // Event already exists, don't add duplicate
-      }
-      return [event, ...prev];
+    return totalCount;
+  }
+
+  
+
+  // Public getter for the complete connection state
+  get connectionState(): ConnectionState {
+    return {
+      relays: [...this.relays],
+      status: this._status,
+      isConnected: this._isConnected,
+      isEnabled: this._isEnabled
+    };
+  }
+
+  // Public getters for data
+  get events(): NostrEvent[] { return [...this._events]; }
+  get geohashStats(): Map<string, GeohashStats> { return new Map(this._geohashStats); }
+
+  // Backward compatibility getters
+  get geohashActivity(): Map<string, GeohashActivity> {
+    const activity = new Map<string, GeohashActivity>();
+    this._geohashStats.forEach((stats, geohash) => {
+      activity.set(geohash, {
+        geohash: stats.geohash,
+        lastActivity: stats.lastActivity,
+        eventCount: stats.eventCount
+      });
     });
-  }, [powEnabled, powDifficulty]);
+    return activity;
+  }
 
-  // Recreate subscription when PoW settings change
-  useEffect(() => {
-    if (subRef.current && poolRef.current && connectedRelays.length > 0) {
-      console.log('Recreating subscription with new PoW settings:', { powEnabled, powDifficulty });
-      
-      // Close existing subscription
-      subRef.current.close();
-      
-      // Get current relay URLs
-      const currentRelayUrls = connectedRelays.map(r => r.url);
-      
-      // Create new subscription with updated event handler
-      const newSub = poolRef.current.subscribeMany(currentRelayUrls, [{ kinds: [20000, 23333] }], {
-        onevent: handleNostrEvent,
-        oneose() {
-          console.log("End of stored events (recreated)");
-        },
-        onclose() {
-          console.log("Subscription closed (recreated)");
-        },
-      });
-      
-      subRef.current = newSub;
-    }
-  }, [powEnabled, powDifficulty, handleNostrEvent, connectedRelays]);
-
-  const connectToNostr = async () => {
-    try {
-      setConnectionStatus("Connecting...");
-
-      // Create a new pool
-      const pool = new SimplePool();
-      poolRef.current = pool;
-
-      // Wait for GeoRelayDirectory to be ready, then get 1 relay from each of the 24 key geohashes
-      await GeoRelayDirectory.shared.waitForReady();
-      
-      const keyGeohashes = ["b", "c", "f", "g", "u", "v", "y", "z", "9", "d", "e", "s", "t", "w", "x", "2", "6", "7", "k", "m", "q", "r", "4", "p"];
-      const initialRelays: Array<{url: string, geohash: string}> = [];
-      const usedGeohashes = new Set<string>();
-      
-      // Get exactly 1 relay from each geohash for broad geographic coverage
-      for (const geohash of keyGeohashes) {
-        if (usedGeohashes.has(geohash)) continue; // Skip if we already have this geohash
-        
-        const relays = GeoRelayDirectory.shared.closestRelays(geohash, 1);
-        if (relays.length > 0) {
-          // Only take the first relay and mark this geohash as used
-          initialRelays.push({url: relays[0], geohash});
-          usedGeohashes.add(geohash);
-        }
+  get allEventsByGeohash(): Map<string, number> {
+    const eventCounts = new Map<string, number>();
+    
+    // Get all unique geohash prefixes that we need to calculate counts for
+    const allGeohashes = Array.from(this._geohashStats.keys());
+    const prefixesNeeded = new Set<string>();
+    
+    // For each geohash, add all its prefixes
+    allGeohashes.forEach(geohash => {
+      for (let i = 1; i <= geohash.length; i++) {
+        prefixesNeeded.add(geohash.substring(0, i));
       }
-      
-      // If no georelays available, fall back to a single hardcoded relay
-      const targetRelays = initialRelays.length > 0 ? initialRelays.map(r => r.url) : ["wss://relay.damus.io"];
-
-      // Subscribe to kind 20000 (strict geohash) and 23333 (no strict geohash) events
-      const sub = pool.subscribeMany(targetRelays, [{ kinds: [20000, 23333] }], {
-        onevent: handleNostrEvent,
-        oneose() {
-          console.log("End of stored events");
-          setConnectionStatus(
-            `Connected (${targetRelays.length}/${targetRelays.length})`
-          );
-          setConnectedRelays(initialRelays);
-        },
-        onclose() {
-          console.log("Subscription closed");
-        },
-      });
-
-      subRef.current = sub;
-
-      // Set initial connection status
-      setTimeout(() => {
-        if (poolRef.current) {
-          setConnectionStatus(
-            `Connected (${targetRelays.length}/${targetRelays.length})`
-          );
-          setConnectedRelays(initialRelays);
-        }
-      }, 2000);
-    } catch (error) {
-      console.error("Failed to connect to Nostr:", error);
-      setConnectionStatus("Connection failed");
-    }
-  };
-
-  const disconnectFromNostr = () => {
-    if (statusIntervalRef.current) {
-      clearInterval(statusIntervalRef.current);
-      statusIntervalRef.current = null;
-    }
-
-    if (subRef.current) {
-      try {
-        subRef.current.close();
-      } catch (e) {
-        console.log("Error closing subscription:", e);
+    });
+    
+    // Calculate hierarchical counts for each prefix
+    prefixesNeeded.forEach(prefix => {
+      const hierarchicalCount = this.getHierarchicalEventCount(prefix);
+      if (hierarchicalCount > 0) {
+        eventCounts.set(prefix, hierarchicalCount);
       }
-      subRef.current = null;
-    }
+    });
+    
+    return eventCounts;
+  }
 
-    if (poolRef.current) {
-      try {
-        poolRef.current.close(NOSTR_RELAYS);
-      } catch (e) {
-        console.log("Error closing pool:", e);
-      }
-      poolRef.current = null;
-    }
+  // Individual getters (kept for convenience)
+  get isEnabled(): boolean { return this._isEnabled; }
+  get isConnected(): boolean { return this._isConnected; }
+  get status(): string { return this._status; }
+  get connectedRelays(): RelayInfo[] { return [...this.relays]; }
 
-    // Don't clear connectedRelays - keep them visible but disconnected
-    setConnectionStatus("Disconnected");
-  };
+  private updateStatus(): void {
+    const totalCount = this.relays.length;
 
-  const toggleNostr = async () => {
-    if (nostrEnabled) {
-      disconnectFromNostr();
-      setNostrEnabled(false);
+    if (totalCount === 0) {
+      this._status = "Disconnected";
+      this._isConnected = false;
+    } else if (!this.relayPool) {
+      this._status = "Connection failed";
+      this._isConnected = false;
     } else {
-      await connectToNostr();
-      setNostrEnabled(true);
+      const connectedCount = this.relays.filter(r => r.status === 'connected').length;
+      const localCount = this.relays.filter(r => r.type === 'local' && r.status === 'connected').length;
+      const initialCount = this.relays.filter(r => r.type === 'initial' && r.status === 'connected').length;
+
+      this._isConnected = connectedCount > 0;
+
+      if (localCount > 0) {
+        this._status = `Connected with ${connectedCount} total relays (${localCount} local + ${initialCount} initial)`;
+      } else if (initialCount > 0) {
+        this._status = `Connected to ${initialCount} initial relays`;
+      } else {
+        this._status = `Connecting to ${totalCount} relays...`;
+      }
     }
-  };
 
-  // Auto-connect to Nostr on component mount
-  useEffect(() => {
-    const initConnection = async () => {
-      await connectToNostr();
-      setNostrEnabled(true);
-    };
-    initConnection();
-  }, []);
+    // Trigger React re-render when status changes
+    this.onStateChange?.();
+  }
 
-  // Auto-update georelays when channel changes
-  useEffect(() => {
-    if (nostrEnabled && currentChannel && poolRef.current) {
-      console.log("Channel changed, updating georelays for:", currentChannel);
-      // Automatically connect to georelays for the new channel
-      connectToGeoRelays();
+  private createRelayPool(): void {
+    if (this.relayPool) {
+      // Clean up existing pool
+      this.currentSubscriptions.forEach(unsub => unsub());
+      this.currentSubscriptions.clear();
     }
-  }, [currentChannel, nostrEnabled]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      disconnectFromNostr();
-    };
-  }, []);
+    // Create RelayPool with advanced features enabled
+    this.relayPool = new RelayPool([], {
+      useEventCache: true,
+      logSubscriptions: false,
+      deleteSignatures: false,
+      skipVerification: false,
+      autoReconnect: true,
+    });
 
-  // Get georelay-based relays for a specific channel/geohash
-  const getGeorelayRelays = (channel: string, count: number = 5): string[] => {
-    // If we have a channel, use it to find appropriate georelays
-    // Otherwise fall back to global relays
-    const targetGeohash = channel || "u";
-    return GeoRelayDirectory.shared.closestRelays(targetGeohash, count);
-  };
+    // Set up error and notice handlers
+    this.relayPool.onerror((err: string, relayUrl: string) => {
+      console.error("RelayPool error from", relayUrl, ":", err);
+      // Update specific relay status
+      this.relays = this.relays.map(relay =>
+        relay.url === relayUrl ? { ...relay, status: 'disconnected' } : relay
+      );
+      this.updateStatus(); // This will trigger re-render
+    });
 
-  // Connect to georelays based on current channel and update connection
-  const connectToGeoRelays = async (): Promise<string[]> => {
-    try {
-      console.log("Connecting to georelays for channel:", currentChannel);
-      
-      // Get georelay relays for current channel
-      const geoRelays = getGeorelayRelays(currentChannel, 5);
-      console.log(`Found ${geoRelays.length} georelay relays for channel ${currentChannel}:`, geoRelays);
-      
-      if (geoRelays.length > 0) {
-        // Get current connected relays to preserve initial connections
-        const currentRelays = connectedRelays;
-        
-        // Separate initial relays from local relays
-        const initialRelayCount = 24; // We know we have 24 initial relays
-        const initialRelays = currentRelays.slice(0, initialRelayCount);
-        const existingLocalRelays = currentRelays.slice(initialRelayCount);
-        
-        // Create relay info with geohash for the current channel
-        const newRelayInfo = geoRelays.map(url => ({url, geohash: currentChannel}));
-        
-        // Limit local relays to maximum of 5 total
-        const maxLocalRelays = 5;
-        let finalLocalRelays: Array<{url: string, geohash: string}>;
-        
-        if (existingLocalRelays.length + newRelayInfo.length <= maxLocalRelays) {
-          // We can add all new local relays
-          finalLocalRelays = [...existingLocalRelays, ...newRelayInfo];
-        } else {
-          // We need to limit to maxLocalRelays
-          // Keep existing local relays and add new ones until we hit the limit
-          const availableSlots = maxLocalRelays - existingLocalRelays.length;
-          if (availableSlots > 0) {
-            finalLocalRelays = [...existingLocalRelays, ...newRelayInfo.slice(0, availableSlots)];
-          } else {
-            // No available slots, replace existing local relays with new ones
-            finalLocalRelays = newRelayInfo.slice(0, maxLocalRelays);
+    this.relayPool.onnotice((relayUrl: string, notice: string) => {
+      // console.log("RelayPool notice from", relayUrl, ":", notice);
+    });
+  }
+
+  private getInitialRelays(): RelayInfo[] {
+    const initialRelays: RelayInfo[] = [];
+
+    // Use the predefined NOSTR_RELAYS array for initial connections
+    for (const url of NOSTR_RELAYS) {
+      initialRelays.push({
+        url,
+        geohash: "", // Global/default geohash
+        status: 'connecting',
+        lastPing: Date.now(),
+        type: 'initial'
+      });
+    }
+
+    // Fallback to hardcoded relay if NOSTR_RELAYS is empty
+    if (initialRelays.length === 0) {
+      initialRelays.push({
+        url: "wss://relay.damus.io",
+        geohash: "",
+        status: 'connecting',
+        lastPing: Date.now(),
+        type: 'initial'
+      });
+    }
+
+    return initialRelays;
+  }
+
+  private createMainSubscription(relays: string[]): void {
+    if (!this.relayPool) return;
+
+    // Close existing main subscription
+    const mainSub = this.currentSubscriptions.get('main');
+    if (mainSub) {
+      mainSub();
+      this.currentSubscriptions.delete('main');
+    }
+
+    // Create subscription for both kind 20000 (geohash) and 23333 (group) events
+    const unsubscribe = this.relayPool.subscribe(
+      [{
+        kinds: [20000, 23333], since:
+          Math.floor(Date.now() / 1000) - (60 * 60)
+      }],
+      relays,
+      (event: NostrEventOriginal, isAfterEose: boolean, relayURL?: string) => {
+        // Apply PoW filtering if enabled
+        if (this.powEnabled) {
+          const eventPow = getPow(event.id);
+          if (eventPow < this.powDifficulty) {
+            return;
           }
         }
-        
-        // Combine initial relays with limited local relays
-        const combinedRelays = [...initialRelays, ...finalLocalRelays];
-        const allRelayUrls = combinedRelays.map(r => r.url);
-        
-        console.log(`Combining ${initialRelays.length} initial relays with ${finalLocalRelays.length} local relays (max: ${maxLocalRelays}) for channel ${currentChannel}`);
-        
-        // Ensure pool exists, create if needed
-        if (!poolRef.current) {
-          console.log("Creating new pool for georelay connection");
-          const pool = new SimplePool();
-          poolRef.current = pool;
-        }
-        
-        // Close existing subscription
-        if (subRef.current) {
-          console.log("Closing existing subscription");
-          subRef.current.close();
-        }
-        
-        console.log("Creating new subscription with combined relays...");
-        
-        // Create new subscription with combined relays
-        const sub = poolRef.current.subscribeMany(allRelayUrls, [{ kinds: [20000, 23333] }], {
-          onevent: handleNostrEvent,
-          oneose() {
-            console.log("End of stored events");
-            setConnectionStatus(`Connected with ${combinedRelays.length} total relays (${finalLocalRelays.length} local + ${initialRelays.length} initial)`);
-            setConnectedRelays(combinedRelays);
-          },
-          onclose() {
-            console.log("Subscription closed");
-          },
+
+        this.handleEvent(event, isAfterEose, relayURL);
+      },
+      undefined,
+      (relayURL: string) => {
+        // Update relay status to connected when EOSE is received
+        this.relays = this.relays.map(relay =>
+          relay.url === relayURL ? { ...relay, status: 'connected' } : relay
+        );
+        this.updateStatus(); // This will trigger re-render
+      },
+      {
+        allowDuplicateEvents: false,
+        allowOlderEvents: true,
+        logAllEvents: false,
+        unsubscribeOnEose: false,
+      }
+    );
+
+    this.currentSubscriptions.set('main', unsubscribe);
+  }
+
+  private handleEvent(event: NostrEventOriginal, isAfterEose: boolean, relayURL?: string): void {
+    // Extract tags using helper function
+    const eventGeohash = getTagValue(event, "g");
+    const eventGroup = getTagValue(event, "d");
+    const eventKind = event.kind as number | undefined;
+
+    // Validate events based on kind rules
+    if (eventKind === 20000 && eventGeohash) {
+      const gh = eventGeohash.toLowerCase();
+      if (!VALID_GEOHASH_CHARS.test(gh)) {
+        return;
+      }
+    }
+
+    const locationIdentifier = eventGeohash || eventGroup;
+    if (!locationIdentifier) return;
+
+    // Create enhanced event with relay URL
+    const enhancedEvent: NostrEvent = {
+      ...event,
+      relayUrl: relayURL || undefined
+    };
+
+    // Handle geohash events
+    if (eventGeohash) {
+      const matchingGeohash = findMatchingGeohash(
+        eventGeohash,
+        this.searchGeohash,
+        this.currentGeohashes
+      );
+
+      // Update consolidated geohash stats
+      const currentStats = this._geohashStats.get(eventGeohash) || {
+        geohash: eventGeohash,
+        lastActivity: 0,
+        eventCount: 0,
+        totalEvents: 0
+      };
+
+      this._geohashStats.set(eventGeohash, {
+        ...currentStats,
+        totalEvents: currentStats.totalEvents + 1
+      });
+
+      if (matchingGeohash) {
+        // Update activity tracking for matching geohash
+        const matchingStats = this._geohashStats.get(matchingGeohash) || {
+          geohash: matchingGeohash,
+          lastActivity: 0,
+          eventCount: 0,
+          totalEvents: 0
+        };
+
+        this._geohashStats.set(matchingGeohash, {
+          ...matchingStats,
+          lastActivity: Date.now(),
+          eventCount: matchingStats.eventCount + 1,
+          // Don't double-count if eventGeohash === matchingGeohash
+          totalEvents: eventGeohash === matchingGeohash ?
+            matchingStats.totalEvents : matchingStats.totalEvents + 1
         });
-        
-        subRef.current = sub;
-        setConnectedRelays(combinedRelays);
-        setConnectionStatus(`Connected with ${combinedRelays.length} total relays (${finalLocalRelays.length} local + ${initialRelays.length} initial)`);
-        setNostrEnabled(true);
-        console.log("Georelay connection successful! Total relays:", combinedRelays.length, `(${finalLocalRelays.length} local + ${initialRelays.length} initial)`);
-        
-        return geoRelays; // Success
-        
-      } else {
-        console.log("No georelay relays available for channel:", currentChannel);
+
+        this.onGeohashAnimate?.(matchingGeohash);
+      }
+    } else if (eventGroup) {
+      // Update consolidated geohash stats for groups
+      const currentStats = this._geohashStats.get(eventGroup) || {
+        geohash: eventGroup,
+        lastActivity: 0,
+        eventCount: 0,
+        totalEvents: 0
+      };
+
+      this._geohashStats.set(eventGroup, {
+        ...currentStats,
+        totalEvents: currentStats.totalEvents + 1
+      });
+    }
+
+    // Add event without duplicates
+    if (!this._events.some(existingEvent => existingEvent.id === enhancedEvent.id)) {
+      this._events = [enhancedEvent, ...this._events];
+    }
+
+    // Trigger React re-render when new events arrive
+    this.onStateChange?.();
+  }
+
+  // Method to update search parameters
+  updateSearchParams(searchGeohash: string, currentGeohashes: string[], onGeohashAnimate?: (geohash: string) => void): void {
+    this.searchGeohash = searchGeohash;
+    this.currentGeohashes = currentGeohashes;
+    this.onGeohashAnimate = onGeohashAnimate;
+  }
+
+  // Method to update channel and auto-connect to georelays
+  async updateChannel(channel: string): Promise<void> {
+    if (this.currentChannel !== channel) {
+      this.currentChannel = channel;
+      if (this._isEnabled && channel) {
+        await this.connectToGeoRelays(channel);
+      }
+    }
+  }
+
+  async connect(): Promise<void> {
+    try {
+      this._isEnabled = true;
+      this.createRelayPool();
+
+      const initialRelays = this.getInitialRelays();
+      this.relays = initialRelays;
+      this.updateStatus(); // This will trigger re-render
+
+      const relayUrls = initialRelays.map(r => r.url);
+      this.createMainSubscription(relayUrls);
+
+    } catch (error) {
+      console.error("Failed to connect to Nostr:", error);
+      this.relays = [];
+      this._isConnected = false;
+      this._status = "Connection failed";
+      this.onStateChange?.(); // Trigger re-render on error
+    }
+  }
+
+  disconnect(): void {
+    this._isEnabled = false;
+    this._isConnected = false;
+
+    // Clean up all subscriptions
+    this.currentSubscriptions.forEach(unsub => unsub());
+    this.currentSubscriptions.clear();
+
+    if (this.relayPool) {
+      this.relayPool = null;
+    }
+
+    // Update relay status
+    this.relays = this.relays.map(relay => ({
+      ...relay,
+      status: 'disconnected'
+    }));
+
+    this._status = "Disconnected";
+    this.onStateChange?.(); // Trigger re-render when disconnecting
+  }
+
+  async toggle(): Promise<void> {
+    if (this._isEnabled) {
+      this.disconnect();
+    } else {
+      await this.connect();
+    }
+  }
+
+  async connectToGeoRelays(channel: string): Promise<string[]> {
+    if (!this._isEnabled) return [];
+
+    try {
+      await GeoRelayDirectory.shared.waitForReady();
+      const geoRelays = this.getGeorelayRelays(channel, 5);
+
+      if (geoRelays.length === 0) {
         return [];
       }
-      
+
+      const initialRelays = this.relays.filter(r => r.type === 'initial');
+      const existingLocalRelays = this.relays.filter(r => r.type === 'local');
+
+      const newRelayInfo: RelayInfo[] = geoRelays.map(url => ({
+        url,
+        geohash: channel,
+        status: 'connecting',
+        lastPing: Date.now(),
+        type: 'local'
+      }));
+
+      const maxLocalRelays = 5;
+      let finalLocalRelays: RelayInfo[];
+
+      if (existingLocalRelays.length + newRelayInfo.length <= maxLocalRelays) {
+        finalLocalRelays = [...existingLocalRelays, ...newRelayInfo];
+      } else {
+        const availableSlots = maxLocalRelays - existingLocalRelays.length;
+        if (availableSlots > 0) {
+          finalLocalRelays = [...existingLocalRelays, ...newRelayInfo.slice(0, availableSlots)];
+        } else {
+          finalLocalRelays = newRelayInfo.slice(0, maxLocalRelays);
+        }
+      }
+
+      this.relays = [...initialRelays, ...finalLocalRelays];
+
+      if (!this.relayPool) {
+        this.createRelayPool();
+      }
+
+      const allRelayUrls = this.relays.map(r => r.url);
+      this.createMainSubscription(allRelayUrls);
+
+      this.updateStatus(); // This will trigger re-render
+      return geoRelays;
+
     } catch (error) {
       console.error("Failed to connect to georelays:", error);
       return [];
     }
-  };
+  }
 
-  // Disconnect from georelays and restore initial relays only
-  const disconnectFromGeoRelays = async (): Promise<void> => {
-    try {
-      console.log("Disconnecting from local georelays, restoring to initial relays only...");
-      
-      // Ensure pool exists
-      if (!poolRef.current) {
-        console.log("No pool to disconnect from");
-        return;
+  private getGeorelayRelays(channel: string, count: number = 5): string[] {
+    const targetGeohash = channel || "u";
+    return GeoRelayDirectory.shared.closestRelays(targetGeohash, count);
+  }
+
+  updatePowSettings(powEnabled: boolean, powDifficulty: number): void {
+    this.powEnabled = powEnabled;
+    this.powDifficulty = powDifficulty;
+  }
+
+  // Utility method to get connection info for UI components
+  getConnectionInfo() {
+    return {
+      relays: this.relays.map(relay => ({
+        url: relay.url,
+        geohash: relay.geohash,
+        type: relay.type,
+        isConnected: relay.status === 'connected'
+      })),
+      status: this._status,
+      isEnabled: this._isEnabled,
+      isConnected: this._isConnected,
+      totalConnected: this.relays.filter(relay => relay.status === 'connected').length,
+      totalConfigured: this.relays.length
+    };
+  }
+}
+
+export function useNostr(
+  searchGeohash: string,
+  currentGeohashes: string[],
+  onGeohashAnimate: (geohash: string) => void,
+  currentChannel: string = "",
+  powEnabled: boolean = true,
+  powDifficulty: number = 8
+) {
+  // Force re-render when data changes
+  const [, forceUpdate] = useState({});
+  const forceRerender = useCallback(() => forceUpdate({}), []);
+
+  const connectionRef = useRef<NostrConnection | null>(null);
+
+  // Initialize connection once
+  useEffect(() => {
+    connectionRef.current = new NostrConnection(
+      searchGeohash,
+      currentGeohashes,
+      onGeohashAnimate,
+      forceRerender, // Pass the forceRerender callback
+      powEnabled,
+      powDifficulty
+    );
+
+    // Remove the periodic interval - no longer needed!
+    // const interval = setInterval(forceRerender, 1000);
+
+    return () => {
+      // clearInterval(interval); // Remove this line too
+      if (connectionRef.current) {
+        connectionRef.current.disconnect();
       }
-      
-      // Close existing subscription
-      if (subRef.current) {
-        console.log("Closing existing subscription");
-        subRef.current.close();
-      }
-      
-      // Create new subscription with 1 relay from each of the 24 key geohashes
-      console.log("Creating new subscription with 1 relay from each of the 24 key geohashes...");
-      const keyGeohashes = ["b", "c", "f", "g", "u", "v", "y", "z", "9", "d", "e", "s", "t", "w", "x", "2", "6", "7", "k", "m", "q", "r", "4", "p"];
-      const fallbackRelays: Array<{url: string, geohash: string}> = [];
-      const usedGeohashes = new Set<string>();
-      
-      // Get exactly 1 relay from each geohash for broad geographic coverage
-      for (const geohash of keyGeohashes) {
-        if (usedGeohashes.has(geohash)) continue; // Skip if we already have this geohash
-        
-        const relays = GeoRelayDirectory.shared.closestRelays(geohash, 1);
-        if (relays.length > 0) {
-          // Only take the first relay and mark this geohash as used
-          fallbackRelays.push({url: relays[0], geohash});
-          usedGeohashes.add(geohash);
-        }
-      }
-      
-      const finalRelayUrls = fallbackRelays.length > 0 ? fallbackRelays.map(r => r.url) : ["wss://relay.damus.io"];
-      
-      const sub = poolRef.current.subscribeMany(finalRelayUrls, [{ kinds: [20000, 23333] }], {
-        onevent: handleNostrEvent,
-        oneose() {
-          console.log("End of stored events");
-          setConnectionStatus(`Connected to ${finalRelayUrls.length} initial relays`);
-          setConnectedRelays(fallbackRelays);
-        },
-        onclose() {
-          console.log("Subscription closed");
-        },
-      });
-      
-      subRef.current = sub;
-      setConnectedRelays(fallbackRelays);
-      setConnectionStatus(`Connected to ${finalRelayUrls.length} initial relays`);
-      console.log("Local georelay disconnection successful, restored to initial relays");
-      
-    } catch (error) {
-      console.error("Failed to disconnect from georelays:", error);
+    };
+  }, []); // Empty dependency array - only run once
+
+  // Update parameters when they change
+  useEffect(() => {
+    if (connectionRef.current) {
+      connectionRef.current.updateSearchParams(searchGeohash, currentGeohashes, onGeohashAnimate);
+    }
+  }, [searchGeohash, currentGeohashes, onGeohashAnimate]);
+
+  useEffect(() => {
+    if (connectionRef.current) {
+      connectionRef.current.updatePowSettings(powEnabled, powDifficulty);
+    }
+  }, [powEnabled, powDifficulty]);
+
+  useEffect(() => {
+    if (connectionRef.current) {
+      connectionRef.current.updateChannel(currentChannel);
+    }
+  }, [currentChannel]);
+
+  // Simple wrapper functions
+  const toggleNostr = async () => {
+    if (connectionRef.current) {
+      await connectionRef.current.toggle();
+      // No need to manually call forceRerender - the class will do it via callback
     }
   };
 
-  // Subscribe to events for a specific geohash using georelay-based relays
-  const subscribeToGeohash = (geohash: string, kinds: number[] = [20000, 23333]) => {
-    if (!poolRef.current) return null;
-    
-    const geoRelays = getGeorelayRelays(geohash, 5);
-    // If no georelays for this specific geohash, use the 24 key geohashes as fallback
-    let targetRelays = geoRelays;
-    
-    if (targetRelays.length === 0) {
-      const keyGeohashes = ["b", "c", "f", "g", "u", "v", "y", "z", "9", "d", "e", "s", "t", "w", "x", "2", "6", "7", "k", "m", "q", "r", "4", "p"];
-      const usedGeohashes = new Set<string>();
-      
-      for (const keyGeohash of keyGeohashes) {
-        if (usedGeohashes.has(keyGeohash)) continue; // Skip if we already have this geohash
-        
-        const relays = GeoRelayDirectory.shared.closestRelays(keyGeohash, 1);
-        if (relays.length > 0) {
-          // Only take the first relay and mark this geohash as used
-          targetRelays.push(relays[0]);
-          usedGeohashes.add(keyGeohash);
-        }
+  // Return everything directly from the class
+  if (!connectionRef.current) {
+    return {
+      events: [],
+      recentEvents: [],
+      allStoredEvents: [],
+      geohashActivity: new Map(),
+      allEventsByGeohash: new Map(),
+      nostrEnabled: false,
+      toggleNostr: async () => { },
+      connectionInfo: {
+        relays: [],
+        status: "Initializing...",
+        isEnabled: false,
+        totalConnected: 0,
+        totalConfigured: 0
       }
-      // If still no relays, use hardcoded fallback
-      if (targetRelays.length === 0) {
-        targetRelays = ["wss://relay.damus.io"];
-      }
-    }
-    
-    const sub = poolRef.current.subscribeMany(targetRelays, [{ kinds }], {
-      onevent: handleNostrEvent,
-      oneose() {
-        console.log(`End of stored events for geohash ${geohash}`);
-      },
-      onclose() {
-        console.log(`Subscription closed for geohash ${geohash}`);
-      },
-    });
-    
-    return sub;
-  };
+    };
+  }
+
+  const connection = connectionRef.current;
+  const events = connection.events;
+  const connectionState = connection.connectionState;
 
   return {
-    connectedRelays,
-    recentEvents,
-    geohashActivity,
-    nostrEnabled,
-    connectionStatus,
-    allStoredEvents,
-    allEventsByGeohash,
+    // All data comes directly from the class
+    events,
+    recentEvents: events, // Alias for backward compatibility
+    allStoredEvents: events, // Alias for backward compatibility
+
+    // Backward compatibility - derived from _geohashStats
+    geohashActivity: connection.geohashActivity,
+    allEventsByGeohash: connection.allEventsByGeohash,
+    geohashStats: connection.geohashStats,
+
+    // Connection state
+    nostrEnabled: connectionState.isEnabled,
     toggleNostr,
-    connectToNostr,
-    disconnectFromNostr,
-    getGeorelayRelays,
-    subscribeToGeohash,
-    connectToGeoRelays,
-    disconnectFromGeoRelays,
+
+    // Connection info for UI components
+    connectionInfo: {
+      relays: connectionState.relays.map(relay => ({
+        url: relay.url,
+        geohash: relay.geohash,
+        type: relay.type,
+        isConnected: relay.status === 'connected'
+      })),
+      status: connectionState.status,
+      isEnabled: connectionState.isEnabled,
+      totalConnected: connectionState.relays.filter(relay => relay.status === 'connected').length,
+      totalConfigured: connectionState.relays.length
+    },
   };
 }

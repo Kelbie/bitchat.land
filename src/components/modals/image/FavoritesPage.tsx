@@ -37,7 +37,6 @@ const MasonryFavoriteImage: React.FC<{
     e.stopPropagation();
     // Copy image URL to clipboard
     navigator.clipboard.writeText(image.url);
-    console.log('Link copied to clipboard');
   };
 
   return (
