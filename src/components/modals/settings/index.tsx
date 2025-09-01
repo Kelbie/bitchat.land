@@ -12,7 +12,7 @@ interface SettingsModalProps {
   onPowToggle: (enabled: boolean) => void;
   powDifficulty: number;
   onPowDifficultyChange: (difficulty: number) => void;
-  recentEvents: NostrEvent[];
+  filteredEvents: NostrEvent[];
   allStoredEvents: NostrEvent[];
 }
 
@@ -25,7 +25,7 @@ export function SettingsModal({
   onPowToggle,
   powDifficulty,
   onPowDifficultyChange,
-  recentEvents,
+  filteredEvents,
   allStoredEvents
 }: SettingsModalProps) {
   return (
@@ -43,7 +43,7 @@ export function SettingsModal({
         onPowToggle={onPowToggle}
         powDifficulty={powDifficulty}
         onPowDifficultyChange={onPowDifficultyChange}
-        recentEvents={recentEvents}
+        filteredEvents={filteredEvents}
         allStoredEvents={allStoredEvents}
       />
     </Modal>

@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { RelayPool } from "nostr-relaypool";
 import type { Event as NostrEventOriginal } from "nostr-tools";
-import { getPow } from "nostr-tools/nip13";
 import { NostrEvent, GeohashActivity } from "../types";
 import { NOSTR_RELAYS } from "../constants/projections";
 import { findMatchingGeohash } from "../utils/geohashUtils";
@@ -41,8 +40,6 @@ interface GeohashStats {
 class NostrConnection {
   private relayPool: RelayPool | null = null;
   private relays: RelayInfo[] = [];
-  private powEnabled: boolean;
-  private powDifficulty: number;
   private currentSubscriptions: Map<string, () => void> = new Map();
   private _isEnabled: boolean = false;
   private _isConnected: boolean = false;
@@ -62,15 +59,11 @@ class NostrConnection {
     currentGeohashes: string[] = [],
     onGeohashAnimate?: (geohash: string) => void,
     onStateChange?: () => void, // Add this parameter
-    powEnabled: boolean = true,
-    powDifficulty: number = 8
   ) {
     this.searchGeohash = searchGeohash;
     this.currentGeohashes = currentGeohashes;
     this.onGeohashAnimate = onGeohashAnimate;
     this.onStateChange = onStateChange;
-    this.powEnabled = powEnabled;
-    this.powDifficulty = powDifficulty;
 
     // Auto-connect on creation
     this.connect();
@@ -255,14 +248,6 @@ class NostrConnection {
       }],
       relays,
       (event: NostrEventOriginal, isAfterEose: boolean, relayURL?: string) => {
-        // Apply PoW filtering if enabled
-        if (this.powEnabled) {
-          const eventPow = getPow(event.id);
-          if (eventPow < this.powDifficulty) {
-            return;
-          }
-        }
-
         this.handleEvent(event, isAfterEose, relayURL);
       },
       undefined,
@@ -499,11 +484,6 @@ class NostrConnection {
     return GeoRelayDirectory.shared.closestRelays(targetGeohash, count);
   }
 
-  updatePowSettings(powEnabled: boolean, powDifficulty: number): void {
-    this.powEnabled = powEnabled;
-    this.powDifficulty = powDifficulty;
-  }
-
   // Utility method to get connection info for UI components
   getConnectionInfo() {
     return {
@@ -526,9 +506,7 @@ export function useNostr(
   searchGeohash: string,
   currentGeohashes: string[],
   onGeohashAnimate: (geohash: string) => void,
-  currentChannel: string = "",
-  powEnabled: boolean = true,
-  powDifficulty: number = 8
+  currentChannel: string = ""
 ) {
   // Force re-render when data changes
   const [, forceUpdate] = useState({});
@@ -542,9 +520,7 @@ export function useNostr(
       searchGeohash,
       currentGeohashes,
       onGeohashAnimate,
-      forceRerender, // Pass the forceRerender callback
-      powEnabled,
-      powDifficulty
+      forceRerender // Pass the forceRerender callback
     );
 
     // Remove the periodic interval - no longer needed!
@@ -567,12 +543,6 @@ export function useNostr(
 
   useEffect(() => {
     if (connectionRef.current) {
-      connectionRef.current.updatePowSettings(powEnabled, powDifficulty);
-    }
-  }, [powEnabled, powDifficulty]);
-
-  useEffect(() => {
-    if (connectionRef.current) {
       connectionRef.current.updateChannel(currentChannel);
     }
   }, [currentChannel]);
@@ -589,7 +559,6 @@ export function useNostr(
   if (!connectionRef.current) {
     return {
       events: [],
-      recentEvents: [],
       allStoredEvents: [],
       geohashActivity: new Map(),
       allEventsByGeohash: new Map(),
@@ -612,7 +581,6 @@ export function useNostr(
   return {
     // All data comes directly from the class
     events,
-    recentEvents: events, // Alias for backward compatibility
     allStoredEvents: events, // Alias for backward compatibility
 
     // Backward compatibility - derived from _geohashStats

@@ -15,6 +15,7 @@ import { GeoMercatorProps } from "./types";
 import { useDrag } from "./hooks/useDrag";
 import { useZoom } from "./hooks/useZoom";
 import { useNostr } from "./hooks/useNostr";
+import { getPow } from "nostr-tools/nip13";
 import { EventHierarchy } from "./components/panel/EventHierarchy";
 import { RecentEvents } from "./components/chat/RecentEvents";
 import { Map } from "./components/map/Map";
@@ -241,7 +242,6 @@ export default function App({
 
   // Initialize Nostr with animation callback
   const {
-    recentEvents,
     geohashActivity,
     nostrEnabled,
     allStoredEvents,
@@ -252,15 +252,20 @@ export default function App({
     searchGeohash,
     currentGeohashes,
     animateGeohash,
-    selectedChannelKey,
-    settings.powEnabled,
-    settings.powDifficulty
+    selectedChannelKey
   );
+
+  // Apply PoW filtering but keep all events stored
+  const filteredEvents = useMemo(() => {
+    if (!allStoredEvents) return [];
+    if (!settings.powEnabled) return allStoredEvents;
+    return allStoredEvents.filter((ev) => getPow(ev.id) >= settings.powDifficulty);
+  }, [allStoredEvents, settings.powEnabled, settings.powDifficulty]);
 
   // Build users list from events - moved here after useNostr hook
   const users = useMemo<UserMeta[]>(() => {
-    // Guard against undefined allStoredEvents
-    if (!allStoredEvents || allStoredEvents.length === 0) {
+    // Guard against undefined filteredEvents
+    if (!filteredEvents || filteredEvents.length === 0) {
       return [];
     }
 
@@ -276,7 +281,7 @@ export default function App({
     const userMap: Record<string, UserData> = {};
 
     // Process events to build user information
-    for (const ev of allStoredEvents) {
+    for (const ev of filteredEvents) {
       // Guard against malformed events
       if (
         !ev ||
@@ -333,7 +338,7 @@ export default function App({
         ...user,
         isPinned: false, // This is handled by the UserList component
       }));
-  }, [allStoredEvents, selectedChannelKey]);
+  }, [filteredEvents, selectedChannelKey]);
 
   // Generate heatmap data (currently unused but may be needed for future features)
   // const heatmapData = generateSampleHeatmapData(geohashPrecision);
@@ -441,7 +446,7 @@ export default function App({
   // Build a map of latest event timestamp for each channel key like "#nyc"
   const latestEventTimestampByChannel = useMemo(() => {
     const latest: Record<string, number> = {};
-    for (const ev of allStoredEvents) {
+    for (const ev of filteredEvents) {
       const g = ev.tags.find((t: any) => t[0] === "g");
       const d = ev.tags.find((t: any) => t[0] === "d");
       const gv = g && typeof g[1] === "string" ? g[1].toLowerCase() : "";
@@ -457,11 +462,11 @@ export default function App({
       }
     }
     return latest;
-  }, [allStoredEvents]);
+  }, [filteredEvents]);
 
   const unreadCountByChannel = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const ev of allStoredEvents) {
+    for (const ev of filteredEvents) {
       const g = ev.tags.find((t: any) => t[0] === "g");
       const d = ev.tags.find((t: any) => t[0] === "d");
       const gv = g && typeof g[1] === "string" ? g[1].toLowerCase() : "";
@@ -481,7 +486,7 @@ export default function App({
       }
     }
     return counts;
-  }, [allStoredEvents, channelLastReadMap]);
+  }, [filteredEvents, channelLastReadMap]);
 
   const channelSet = useMemo(() => {
     const set = new Set<string>();
@@ -503,7 +508,7 @@ export default function App({
     const channelEventKinds: Record<string, number> = {};
 
     // Go through all events to determine the kind for each channel
-    for (const ev of allStoredEvents) {
+    for (const ev of filteredEvents) {
       const g = ev.tags.find((t: any) => t[0] === "g");
       const d = ev.tags.find((t: any) => t[0] === "d");
       const gv = g && typeof g[1] === "string" ? g[1].toLowerCase() : "";
@@ -527,7 +532,7 @@ export default function App({
       hasMessages: channelSet.has(ch),
       eventKind: channelEventKinds[ch] || 23333, // Default to standard if unknown
     }));
-  }, [channelSet, allStoredEvents]);
+  }, [channelSet, filteredEvents]);
 
   const handleOpenChannel = useCallback(
     (ch: string) => {
@@ -684,8 +689,7 @@ export default function App({
     parsedSearch.clients.length > 0 ||
     parsedSearch.colors.length > 0 ||
     parsedSearch.has.length > 0;
-  const eventsToShow = hasSearchTerms ? allStoredEvents : recentEvents;
-  const filteredEvents = eventsToShow.filter((event) => {
+  const searchFilteredEvents = filteredEvents.filter((event) => {
     if (!hasSearchTerms) return true;
 
     // Extract event data
@@ -793,7 +797,7 @@ export default function App({
           onSearch={handleTextSearch}
           zoomedGeohash={zoomedGeohash}
           nostrEnabled={nostrEnabled}
-          filteredEventsCount={filteredEvents.length}
+          filteredEventsCount={searchFilteredEvents.length}
           totalEventsCount={totalEventsCount}
           allStoredEvents={allStoredEvents}
           onLoginClick={() => setShowProfileModal(true)}
@@ -814,7 +818,7 @@ export default function App({
           } w-full h-full`}
         >
           <Map
-            recentEvents={recentEvents}
+            filteredEvents={filteredEvents}
             width={mapWidth || 800}
             height={mapHeight || 600}
             projection={projection || "natural_earth"}
@@ -900,8 +904,7 @@ export default function App({
                   <RecentEvents
                     nostrEnabled={nostrEnabled}
                     searchText={searchText}
-                    allStoredEvents={allStoredEvents}
-                    recentEvents={recentEvents}
+                    filteredEvents={filteredEvents}
                     onSearch={handleTextSearch}
                     onReply={handleReply}
                     theme={theme}
@@ -935,7 +938,7 @@ export default function App({
                 selectedUser={selectedUser}
                 onSelectUser={handleSelectUser}
                 searchText={searchText}
-                allStoredEvents={allStoredEvents}
+                filteredEvents={filteredEvents}
                 theme={theme}
               />
             </div>
@@ -978,7 +981,7 @@ export default function App({
               selectedUser={selectedUser}
               onSelectUser={handleSelectUser}
               searchText={searchText}
-              allStoredEvents={allStoredEvents}
+              filteredEvents={filteredEvents}
               theme={theme}
             />
           </div>
@@ -1024,7 +1027,7 @@ export default function App({
         onPowToggle={(enabled) => updateSettings({ powEnabled: enabled })}
         powDifficulty={settings.powDifficulty}
         onPowDifficultyChange={(difficulty) => updateSettings({ powDifficulty: difficulty })}
-        recentEvents={recentEvents}
+        filteredEvents={filteredEvents}
         allStoredEvents={allStoredEvents}
       />
 

@@ -25,7 +25,7 @@ type Props = {
   selectedUser: string | null;
   onSelectUser: (pubkey: string) => void;
   searchText: string; // Add search text for filtering
-  allStoredEvents: StoredEvent[]; // Add events to filter by channel
+  filteredEvents: StoredEvent[]; // Events after PoW filtering
   theme?: "matrix" | "material";
 };
 
@@ -108,7 +108,7 @@ export function UserList({
   selectedUser,
   onSelectUser,
   searchText,
-  allStoredEvents,
+  filteredEvents,
   theme = "matrix",
 }: Props) {
   // Filter users based on search text
@@ -125,12 +125,12 @@ export function UserList({
       // Filter users to only show those who have posted in the specified channel
       return users.filter(user => {
         // Check if this user has any events in the target channel
-        if (!allStoredEvents || allStoredEvents.length === 0) {
+        if (!filteredEvents || filteredEvents.length === 0) {
           return false;
         }
         
         // Look through all events to see if this user posted in the target channel
-        for (const ev of allStoredEvents) {
+        for (const ev of filteredEvents) {
           if (ev.pubkey === user.pubkey) {
             // Check if this event is in the target channel
             const g = ev.tags.find((t: [string, string]) => t[0] === "g");
@@ -151,7 +151,7 @@ export function UserList({
     
     // If no "in:" syntax, show all users
     return users;
-  }, [users, searchText, allStoredEvents]);
+  }, [users, searchText, filteredEvents]);
 
   // Create list items for the common List component
   const listItems = useMemo((): ListItem<UserMeta>[] => {
