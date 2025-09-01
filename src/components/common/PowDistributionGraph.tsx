@@ -32,21 +32,14 @@ export function PowDistributionGraph({
   // Find the maximum count for scaling
   const maxCount = Math.max(...distribution);
   
-  // Colors based on theme
-  const colors = {
-    matrix: {
-      fill: "rgb(74, 222, 128)", // green-400
-      background: "rgb(17, 24, 39)", // gray-900
-      belowThreshold: "rgb(239, 68, 68)" // red-500
-    },
-    material: {
-      fill: "rgb(59, 130, 246)", // blue-500
-      background: "rgb(255, 255, 255)", // white
-      belowThreshold: "rgb(239, 68, 68)" // red-500
-    }
-  };
-  
-  const color = colors[theme];
+  // Background color varies by theme, while bar colors are fixed
+  const backgrounds = {
+    matrix: "rgb(17, 24, 39)", // gray-900
+    material: "rgb(255, 255, 255)" // white
+  } as const;
+
+  const aboveThresholdColor = "rgb(74, 222, 128)"; // green-400
+  const belowThresholdColor = "rgb(239, 68, 68)"; // red-500
   
   // Show message if no data
   if (powData.length === 0) {
@@ -74,7 +67,7 @@ export function PowDistributionGraph({
         width="100%" 
         height={height} 
         className="border border-gray-600 rounded w-full"
-        style={{ backgroundColor: color.background }}
+        style={{ backgroundColor: backgrounds[theme] }}
         viewBox={`0 0 ${effectiveRange} ${height}`}
         preserveAspectRatio="none"
       >
@@ -87,8 +80,11 @@ export function PowDistributionGraph({
           const x = bits - minDifficulty;
           const barWidth = 1; // Full width of each bit slot
           
-          // Color bars based on threshold: red for below, theme color for above
-          const barColor = threshold !== undefined && bits < threshold ? color.belowThreshold : color.fill;
+          // Color bars based on threshold: green for at/above threshold, red for below
+          const barColor =
+            threshold !== undefined && bits < threshold
+              ? belowThresholdColor
+              : aboveThresholdColor;
           
           return (
             <rect
@@ -110,7 +106,7 @@ export function PowDistributionGraph({
             y1={0}
             x2={threshold - minDifficulty}
             y2={height}
-            stroke={color.belowThreshold}
+            stroke={belowThresholdColor}
             strokeWidth="0.5"
             strokeDasharray="2,2"
             opacity={0.8}

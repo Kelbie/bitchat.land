@@ -1027,7 +1027,6 @@ export default function App({
         onPowToggle={(enabled) => updateSettings({ powEnabled: enabled })}
         powDifficulty={settings.powDifficulty}
         onPowDifficultyChange={(difficulty) => updateSettings({ powDifficulty: difficulty })}
-        filteredEvents={filteredEvents}
         allStoredEvents={allStoredEvents}
       />
 
