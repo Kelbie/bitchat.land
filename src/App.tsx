@@ -1021,6 +1021,8 @@ export default function App({
         onPowToggle={(enabled) => updateSettings({ powEnabled: enabled })}
         powDifficulty={settings.powDifficulty}
         onPowDifficultyChange={(difficulty) => updateSettings({ powDifficulty: difficulty })}
+        torMode={settings.torMode}
+        onTorModeChange={(mode) => updateSettings({ torMode: mode })}
         recentEvents={recentEvents}
         allStoredEvents={allStoredEvents}
       />

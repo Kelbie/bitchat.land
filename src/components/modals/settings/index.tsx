@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal } from '../../common/Modal';
 import { SettingsPage } from './SettingsPage';
 import { NostrEvent } from '../../../types';
+import { TorMode } from '../../../services/tor';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -12,6 +13,8 @@ interface SettingsModalProps {
   onPowToggle: (enabled: boolean) => void;
   powDifficulty: number;
   onPowDifficultyChange: (difficulty: number) => void;
+  torMode: TorMode;
+  onTorModeChange: (mode: TorMode) => void;
   recentEvents: NostrEvent[];
   allStoredEvents: NostrEvent[];
 }
@@ -25,6 +28,8 @@ export function SettingsModal({
   onPowToggle,
   powDifficulty,
   onPowDifficultyChange,
+  torMode,
+  onTorModeChange,
   recentEvents,
   allStoredEvents
 }: SettingsModalProps) {
@@ -43,6 +48,8 @@ export function SettingsModal({
         onPowToggle={onPowToggle}
         powDifficulty={powDifficulty}
         onPowDifficultyChange={onPowDifficultyChange}
+        torMode={torMode}
+        onTorModeChange={onTorModeChange}
         recentEvents={recentEvents}
         allStoredEvents={allStoredEvents}
       />
