@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ThemedButton } from "../common/ThemedButton";
 import { globalStyles } from "../../styles";
+import { MapPin, Link as LinkIcon, Zap } from "lucide-react";
 
 export const truncate = (value: string, options: { length: number }): string => {
   if (value.length > options.length) {
@@ -99,17 +100,17 @@ export function Connections({
                 {isExpanded && (
                   <div className="ml-5 space-y-1 text-xs opacity-70">
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-400">📍</span>
+                      <MapPin className="w-4 h-4 text-gray-400" />
                       <span className="font-mono">
                         {relay.geohash ? `#${relay.geohash}` : '#global'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-400">🔗</span>
+                      <LinkIcon className="w-4 h-4 text-gray-400" />
                       <span className="font-mono text-xs break-all">{relay.url}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-400">⚡</span>
+                      <Zap className="w-4 h-4 text-gray-400" />
                       <span className={`font-mono text-xs ${
                         relay.type === 'local' ? 'text-blue-400' : 'text-gray-400'
                       }`}>

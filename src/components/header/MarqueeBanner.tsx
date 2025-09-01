@@ -42,7 +42,7 @@ export function MarqueeBanner({ theme }: MarqueeBannerProps) {
   return (
     <div
       onClick={handleClick}
-      className={`border-y h-[30px] flex items-center overflow-hidden relative z-[1000] cursor-pointer transition-colors ${styles[theme].container}`}
+      className={`border-y h-[30px] flex items-center overflow-hidden relative z-10 cursor-pointer transition-colors ${styles[theme].container}`}
     >
       <div
         ref={marqueeRef}
@@ -53,13 +53,11 @@ export function MarqueeBanner({ theme }: MarqueeBannerProps) {
           .fill(null)
           .map((_, index) => (
             <span key={index} className="pr-[50px] min-w-max">
-              🌍 GET GLOBAL eSIMS FOR BITCOIN • PRIVACY • NO KYC • INSTANT
-              ACTIVATION •{" "}
-              <span className={styles[theme].highlight}>
+              GET GLOBAL eSIMS FOR BITCOIN • PRIVACY • NO KYC • INSTANT
+              ACTIVATION • <span className={styles[theme].highlight}>
                 SOVRAN.MONEY/ESIMS
-              </span>{" "}
-              • STAY CONNECTED WORLDWIDE • PAY WITH BITCOIN ₿ • TRAVEL WITHOUT
-              LIMITS • ANONYMOUS CONNECTIVITY •{" "}
+              </span> • STAY CONNECTED WORLDWIDE • PAY WITH BITCOIN • TRAVEL
+              WITHOUT LIMITS • ANONYMOUS CONNECTIVITY •
             </span>
           ))}
       </div>

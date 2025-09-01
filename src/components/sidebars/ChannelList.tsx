@@ -4,6 +4,7 @@ import { EVENT_KINDS } from "../../constants/eventKinds";
 import { List, ListItem } from "../common/List";
 import { SectionHeader } from "../common/SectionHeader";
 import { globalStyles } from "../../styles";
+import { Heart } from "lucide-react";
 
 type ChannelMeta = {
   key: string;
@@ -107,12 +108,13 @@ const ChannelItem = React.memo(({
         <button
           type="button"
           onClick={(e) => onHeartClick(e, channelKey)}
-          className={`${t.heartButton} ${
-            isPinned ? t.heartIconPinned : t.heartIcon
-          } cursor-pointer`}
+          className={`${t.heartButton} cursor-pointer`}
           title={isPinned ? "Unpin channel" : "Pin channel"}
         >
-          {isPinned ? "❤️" : "🤍"}
+          <Heart
+            className={isPinned ? t.heartIconPinned : t.heartIcon}
+            fill={isPinned ? "currentColor" : "none"}
+          />
         </button>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getFavorites, removeFromFavorites } from '../../../utils/favorites';
 import { MasonryGrid, MasonryImage } from '../../common/MasonryGrid';
+import { Heart, Link as LinkIcon, Lightbulb } from 'lucide-react';
 
 interface FavoritesPageProps {
   theme: "matrix" | "material";
@@ -63,7 +64,7 @@ const MasonryFavoriteImage: React.FC<{
           }`}
           title="Remove from favorites"
         >
-          ❤️
+          <Heart className="w-4 h-4" fill="currentColor" />
         </button>
         
         {/* Link Button */}
@@ -76,7 +77,7 @@ const MasonryFavoriteImage: React.FC<{
           }`}
           title="Copy image URL"
         >
-          🔗
+          <LinkIcon className="w-4 h-4" />
         </button>
       </div>
 
@@ -130,7 +131,9 @@ export function FavoritesPage({ theme, onImageSelect }: FavoritesPageProps) {
       <div className={`text-center py-8 ${
         theme === "matrix" ? "text-[#00aa00]" : "text-gray-500"
       }`}>
-        <div className="text-2xl mb-2">❤️</div>
+        <div className="text-2xl mb-2">
+          <Heart className="w-6 h-6" fill="currentColor" />
+        </div>
         <div className="text-sm">Click the heart icon on any image in chat to add it to favorites</div>
       </div>
     );
@@ -147,10 +150,10 @@ export function FavoritesPage({ theme, onImageSelect }: FavoritesPageProps) {
 
   return (
     <div className="space-y-4">
-      <div className={`text-sm text-center mb-4 ${
+      <div className={`text-sm text-center mb-4 flex items-center justify-center gap-1 ${
         theme === "matrix" ? "text-[#00aa00]" : "text-gray-600"
       }`}>
-        💡 Click on any image below to insert it into your chat message
+        <Lightbulb className="w-4 h-4" /> Click on any image below to insert it into your chat message
       </div>
       
       <MasonryGrid

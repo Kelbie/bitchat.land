@@ -3,6 +3,7 @@ import { Modal } from '../../common/Modal';
 import { FavoritesPage } from './FavoritesPage';
 import { useImageModalState } from './useImageModalState';
 import { DiscoverPage } from './DiscoverPage';
+import { Heart, Search } from 'lucide-react';
 
 interface FavoritesModalProps {
   isOpen: boolean;
@@ -44,14 +45,14 @@ export function FavoritesModal({ isOpen, onClose, theme, onImageSelect }: Favori
       {
         id: "favorites",
         label: "My Favourites",
-        icon: "❤️",
+        icon: <Heart className="w-4 h-4" />,
         isActive: context.state === "favorites",
         onClick: actions.switchToFavorites,
       },
       {
         id: "discover",
         label: "Discover Images",
-        icon: "🔍",
+        icon: <Search className="w-4 h-4" />,
         isActive: context.state === "discover",
         onClick: actions.switchToDiscover,
       },

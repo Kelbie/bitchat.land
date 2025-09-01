@@ -28,6 +28,7 @@ import { MarqueeBanner } from "./components/header/MarqueeBanner";
 import { CornerOverlay } from "./components/common/CornerOverlay";
 import { ChannelList, ChannelMeta } from "./components/sidebars/ChannelList";
 import { UserList, UserMeta } from "./components/sidebars/UserList";
+import { Heart } from "lucide-react";
 import { Connections } from "./components/map/Connections";
 import { NostrImageSearch } from "./components/modals/image/DiscoverPage";
 import { FavoritesModal } from "./components/modals/image/FavoritesModal";
@@ -899,9 +900,18 @@ export default function App({
                             } channel`
                       }
                     >
-                      {pinnedChannels.includes(selectedChannelKey || "global")
-                        ? "❤️"
-                        : "🤍"}
+                      <Heart
+                        className={
+                          pinnedChannels.includes(selectedChannelKey || "global")
+                            ? "fill-current"
+                            : ""
+                        }
+                        fill={
+                          pinnedChannels.includes(selectedChannelKey || "global")
+                            ? "currentColor"
+                            : "none"
+                        }
+                      />
                     </button>
                   </div>
                 </div>
@@ -996,42 +1006,54 @@ export default function App({
         </>
       </main>
 
-      {channelSidebar === "visible" && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
-          <ChannelList
-            channels={channels}
-            selectedChannel={selectedChannelKey}
-            unreadCounts={unreadCountByChannel}
-            onOpenChannel={handleOpenChannel}
-            theme={theme}
-            pinnedChannels={pinnedChannels}
-            onPinnedChannelsChange={setPinnedChannels}
-            className="w-64 h-full"
-          />
-          <div
-            className="flex-1 bg-black/50"
-            onClick={() => setChannelSidebar("hidden")}
-          />
-        </div>
-      )}
+      <div
+        className={`fixed inset-0 z-50 flex md:hidden transition-opacity ${
+          channelSidebar === "visible" ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <ChannelList
+          channels={channels}
+          selectedChannel={selectedChannelKey}
+          unreadCounts={unreadCountByChannel}
+          onOpenChannel={handleOpenChannel}
+          theme={theme}
+          pinnedChannels={pinnedChannels}
+          onPinnedChannelsChange={setPinnedChannels}
+          className={`w-64 h-full transform transition-transform duration-300 ${
+            channelSidebar === "visible" ? "translate-x-0" : "-translate-x-full"
+          }`}
+        />
+        <div
+          className={`flex-1 bg-black/50 transition-opacity duration-300 ${
+            channelSidebar === "visible" ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={() => setChannelSidebar("hidden")}
+        />
+      </div>
 
-      {userSidebar === "visible" && (
-        <div className="fixed inset-0 z-50 flex justify-end md:hidden">
-          <div
-            className="flex-1 bg-black/50"
-            onClick={() => setUserSidebar("hidden")}
-          />
-          <UserList
-            users={users}
-            selectedUser={selectedUser}
-            onSelectUser={handleSelectUser}
-            searchText={searchText}
-            allStoredEvents={allStoredEvents}
-            theme={theme}
-            className="w-64 h-full"
-          />
-        </div>
-      )}
+      <div
+        className={`fixed inset-0 z-50 flex justify-end md:hidden transition-opacity ${
+          userSidebar === "visible" ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <div
+          className={`flex-1 bg-black/50 transition-opacity duration-300 ${
+            userSidebar === "visible" ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={() => setUserSidebar("hidden")}
+        />
+        <UserList
+          users={users}
+          selectedUser={selectedUser}
+          onSelectUser={handleSelectUser}
+          searchText={searchText}
+          allStoredEvents={allStoredEvents}
+          theme={theme}
+          className={`w-64 h-full transform transition-transform duration-300 ${
+            userSidebar === "visible" ? "translate-x-0" : "translate-x-full"
+          }`}
+        />
+      </div>
 
       {/* Connections Panel - Top left on map view */}
       {activeView === "map" && (

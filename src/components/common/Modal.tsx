@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { globalStyles } from "../../styles";
+import { X } from "lucide-react";
 
 export type ModalTab<T = string> = {
   id: T;
@@ -122,7 +123,7 @@ export function Modal<T = string>({
               className={t.closeButton}
               type="button"
             >
-              ✕
+              <X className="w-4 h-4" />
             </button>
           </div>
           

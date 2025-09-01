@@ -2,6 +2,18 @@ import { globalStyles } from "../../styles";
 import type { NostrEvent } from "../../types";
 import { ThemedButton } from "../common/ThemedButton";
 import { ThemedInput } from "../common/ThemedInput";
+import {
+  Menu,
+  Users,
+  Map as MapIcon,
+  MessageSquare,
+  Radio as RadioIcon,
+  Key,
+  Download,
+  Settings as SettingsIcon,
+  X,
+  Search,
+} from "lucide-react";
 
 interface MobileHeaderProps {
   activeView: "map" | "chat" | "panel" | "radio";
@@ -51,9 +63,9 @@ export function MobileHeader({
         <ThemedButton
           onClick={onToggleChannels}
           theme={theme}
-          className="p-2 text-xl md:hidden"
+          className="p-2 md:hidden"
         >
-          ☰
+          <Menu className="w-5 h-5" />
         </ThemedButton>
         <img
           src={`/favicon${theme === "matrix" ? ".webp" : `_${theme}.webp`}`}
@@ -63,9 +75,9 @@ export function MobileHeader({
         <ThemedButton
           onClick={onToggleUsers}
           theme={theme}
-          className="p-2 text-xl md:hidden"
+          className="p-2 md:hidden"
         >
-          👥
+          <Users className="w-5 h-5" />
         </ThemedButton>
       </div>
 
@@ -74,32 +86,32 @@ export function MobileHeader({
           onClick={() => onViewChange("map")}
           active={activeView === "map"}
           theme={theme}
-          className="px-2 py-2 text-xl"
+          className="px-2 py-2"
         >
-          🗺️
+          <MapIcon className="w-5 h-5" />
         </ThemedButton>
         <ThemedButton
           onClick={() => onViewChange("chat")}
           active={activeView === "chat"}
           theme={theme}
-          className="px-2 py-2 text-xl"
+          className="px-2 py-2"
         >
-          💬
+          <MessageSquare className="w-5 h-5" />
         </ThemedButton>
         <ThemedButton
           onClick={() => onViewChange("radio")}
           active={activeView === "radio"}
           theme={theme}
-          className="px-2 py-2 text-xl"
+          className="px-2 py-2"
         >
-          📻
+          <RadioIcon className="w-5 h-5" />
         </ThemedButton>
         <ThemedButton
           onClick={onLoginClick}
           theme={theme}
-          className="px-2 py-2 text-xl"
+          className="px-2 py-2"
         >
-          🔑
+          <Key className="w-5 h-5" />
         </ThemedButton>
         <ThemedButton
           as="a"
@@ -107,16 +119,16 @@ export function MobileHeader({
           target="_blank"
           rel="noopener noreferrer"
           theme={theme}
-          className="px-2 py-2 text-xl"
+          className="px-2 py-2"
         >
-          ⬇️
+          <Download className="w-5 h-5" />
         </ThemedButton>
         <ThemedButton
           onClick={onSettingsClick}
           theme={theme}
-          className="px-2 py-2 text-xl"
+          className="px-2 py-2"
         >
-          ⚙️
+          <SettingsIcon className="w-5 h-5" />
         </ThemedButton>
       </div>
 
@@ -126,19 +138,7 @@ export function MobileHeader({
           <div className="flex gap-2 items-center">
             <div className="relative w-full">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  className={t.searchIcon}
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.35-4.35" />
-                </svg>
+                <Search className={`${t.searchIcon} w-4 h-4`} />
               </div>
               <ThemedInput
                 value={searchText}
@@ -154,7 +154,7 @@ export function MobileHeader({
             </div>
             {searchText && (
               <button onClick={() => onSearch("")} className={t.clearButton}>
-                ✕
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>

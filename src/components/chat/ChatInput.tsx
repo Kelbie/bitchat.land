@@ -364,14 +364,16 @@ export function ChatInput({
             .filter(result => result.status === 'rejected')
             .map(result => result.reason?.message || 'Unknown error');
           
-          console.error("❌ Failed to publish to any relay. Errors:", errors);
+          console.error("Failed to publish to any relay. Errors:", errors);
           setError(`Failed to publish message to any relay: ${errors.join(', ')}`);
         } else {
           // Log any failed relays for debugging (but don't throw)
           const failed = results.filter(result => result.status === 'rejected');
           if (failed.length > 0) {
-            console.warn(`⚠️ Some relays failed (${failed.length}/${results.length}):`, 
-              failed.map(result => result.reason?.message || 'Unknown error'));
+            console.warn(
+              `Warning: Some relays failed (${failed.length}/${results.length}):`,
+              failed.map(result => result.reason?.message || 'Unknown error')
+            );
           }
 
           // Clear input and notify parent
@@ -389,7 +391,7 @@ export function ChatInput({
                 }
               }, 50);
             } else {
-              console.warn("⚠️ textareaRef.current is null");
+              console.warn("Warning: textareaRef.current is null");
               // Fallback: try to find textarea by data attribute
               const textarea = document.querySelector('textarea[data-chat-input="true"]') as HTMLTextAreaElement;
               if (textarea) {
@@ -552,7 +554,7 @@ export function ChatInput({
           setEventTemplateForPow(eventTemplate);
           return; // Exit early, worker will handle the rest
         } else {
-          console.warn("⚠️ POW worker not available, continuing without POW");
+          console.warn("Warning: POW worker not available, continuing without POW");
           setIsMiningPow(false);
         }
       }

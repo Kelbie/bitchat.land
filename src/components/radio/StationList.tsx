@@ -1,5 +1,6 @@
 import React from 'react';
 import { StationWithDistance } from '../types/radio';
+import { Play, Globe, Tag, Ruler } from 'lucide-react';
 
 interface StationListProps {
   stations: StationWithDistance[];
@@ -50,19 +51,19 @@ export const StationList: React.FC<StationListProps> = ({
                     </h3>
                     {isCurrentlyPlaying && (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        ▶️ Playing
+                        <Play className="w-3 h-3 mr-1" /> Playing
                       </span>
                     )}
                   </div>
                   
                   <div className="text-sm text-gray-600 space-y-1">
                     {station.country && (
-                      <p>🌍 {station.country}</p>
+                      <p className="flex items-center gap-1"><Globe className="w-4 h-4" /> {station.country}</p>
                     )}
                     {station.tags && station.tags.length > 0 && (
-                      <p>🏷️ {station.tags.slice(0, 3).join(', ')}</p>
+                      <p className="flex items-center gap-1"><Tag className="w-4 h-4" /> {station.tags.slice(0, 3).join(', ')}</p>
                     )}
-                    <p>📏 {station.distanceKm.toFixed(1)} km away</p>
+                    <p className="flex items-center gap-1"><Ruler className="w-4 h-4" /> {station.distanceKm.toFixed(1)} km away</p>
                   </div>
                 </div>
                 
