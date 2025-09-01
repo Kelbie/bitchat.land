@@ -45,6 +45,9 @@ const MasonryImage: React.FC<{
     navigator.clipboard.writeText(image.url);
   };
 
+  const styles = globalStyles["DiscoverPage"];
+  const s = styles[theme];
+
   return (
     <div className="w-full h-full relative group">
       <img
@@ -64,7 +67,7 @@ const MasonryImage: React.FC<{
           onClick={handleHeartClick}
           className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
             theme === "matrix"
-              ? "bg-black/70 text-[#00ff00] border border-[#00ff00]/20 hover:bg-[#00ff00]/20"
+              ? "bg-gray-900/70 text-green-400 border border-green-400/20 hover:bg-green-400/20"
               : "bg-white/70 text-red-500 border border-gray-300 hover:bg-red-50"
           }`}
           title={isFavoritedState ? "Already in favorites" : "Add to favorites"}
@@ -77,7 +80,7 @@ const MasonryImage: React.FC<{
           onClick={handleLinkClick}
           className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
             theme === "matrix"
-              ? "bg-black/70 text-[#00ff00] border border-[#00ff00]/20 hover:bg-[#00ff00]/20"
+              ? "bg-gray-900/70 text-green-400 border border-green-400/20 hover:bg-green-400/20"
               : "bg-white/70 text-blue-500 border border-gray-300 hover:bg-blue-50"
           }`}
           title="Copy image URL"
@@ -95,7 +98,7 @@ const MasonryImage: React.FC<{
                 key={idx}
                 className={`px-2 py-1 text-xs rounded ${
                   theme === "matrix" 
-                    ? "bg-black/70 text-[#00ff00] border border-[#00ff00]/20" 
+                    ? "bg-gray-900/70 text-green-400 border border-green-400/20" 
                     : "bg-white/70 text-gray-800 border border-gray-300"
                 }`}
               >
@@ -507,7 +510,7 @@ export function DiscoverPage({
           />
 
           {hasMore && (
-            <div className="text-center pt-4">
+            <div className="text-center pt-4 pb-6">
               <button
                 onClick={handleLoadMore}
                 disabled={isLoading}

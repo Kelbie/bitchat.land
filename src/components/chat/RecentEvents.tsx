@@ -25,6 +25,8 @@ interface RecentEventsProps {
   forceScrollToBottom?: boolean;
   onReply?: (username: string, pubkeyHash: string) => void;
   theme: "matrix" | "material";
+  currentUsername?: string;
+  currentUserHash?: string;
 }
 
 // Separate EventItem component
@@ -34,6 +36,8 @@ type EventItemProps = {
   onSearch?: (text: string) => void;
   onReply?: (username: string, pubkeyHash: string) => void;
   theme: "matrix" | "material";
+  currentUsername?: string;
+  currentUserHash?: string;
 };
 
 const EventItem = React.memo(({
@@ -41,7 +45,9 @@ const EventItem = React.memo(({
   searchText,
   onSearch,
   onReply,
-  theme
+  theme,
+  currentUsername,
+  currentUserHash
 }: EventItemProps) => {
   const t = styles[theme];
 
@@ -282,7 +288,29 @@ const EventItem = React.memo(({
                   e.stopPropagation();
                   // Send the action message directly to the chat input
                   if (window.updateChatInputValue) {
-                    const actionMessage = `* gives @${username}#${pubkeyHash} a warm hug 🫂 *`;
+                    const senderName = currentUsername || "Anonymous";
+                    const senderHash = currentUserHash || "0000";
+                    
+                    // Check if user is hugging themselves
+                    const isSelfHug = senderName === username && senderHash === pubkeyHash;
+                    
+                    let actionMessage;
+                    if (isSelfHug) {
+                      // Random easter egg messages for self-hug
+                      const selfHugMessages = [
+                        `* 🫂 ${senderName}#${senderHash} gives themselves a big self-hug and feels a bit lonely *`,
+                        `* 🫂 ${senderName}#${senderHash} wraps their arms around themselves and wonders if this is normal *`,
+                        `* 🫂 ${senderName}#${senderHash} self-hugs so hard they almost fall over *`,
+                        `* 🫂 ${senderName}#${senderHash} gives themselves a comforting hug and whispers "it's okay" *`,
+                        `* 🫂 ${senderName}#${senderHash} attempts a self-hug but realizes they're not very flexible *`
+                      ];
+                      const randomIndex = Math.floor(Math.random() * selfHugMessages.length);
+                      actionMessage = selfHugMessages[randomIndex];
+                    } else {
+                      // Normal hug message
+                      actionMessage = `* 🫂 ${senderName}#${senderHash} gives @${username}#${pubkeyHash} a warm hug *`;
+                    }
+                    
                     window.updateChatInputValue(actionMessage, actionMessage.length);
                   }
                 }}
@@ -299,7 +327,29 @@ const EventItem = React.memo(({
                   e.stopPropagation();
                   // Send the action message directly to the chat input
                   if (window.updateChatInputValue) {
-                    const actionMessage = `* slaps @${username}#${pubkeyHash} around a bit with a large trout 🐟 *`;
+                    const senderName = currentUsername || "Anonymous";
+                    const senderHash = currentUserHash || "0000";
+                    
+                    // Check if user is slapping themselves
+                    const isSelfSlap = senderName === username && senderHash === pubkeyHash;
+                    
+                    let actionMessage;
+                    if (isSelfSlap) {
+                      // Random easter egg messages for self-slap
+                      const selfSlapMessages = [
+                        `* 🐟 ${senderName}#${senderHash} slapped themselves in the face with a large trout *`,
+                        `* 🐟 ${senderName}#${senderHash} hits themselves with the trout and immediately regrets it *`,
+                        `* 🐟 ${senderName}#${senderHash} slaps themselves so hard they see stars and fish *`,
+                        `* 🐟 ${senderName}#${senderHash} attempts a self-slap but the trout has other ideas *`,
+                        `* 🐟 ${senderName}#${senderHash} slaps themselves and wonders why they keep doing this *`
+                      ];
+                      const randomIndex = Math.floor(Math.random() * selfSlapMessages.length);
+                      actionMessage = selfSlapMessages[randomIndex];
+                    } else {
+                      // Normal slap message
+                      actionMessage = `* 🐟 ${senderName}#${senderHash} slaps @${username}#${pubkeyHash} around a bit with a large trout *`;
+                    }
+                    
                     window.updateChatInputValue(actionMessage, actionMessage.length);
                   }
                 }}
@@ -328,6 +378,8 @@ export function RecentEvents({
   onSearch,
   onReply,
   theme,
+  currentUsername,
+  currentUserHash,
 }: RecentEventsProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [lastSeenEventId, setLastSeenEventId] = useState<string | null>(null);
@@ -685,6 +737,8 @@ export function RecentEvents({
                       onSearch={onSearch}
                       onReply={onReply}
                       theme={theme}
+                      currentUsername={currentUsername}
+                      currentUserHash={currentUserHash}
                     />
                   </div>
                 );

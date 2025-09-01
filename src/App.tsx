@@ -905,6 +905,8 @@ export default function App({
                     onSearch={handleTextSearch}
                     onReply={handleReply}
                     theme={theme}
+                    currentUsername={savedProfile?.username}
+                    currentUserHash={savedProfile?.publicKey ? savedProfile.publicKey.slice(-4) : undefined}
                   />
                 </div>
 
