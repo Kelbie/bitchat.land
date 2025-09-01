@@ -109,6 +109,14 @@ export default function App({
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showFavoritesModal, setShowFavoritesModal] = useState(false);
   const [pinnedChannels, setPinnedChannels] = useState<string[]>([]);
+  type SidebarVisibility = "hidden" | "visible";
+  const [channelSidebar, setChannelSidebar] = useState<SidebarVisibility>("hidden");
+  const [userSidebar, setUserSidebar] = useState<SidebarVisibility>("hidden");
+
+  const toggleChannelSidebar = () =>
+    setChannelSidebar((prev) => (prev === "visible" ? "hidden" : "visible"));
+  const toggleUserSidebar = () =>
+    setUserSidebar((prev) => (prev === "visible" ? "hidden" : "visible"));
 
   // Search and zoom state
   const [searchText, setSearchText] = useState("");
@@ -800,6 +808,8 @@ export default function App({
           onSettingsClick={() => setShowSettingsModal(true)}
           theme={theme}
           onThemeChange={setTheme}
+          onToggleChannels={toggleChannelSidebar}
+          onToggleUsers={toggleUserSidebar}
         />
       </header>
 
@@ -855,6 +865,7 @@ export default function App({
                 theme={theme}
                 pinnedChannels={pinnedChannels}
                 onPinnedChannelsChange={setPinnedChannels}
+                className="hidden md:flex h-full"
               />
 
               {/* Chat column */}
@@ -934,6 +945,7 @@ export default function App({
                 searchText={searchText}
                 allStoredEvents={allStoredEvents}
                 theme={theme}
+                className="hidden md:flex h-full"
               />
             </div>
           )}
@@ -964,6 +976,7 @@ export default function App({
               theme={theme}
               pinnedChannels={pinnedChannels}
               onPinnedChannelsChange={setPinnedChannels}
+              className="hidden md:flex h-full"
             />
 
             <div className={`${t.chatColumn} h-full overflow-hidden`}>
@@ -977,10 +990,48 @@ export default function App({
               searchText={searchText}
               allStoredEvents={allStoredEvents}
               theme={theme}
+              className="hidden md:flex h-full"
             />
           </div>
         </>
       </main>
+
+      {channelSidebar === "visible" && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <ChannelList
+            channels={channels}
+            selectedChannel={selectedChannelKey}
+            unreadCounts={unreadCountByChannel}
+            onOpenChannel={handleOpenChannel}
+            theme={theme}
+            pinnedChannels={pinnedChannels}
+            onPinnedChannelsChange={setPinnedChannels}
+            className="w-64 h-full"
+          />
+          <div
+            className="flex-1 bg-black/50"
+            onClick={() => setChannelSidebar("hidden")}
+          />
+        </div>
+      )}
+
+      {userSidebar === "visible" && (
+        <div className="fixed inset-0 z-50 flex justify-end md:hidden">
+          <div
+            className="flex-1 bg-black/50"
+            onClick={() => setUserSidebar("hidden")}
+          />
+          <UserList
+            users={users}
+            selectedUser={selectedUser}
+            onSelectUser={handleSelectUser}
+            searchText={searchText}
+            allStoredEvents={allStoredEvents}
+            theme={theme}
+            className="w-64 h-full"
+          />
+        </div>
+      )}
 
       {/* Connections Panel - Top left on map view */}
       {activeView === "map" && (

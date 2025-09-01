@@ -18,6 +18,8 @@ interface MobileHeaderProps {
   onSettingsClick?: () => void;
   theme?: "matrix" | "material";
   onThemeChange?: (next: "matrix" | "material") => void;
+  onToggleChannels?: () => void;
+  onToggleUsers?: () => void;
 }
 
 const styles = globalStyles["MobileHeader"];
@@ -34,6 +36,8 @@ export function MobileHeader({
   onLoginClick,
   onSettingsClick,
   theme = "matrix",
+  onToggleChannels,
+  onToggleUsers,
 }: MobileHeaderProps) {
   // avoid unused warnings for props not yet used
   void zoomedGeohash;
@@ -43,50 +47,59 @@ export function MobileHeader({
 
   return (
     <header className={t.header}>
-      <div className="flex items-center gap-2 mb-0">
-        <img src={`/favicon${theme === "matrix" ? ".webp" : `_${theme}.webp`}`} alt="bitchat.land" className="w-12 h-12 -ml-3" />
-        <div className={t.logoText}>bitchat.land</div>
+      <div className="flex items-center justify-between w-full mb-1">
+        <ThemedButton
+          onClick={onToggleChannels}
+          theme={theme}
+          className="p-2 text-xl md:hidden"
+        >
+          ☰
+        </ThemedButton>
+        <img
+          src={`/favicon${theme === "matrix" ? ".webp" : `_${theme}.webp`}`}
+          alt="bitchat.land"
+          className="w-8 h-8"
+        />
+        <ThemedButton
+          onClick={onToggleUsers}
+          theme={theme}
+          className="p-2 text-xl md:hidden"
+        >
+          👥
+        </ThemedButton>
       </div>
 
-      <div className="flex gap-1 justify-center w-full max-w-md">
-        {/* <ThemedButton
-          onClick={() => onViewChange("panel")}
-          active={activeView === "panel"}
-          theme={theme}
-          className="flex-1 px-3 py-2 text-sm text-center"
-        >
-          menu
-        </ThemedButton> */}
+      <div className="flex gap-1 justify-center w-full mb-1">
         <ThemedButton
           onClick={() => onViewChange("map")}
           active={activeView === "map"}
           theme={theme}
-          className="flex-1 px-3 py-2 text-sm text-center"
+          className="px-2 py-2 text-xl"
         >
-          map
+          🗺️
         </ThemedButton>
         <ThemedButton
           onClick={() => onViewChange("chat")}
           active={activeView === "chat"}
           theme={theme}
-          className="flex-1 px-3 py-2 text-sm text-center"
+          className="px-2 py-2 text-xl"
         >
-          chat
+          💬
         </ThemedButton>
         <ThemedButton
           onClick={() => onViewChange("radio")}
           active={activeView === "radio"}
           theme={theme}
-          className="flex-1 px-3 py-2 text-sm text-center"
+          className="px-2 py-2 text-xl"
         >
-          radio
+          📻
         </ThemedButton>
         <ThemedButton
           onClick={onLoginClick}
           theme={theme}
-          className="flex-1 px-3 py-2 text-sm text-center"
+          className="px-2 py-2 text-xl"
         >
-          login
+          🔑
         </ThemedButton>
         <ThemedButton
           as="a"
@@ -94,20 +107,20 @@ export function MobileHeader({
           target="_blank"
           rel="noopener noreferrer"
           theme={theme}
-          className="flex-1 px-3 py-2 text-sm text-center"
+          className="px-2 py-2 text-xl"
         >
-          download
+          ⬇️
         </ThemedButton>
         <ThemedButton
           onClick={onSettingsClick}
           theme={theme}
-          className="flex-1 px-3 py-2 text-sm text-center"
+          className="px-2 py-2 text-xl"
         >
-          settings
+          ⚙️
         </ThemedButton>
       </div>
 
-      <div className="w-full mt-2 mb-4 px-4">
+      <div className="w-full mt-2 mb-2 px-4">
         <div className="flex flex-col gap-2 mx-auto max-w-md">
           {/* Search Input */}
           <div className="flex gap-2 items-center">

@@ -20,6 +20,7 @@ type Props = {
   theme?: "matrix" | "material";
   pinnedChannels?: string[];
   onPinnedChannelsChange?: (pinnedChannels: string[]) => void;
+  className?: string;
 };
 
 // Separate ChannelItem component
@@ -130,6 +131,7 @@ export function ChannelList({
   theme = "matrix",
   pinnedChannels: externalPinnedChannels,
   onPinnedChannelsChange,
+  className,
 }: Props) {
   const [internalPinnedChannels, setInternalPinnedChannels] = useState<string[]>([]);
 
@@ -362,6 +364,7 @@ export function ChannelList({
       emptyMessage="no channels"
       estimateItemSize={50}
       borderDirection="right"
+      className={className}
     />
   );
 }

@@ -27,6 +27,7 @@ type Props = {
   searchText: string; // Add search text for filtering
   allStoredEvents: StoredEvent[]; // Add events to filter by channel
   theme?: "matrix" | "material";
+  className?: string;
 };
 
 // Separate UserItem component
@@ -110,6 +111,7 @@ export function UserList({
   searchText,
   allStoredEvents,
   theme = "matrix",
+  className,
 }: Props) {
   // Filter users based on search text
   const filteredUsers = useMemo(() => {
@@ -187,6 +189,7 @@ export function UserList({
       emptyMessage={!searchText ? "select a channel to see users" : "no users found"}
       estimateItemSize={45}
       borderDirection="left"
+      className={className}
     />
   );
 }
