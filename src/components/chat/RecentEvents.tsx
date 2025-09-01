@@ -540,6 +540,12 @@ export function RecentEvents({
     measureElement,
   });
 
+  // Recompute virtual measurements whenever the PoW filter changes
+  useEffect(() => {
+    measurementCache.current.clear();
+    virtualizer.measure();
+  }, [filteredEvents, virtualizer]);
+
   // Disable automatic scroll position adjustment - the root cause of the issue
   virtualizer.shouldAdjustScrollPositionOnItemSizeChange = () => false;
 
