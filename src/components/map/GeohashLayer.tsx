@@ -9,7 +9,7 @@ import { getTagValue } from "../../hooks/useNostr";
 interface GeohashLayerProps {
   currentGeohashes: string[];
   projection: any;
-  recentEvents: any[];
+  filteredEvents: any[];
   isDragging: boolean;
   hasDragged: boolean;
   events: boolean;
@@ -25,7 +25,7 @@ interface GeohashLayerProps {
 export function GeohashLayer({
   currentGeohashes,
   projection,
-  recentEvents,
+  filteredEvents,
   isDragging,
   hasDragged,
   events,
@@ -54,7 +54,7 @@ export function GeohashLayer({
     
     return currentGeohashes.map(geohash => {
       // Get all events for this geohash
-      const geohashEvents = recentEvents.filter(event => 
+      const geohashEvents = filteredEvents.filter(event =>
         getTagValue(event, "g")?.startsWith(geohash)
       );
       
@@ -94,7 +94,7 @@ export function GeohashLayer({
         timeSinceLatest,
       };
     });
-  }, [currentGeohashes, recentEvents]);
+  }, [currentGeohashes, filteredEvents]);
 
   // Show labels for higher precision levels when zoomed in
   const showLabel = useMemo(() => 

@@ -20,6 +20,7 @@ function filterCountries(countries: FeatureShape[]) {
 }
 
 interface MapProps {
+  filteredEvents: any[];
   width: number;
   height: number;
   projection: string;
@@ -49,7 +50,7 @@ interface MapProps {
 
 const styles = globalStyles["Map"];
 export function Map({
-  recentEvents,
+  filteredEvents,
   width,
   height,
   projection,
@@ -181,7 +182,7 @@ export function Map({
             })}
 
             <GeohashLayer
-              recentEvents={recentEvents}
+              filteredEvents={filteredEvents}
               currentGeohashes={currentGeohashes}
               projection={mercator.projection}
               isDragging={isDragging}

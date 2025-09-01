@@ -20,7 +20,7 @@ interface RecentEventsProps {
   nostrEnabled: boolean;
   searchText: string;
   allStoredEvents: NostrEvent[];
-  recentEvents: NostrEvent[];
+  filteredEvents: NostrEvent[];
   onSearch?: (text: string) => void;
   forceScrollToBottom?: boolean;
   onReply?: (username: string, pubkeyHash: string) => void;
@@ -374,7 +374,7 @@ export function RecentEvents({
   nostrEnabled,
   searchText,
   allStoredEvents,
-  recentEvents,
+  filteredEvents,
   onSearch,
   onReply,
   theme,
@@ -400,8 +400,8 @@ export function RecentEvents({
     parsedSearch.colors.length > 0 ||
     parsedSearch.has.length > 0;
 
-  const eventsToShow = hasSearchTerms ? allStoredEvents : recentEvents;
-  const filteredEvents = eventsToShow.filter((event) => {
+  const eventsToShow = hasSearchTerms ? allStoredEvents : filteredEvents;
+  const searchFilteredEvents = eventsToShow.filter((event) => {
     if (!hasSearchTerms) return true;
 
     const messageContent = (event.content || "").toLowerCase();
@@ -483,7 +483,7 @@ export function RecentEvents({
     return matches;
   });
 
-  const sortedEvents = filteredEvents.sort(
+  const sortedEvents = searchFilteredEvents.sort(
     (a, b) => a.created_at - b.created_at
   );
   const hasImageFilter = parsedSearch.has?.includes("image") || false;
