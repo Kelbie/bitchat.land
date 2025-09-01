@@ -3,6 +3,7 @@ import { Slider } from '../../common/Slider';
 import { PowDistributionGraph } from '../../common/PowDistributionGraph';
 import { NostrEvent } from '../../../types';
 import { getPow } from 'nostr-tools/nip13';
+import { TorMode, useTorStatus } from '../../../services/tor';
 
 interface SettingsPageProps {
   theme: "matrix" | "material";
@@ -11,6 +12,8 @@ interface SettingsPageProps {
   onPowToggle: (enabled: boolean) => void;
   powDifficulty: number;
   onPowDifficultyChange: (difficulty: number) => void;
+  torMode: TorMode;
+  onTorModeChange: (mode: TorMode) => void;
   recentEvents: NostrEvent[];
   allStoredEvents: NostrEvent[];
 }
@@ -22,6 +25,8 @@ export function SettingsPage({
   onPowToggle,
   powDifficulty,
   onPowDifficultyChange,
+  torMode,
+  onTorModeChange,
   recentEvents,
   allStoredEvents
 }: SettingsPageProps) {
@@ -65,6 +70,8 @@ export function SettingsPage({
   };
 
   const { hashAttempts, description } = getDifficultyInfo(powDifficulty);
+
+  const torStatus = useTorStatus();
 
   // Theme-specific styles
   const themeStyles = {
@@ -121,7 +128,7 @@ export function SettingsPage({
           </button>
         </div>
       </div>
-
+      
       {/* Proof of Work Section */}
       <div className="space-y-4">
         <h3 className={`text-lg font-normal ${styles.accent}`}>
@@ -201,6 +208,61 @@ export function SettingsPage({
             </div>
           </div>
         )}
+      </div>
+
+      {/* Network Section */}
+      <div className="space-y-4">
+        <h3 className={`text-lg font-normal ${styles.accent}`}>
+          network
+        </h3>
+
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => onTorModeChange(TorMode.OFF)}
+            className={`px-4 py-2 text-sm rounded border transition-colors ${
+              torMode === TorMode.OFF
+                ? styles.powButtonActive
+                : styles.powButtonInactive
+            }`}
+          >
+            tor off
+          </button>
+          <button
+            onClick={() => onTorModeChange(TorMode.ON)}
+            className={`px-4 py-2 text-sm rounded border transition-colors ${
+              torMode === TorMode.ON
+                ? styles.powButtonActive
+                : styles.powButtonInactive
+            }`}
+          >
+            tor on
+          </button>
+          <button
+            onClick={() => onTorModeChange(TorMode.ISOLATION)}
+            className={`px-4 py-2 text-sm rounded border transition-colors ${
+              torMode === TorMode.ISOLATION
+                ? styles.powButtonActive
+                : styles.powButtonInactive
+            }`}
+          >
+            isolation mode
+          </button>
+          <div
+            className="w-2 h-2 rounded-full"
+            style={{
+              backgroundColor:
+                torStatus.mode === TorMode.OFF
+                  ? 'red'
+                  : torStatus.state !== 'running' || torStatus.bootstrap < 100
+                  ? '#FF9500'
+                  : '#00C851',
+            }}
+          />
+        </div>
+
+        <div className={`text-sm ${styles.accent}`}>
+          route internet over tor. isolation uses separate circuits per relay.
+        </div>
       </div>
     </div>
   );

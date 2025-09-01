@@ -2,6 +2,7 @@ import { globalStyles } from "../../styles";
 import type { NostrEvent } from "../../types";
 import { ThemedButton } from "../common/ThemedButton";
 import { ThemedInput } from "../common/ThemedInput";
+import { TorStatusIcon } from "./TorStatusIcon";
 
 interface MobileHeaderProps {
   activeView: "map" | "chat" | "panel" | "radio";
@@ -105,6 +106,7 @@ export function MobileHeader({
         >
           settings
         </ThemedButton>
+        <TorStatusIcon className="ml-1" />
       </div>
 
       <div className="w-full mt-2 mb-4 px-4">
