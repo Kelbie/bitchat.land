@@ -8,7 +8,7 @@ interface SettingsState {
 export function useSettingsState() {
   const [settings, setSettings] = useState<SettingsState>({
     powEnabled: false,
-    powDifficulty: 16,
+    powDifficulty: 12,
   });
 
   // Load settings from localStorage on mount

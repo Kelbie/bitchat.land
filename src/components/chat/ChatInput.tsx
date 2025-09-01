@@ -264,12 +264,29 @@ export function ChatInput({
     if (eventTemplateForPow) {
       continueWithEvent(eventTemplateForPow);
     } else {
-      // Create a basic event template if none exists
+      // Create a proper event template with current channel information
+      const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
+      
+      const tags = [
+        ["n", savedProfile?.username || "Anonymous"],
+        ["client", "bitchat.land"]
+      ];
+      
+      let kind;
+      if (isGeohash) {
+        kind = 20000; // Geohash channels use kind 20000
+        tags.push(["g", currentChannel.toLowerCase()]);
+      } else {
+        kind = 23333; // Standard channels use kind 23333
+        tags.push(["d", currentChannel.toLowerCase()]);
+        tags.push(["relay", NOSTR_RELAYS[0]]);
+      }
+      
       const basicTemplate: EventTemplate = {
-        kind: 20000, // Default to geohash
+        kind,
         created_at: Math.floor(Date.now() / 1000),
         content: message.trim(),
-        tags: [["n", savedProfile?.username || "Anonymous"], ["client", "bitchat.land"]]
+        tags,
       };
       continueWithEvent(basicTemplate);
     }
@@ -286,6 +303,14 @@ export function ChatInput({
     
     // Continue with publishing
     publishEvent(signedEvent);
+    
+    // Handle roll command after message is sent
+    const rollRange = parseRollCommand(message.trim());
+    if (rollRange) {
+      setTimeout(() => {
+        handleRoll(rollRange).catch(console.error);
+      }, 1000);
+    }
   };
 
   const publishEvent = (signedEvent: ReturnType<typeof finalizeEvent>) => {
@@ -534,12 +559,7 @@ export function ChatInput({
 
       // If no POW or POW failed, continue with normal flow
       continueWithoutPow();
-  
-      if (rollRange) {
-        setTimeout(() => {
-          handleRoll(rollRange).catch(console.error);
-        }, 1000);
-      }
+      return; // Exit early after sending message without POW
   
     } catch (err) {
       console.error("Failed to send message:", err);

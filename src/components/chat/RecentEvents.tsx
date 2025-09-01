@@ -4,7 +4,6 @@ import { NostrEvent } from "../../types";
 import {
   parseSearchQuery,
   addGeohashToSearch,
-  addUserToSearch,
   ParsedSearch,
 } from "../../utils/searchParser";
 import { renderTextWithLinks } from "../../utils/linkRenderer";
@@ -92,20 +91,7 @@ const EventItem = React.memo(({
           {/* Header with location/client info - same as regular messages */}
           <div className="flex justify-start items-center h-4">
             <div className="flex items-center gap-2">
-              <span
-                className={`${t.hashTag} ${onSearch ? "cursor-pointer" : ""}`}
-                onClick={
-                  onSearch
-                    ? () =>
-                        onSearch(
-                          addGeohashToSearch(
-                            searchText,
-                            rawGeohash.toLowerCase()
-                          )
-                        )
-                    : undefined
-                }
-              >
+              <span className={t.hashTag}>
                 {eventGeohash
                   ? `#${eventGeohash.toUpperCase()}`
                   : `#${groupTagValue.toUpperCase()}`}
@@ -128,6 +114,28 @@ const EventItem = React.memo(({
               <span className="pl-2 text-[11px] font-mono text-gray-500">
                 [{isToday ? time : `${date} ${time}`}]
               </span>
+              
+              {/* Action buttons below content */}
+              {onSearch && (
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onSearch(
+                        addGeohashToSearch(
+                          searchText,
+                          rawGeohash.toLowerCase()
+                        )
+                      );
+                    }}
+                    className="text-xs px-2 py-1 rounded border border-gray-600 text-gray-500 hover:bg-gray-600 hover:text-gray-200 transition-colors"
+                  >
+                    #{eventGeohash ? eventGeohash.toUpperCase() : groupTagValue.toUpperCase()}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -140,20 +148,7 @@ const EventItem = React.memo(({
       <div className={t.messageCard}>
         <div className="flex justify-start items-center h-4">
           <div className="flex items-center gap-2">
-            <span
-              className={`${t.hashTag} ${onSearch ? "cursor-pointer" : ""}`}
-              onClick={
-                onSearch
-                  ? () =>
-                      onSearch(
-                        addGeohashToSearch(
-                          searchText,
-                          rawGeohash.toLowerCase()
-                        )
-                      )
-                  : undefined
-              }
-            >
+            <span className={t.hashTag}>
               {eventGeohash
                 ? `#${eventGeohash.toUpperCase()}`
                 : `#${groupTagValue.toUpperCase()}`}
@@ -166,33 +161,17 @@ const EventItem = React.memo(({
               </>
             )}
 
-            {onReply && (
-              <>
-                <span className={t.hashTag}>•</span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onReply(username, pubkeyHash);
-                  }}
-                  className={t.replyButton}
-                >
-                  ↪ Reply
-                </button>
-              </>
-            )}
-
             <span className={t.hashTag}>•</span>
             <span className="text-[11px] font-mono text-gray-500">
               PoW {getPow(event.id)}
             </span>
 
+
             {event.relayUrl && (
               <>
                 <span className={t.hashTag}>•</span>
                 <span className="text-[11px] font-mono text-gray-500">
-                  relay {event.relayUrl.replace(/^wss?:\/\//, '').split('/')[0]}
+                  wss://{event.relayUrl.replace(/^wss?:\/\//, '').split('/')[0]}
                 </span>
               </>
             )}
@@ -202,18 +181,8 @@ const EventItem = React.memo(({
         <div className="flex items-start gap-2">
           <div className="flex-1 min-w-0 leading-relaxed break-words whitespace-pre-wrap font-mono tracking-wide">
             <span
-              className={`text-sm font-bold ${
-                onSearch ? "cursor-pointer" : ""
-              }`}
+              className="text-sm font-bold"
               style={{ color: userColors.hex }}
-              onClick={
-                onSearch
-                  ? () =>
-                      onSearch(
-                        addUserToSearch(searchText, username, pubkeyHash)
-                      )
-                  : undefined
-              }
             >
               &lt;@{username}#{pubkeyHash}&gt;
             </span>
@@ -269,6 +238,77 @@ const EventItem = React.memo(({
             <span className="pl-2 text-[11px] font-mono text-gray-500">
               [{isToday ? time : `${date} ${time}`}]
             </span>
+            
+            {/* Action buttons below content */}
+            <div className="mt-2 flex items-center gap-2">
+              {onSearch && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onSearch(
+                      addGeohashToSearch(
+                        searchText,
+                        rawGeohash.toLowerCase()
+                      )
+                    );
+                  }}
+                  className="text-xs px-2 py-1 rounded border border-gray-600 text-gray-500 hover:bg-gray-600 hover:text-gray-200 transition-colors"
+                >
+                  #{eventGeohash ? eventGeohash.toUpperCase() : groupTagValue.toUpperCase()}
+                </button>
+              )}
+              
+              {onReply && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onReply(username, pubkeyHash);
+                  }}
+                  className="text-xs px-2 py-1 rounded border border-gray-600 text-gray-500 hover:bg-gray-600 hover:text-gray-200 transition-colors"
+                >
+                  ↪ Reply
+                </button>
+              )}
+              
+              {/* Action command buttons */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Send the action message directly to the chat input
+                  if (window.updateChatInputValue) {
+                    const actionMessage = `* gives @${username}#${pubkeyHash} a warm hug 🫂 *`;
+                    window.updateChatInputValue(actionMessage, actionMessage.length);
+                  }
+                }}
+                className="text-xs px-2 py-1 rounded border border-gray-600 text-gray-500 hover:bg-gray-600 hover:text-gray-200 transition-colors"
+                title="Give a warm hug"
+              >
+                🫂 Hug
+              </button>
+              
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Send the action message directly to the chat input
+                  if (window.updateChatInputValue) {
+                    const actionMessage = `* slaps @${username}#${pubkeyHash} around a bit with a large trout 🐟 *`;
+                    window.updateChatInputValue(actionMessage, actionMessage.length);
+                  }
+                }}
+                className="text-xs px-2 py-1 rounded border border-gray-600 text-gray-500 hover:bg-gray-600 hover:text-gray-200 transition-colors"
+                title="Slap with a trout"
+              >
+                🐟 Slap
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -172,6 +172,8 @@ export function SettingsPage({
               theme={theme}
               height={50}
               threshold={powDifficulty}
+              minDifficulty={1}
+              maxDifficulty={24}
             />
             
             {/* POW Analysis Info */}
