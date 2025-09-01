@@ -11,7 +11,6 @@ interface SettingsPageProps {
   onPowToggle: (enabled: boolean) => void;
   powDifficulty: number;
   onPowDifficultyChange: (difficulty: number) => void;
-  filteredEvents: NostrEvent[];
   allStoredEvents: NostrEvent[];
 }
 
@@ -22,18 +21,16 @@ export function SettingsPage({
   onPowToggle,
   powDifficulty,
   onPowDifficultyChange,
-  filteredEvents,
   allStoredEvents
 }: SettingsPageProps) {
   // Calculate POW difficulty distribution from recent events
   const powDistribution = useMemo(() => {
-    // Use filtered events if available, otherwise fall back to all stored events
-    const eventsToAnalyze = filteredEvents.length > 0 ? filteredEvents : allStoredEvents;
-    
+    const eventsToAnalyze = allStoredEvents;
+
     if (eventsToAnalyze.length === 0) {
       return []; // Return empty array if no events
     }
-    
+
     // Calculate POW difficulty for each event
     const powValues: number[] = [];
     eventsToAnalyze.forEach(event => {
@@ -49,7 +46,7 @@ export function SettingsPage({
     });
     
     return powValues;
-  }, [filteredEvents, allStoredEvents]);
+  }, [allStoredEvents]);
 
   const getDifficultyInfo = (difficulty: number) => {
     const hashAttempts = Math.pow(2, difficulty);
@@ -172,14 +169,12 @@ export function SettingsPage({
               theme={theme}
               height={50}
               threshold={powDifficulty}
-              minDifficulty={1}
-              maxDifficulty={24}
             />
             
             {/* POW Analysis Info */}
             {powDistribution.length > 0 && (
               <div className={`text-xs ${theme === "matrix" ? "text-gray-400" : "text-gray-600"}`}>
-                Analyzed {powDistribution.length} events with valid POW from {filteredEvents.length > 0 ? 'filtered' : 'stored'} events
+                Analyzed {powDistribution.length} events with valid POW out of {allStoredEvents.length} total events
               </div>
             )}
             

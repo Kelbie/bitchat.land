@@ -3,50 +3,40 @@ import React from 'react';
 interface PowDistributionGraphProps {
   powData: number[]; // Array of POW difficulty values from recent events
   theme: "matrix" | "material";
-  width?: number;
   height?: number;
   threshold?: number; // Current POW difficulty threshold
-  minDifficulty?: number; // Minimum difficulty for scaling (should match slider min)
-  maxDifficulty?: number; // Maximum difficulty for scaling (should match slider max)
 }
 
-export function PowDistributionGraph({ 
-  powData, 
-  theme, 
-  width = 200, 
+export function PowDistributionGraph({
+  powData,
+  theme,
   height = 50,
-  threshold,
-  minDifficulty = 1,
-  maxDifficulty = 24
+  threshold
 }: PowDistributionGraphProps) {
+  // Use all available events regardless of slider position
+  const minDifficulty = 1; // Fixed starting point so early values are never hidden
+  const maxDifficulty = Math.max(24, threshold ?? 0, ...powData);
+
   // Calculate distribution of POW difficulties
-  const maxBits = 40; // Maximum POW difficulty
-  const distribution = new Array(maxBits + 1).fill(0);
-  
+  const distribution = new Array(maxDifficulty + 1).fill(0);
+
   powData.forEach(bits => {
-    if (bits >= 0 && bits <= maxBits) {
+    if (bits >= minDifficulty && bits <= maxDifficulty) {
       distribution[bits]++;
     }
   });
-  
+
   // Find the maximum count for scaling
   const maxCount = Math.max(...distribution);
   
-  // Colors based on theme
-  const colors = {
-    matrix: {
-      fill: "rgb(74, 222, 128)", // green-400
-      background: "rgb(17, 24, 39)", // gray-900
-      belowThreshold: "rgb(239, 68, 68)" // red-500
-    },
-    material: {
-      fill: "rgb(59, 130, 246)", // blue-500
-      background: "rgb(255, 255, 255)", // white
-      belowThreshold: "rgb(239, 68, 68)" // red-500
-    }
-  };
-  
-  const color = colors[theme];
+  // Background color varies by theme, while bar colors are fixed
+  const backgrounds = {
+    matrix: "rgb(17, 24, 39)", // gray-900
+    material: "rgb(255, 255, 255)" // white
+  } as const;
+
+  const aboveThresholdColor = "rgb(74, 222, 128)"; // green-400
+  const belowThresholdColor = "rgb(239, 68, 68)"; // red-500
   
   // Show message if no data
   if (powData.length === 0) {
@@ -74,7 +64,7 @@ export function PowDistributionGraph({
         width="100%" 
         height={height} 
         className="border border-gray-600 rounded w-full"
-        style={{ backgroundColor: color.background }}
+        style={{ backgroundColor: backgrounds[theme] }}
         viewBox={`0 0 ${effectiveRange} ${height}`}
         preserveAspectRatio="none"
       >
@@ -87,8 +77,11 @@ export function PowDistributionGraph({
           const x = bits - minDifficulty;
           const barWidth = 1; // Full width of each bit slot
           
-          // Color bars based on threshold: red for below, theme color for above
-          const barColor = threshold !== undefined && bits < threshold ? color.belowThreshold : color.fill;
+          // Color bars based on threshold: green for at/above threshold, red for below
+          const barColor =
+            threshold !== undefined && bits < threshold
+              ? belowThresholdColor
+              : aboveThresholdColor;
           
           return (
             <rect
@@ -110,7 +103,7 @@ export function PowDistributionGraph({
             y1={0}
             x2={threshold - minDifficulty}
             y2={height}
-            stroke={color.belowThreshold}
+            stroke={belowThresholdColor}
             strokeWidth="0.5"
             strokeDasharray="2,2"
             opacity={0.8}
