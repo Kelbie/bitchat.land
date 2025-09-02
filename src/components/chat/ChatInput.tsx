@@ -113,7 +113,6 @@ export function ChatInput({
   const [eventTemplateForPow, setEventTemplateForPow] = useState<EventTemplate | null>(null);
   const [localPowEnabled, setLocalPowEnabled] = useState(powEnabled);
   const [localPowDifficulty, setLocalPowDifficulty] = useState(powDifficulty);
-  const [showPowControls, setShowPowControls] = useState(false);
   const lastPrefillRef = useRef<string>("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const powWorkerRef = useRef<Worker | null>(null);
@@ -604,16 +603,16 @@ export function ChatInput({
       sendMessage();
     }
     
-    // Quick PoW toggle with Ctrl+P (or Cmd+P on Mac)
+    // Quick PoW enable/disable with Ctrl+P (or Cmd+P on Mac)
     if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
       e.preventDefault();
-      setShowPowControls(!showPowControls);
-    }
-    
-    // Quick PoW enable/disable with Ctrl+Shift+P (or Cmd+Shift+P on Mac)
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'P') {
-      e.preventDefault();
-      setLocalPowEnabled(!localPowEnabled);
+      if (localPowEnabled) {
+        setLocalPowEnabled(false);
+        setLocalPowDifficulty(0);
+      } else {
+        setLocalPowEnabled(true);
+        setLocalPowDifficulty(Math.max(1, localPowDifficulty));
+      }
     }
   };
 
@@ -661,88 +660,77 @@ export function ChatInput({
 
       {/* Quick PoW Controls */}
       <div className="flex items-center gap-2 mb-2">
+        {/* Main PoW Button - shows current difficulty and toggles on/off */}
         <button
-          onClick={() => setShowPowControls(!showPowControls)}
-          className={`px-2 py-1 text-xs rounded transition-colors ${
-            theme === "matrix"
-              ? "bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:shadow-[0_0_4px_rgba(0,255,0,0.3)]"
-              : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 hover:shadow-sm"
+          onClick={() => {
+            if (localPowEnabled) {
+              setLocalPowEnabled(false);
+              setLocalPowDifficulty(0);
+            } else {
+              setLocalPowEnabled(true);
+              setLocalPowDifficulty(Math.max(1, localPowDifficulty));
+            }
+          }}
+          className={`px-3 py-1 text-xs rounded transition-colors font-mono ${
+            localPowEnabled
+              ? theme === "matrix"
+                ? "bg-green-800 text-green-300 border border-green-600 hover:bg-green-700 hover:shadow-[0_0_4px_rgba(0,255,0,0.3)]"
+                : "bg-green-600 text-white border border-green-600 hover:bg-green-700 hover:shadow-sm"
+              : theme === "matrix"
+                ? "bg-gray-800 text-gray-400 border border-gray-600 hover:bg-gray-700 hover:shadow-[0_0_4px_rgba(0,255,0,0.3)]"
+                : "bg-gray-200 text-gray-600 border border-gray-400 hover:bg-gray-300 hover:shadow-sm"
           }`}
-          title="Toggle PoW controls"
+          title={localPowEnabled ? "Click to disable PoW" : "Click to enable PoW"}
         >
-          ⛏️ PoW
+          ⛏️ PoW {localPowDifficulty}
         </button>
         
-        {showPowControls && (
-          <div className="flex items-center gap-2 animate-in slide-in-from-left-2 duration-200">
-            {/* PoW Toggle */}
+        {/* Difficulty Controls - always visible when PoW is enabled */}
+        {localPowEnabled && (
+          <div className="flex items-center gap-1 animate-in slide-in-from-left-2 duration-200">
             <button
-              onClick={() => setLocalPowEnabled(!localPowEnabled)}
+              onClick={() => {
+                const newDifficulty = localPowDifficulty - 1;
+                if (newDifficulty <= 0) {
+                  setLocalPowEnabled(false);
+                  setLocalPowDifficulty(0);
+                } else {
+                  setLocalPowDifficulty(newDifficulty);
+                }
+              }}
               className={`px-2 py-1 text-xs rounded transition-colors ${
-                localPowEnabled
-                  ? theme === "matrix"
-                    ? "bg-green-800 text-green-300 border border-green-600 hover:bg-green-700 hover:shadow-[0_0_4px_rgba(0,255,0,0.3)]"
-                    : "bg-green-600 text-white border border-green-600 hover:bg-green-700 hover:shadow-sm"
-                  : theme === "matrix"
-                    ? "bg-gray-800 text-gray-400 border border-gray-600 hover:bg-gray-700"
-                    : "bg-gray-200 text-gray-600 border border-gray-400 hover:bg-gray-300"
+                theme === "matrix"
+                  ? "bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:shadow-[0_0_4px_rgba(0,255,0,0.3)]"
+                  : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 hover:shadow-sm"
               }`}
-              title={localPowEnabled ? "Disable PoW" : "Enable PoW"}
+              title="Decrease difficulty (0 = disable)"
             >
-              {localPowEnabled ? "ON" : "OFF"}
+              -
             </button>
             
-            {/* Difficulty Controls */}
-            {localPowEnabled && (
-              <>
-                <button
-                  onClick={() => setLocalPowDifficulty(Math.max(1, localPowDifficulty - 1))}
-                  className={`px-2 py-1 text-xs rounded transition-colors ${
-                    localPowDifficulty <= 1
-                      ? theme === "matrix"
-                        ? "bg-gray-900 text-gray-500 border border-gray-700 cursor-not-allowed"
-                        : "bg-gray-50 text-gray-400 border border-gray-200 cursor-not-allowed"
-                      : theme === "matrix"
-                        ? "bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:shadow-[0_0_4px_rgba(0,255,0,0.3)]"
-                        : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 hover:shadow-sm"
-                  }`}
-                  title="Decrease difficulty"
-                  disabled={localPowDifficulty <= 1}
-                >
-                  -
-                </button>
-                
-                <span className={`text-xs font-mono px-1 ${
-                  theme === "matrix" ? "text-gray-300" : "text-gray-700"
-                }`}>
-                  {localPowDifficulty}
-                </span>
-                
-                <button
-                  onClick={() => setLocalPowDifficulty(Math.min(24, localPowDifficulty + 1))}
-                  className={`px-2 py-1 text-xs rounded transition-colors ${
-                    localPowDifficulty >= 24
-                      ? theme === "matrix"
-                        ? "bg-gray-900 text-gray-500 border border-gray-700 cursor-not-allowed"
-                        : "bg-gray-50 text-gray-400 border border-gray-200 cursor-not-allowed"
-                      : theme === "matrix"
-                        ? "bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:shadow-[0_0_4px_rgba(0,255,0,0.3)]"
-                        : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 hover:shadow-sm"
-                  }`}
-                  title="Increase difficulty"
-                  disabled={localPowDifficulty >= 24}
-                >
-                  +
-                </button>
-                
-                {/* Difficulty Info */}
-                <span className={`text-xs ${
-                  theme === "matrix" ? "text-gray-400" : "text-gray-500"
-                }`} title={`~${Math.pow(2, localPowDifficulty - 8) < 1 ? '< 1' : Math.pow(2, localPowDifficulty - 8)} second${Math.pow(2, localPowDifficulty - 8) === 1 ? '' : 's'} mining time`}>
-                  ({Math.pow(2, localPowDifficulty - 8) < 1 ? '< 1' : Math.pow(2, localPowDifficulty - 8)}s)
-                </span>
-              </>
-            )}
+            <button
+              onClick={() => setLocalPowDifficulty(Math.min(24, localPowDifficulty + 1))}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                localPowDifficulty >= 24
+                  ? theme === "matrix"
+                    ? "bg-gray-900 text-gray-500 border border-gray-700 cursor-not-allowed"
+                    : "bg-gray-50 text-gray-400 border border-gray-200 cursor-not-allowed"
+                  : theme === "matrix"
+                    ? "bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:shadow-[0_0_4px_rgba(0,255,0,0.3)]"
+                    : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 hover:shadow-sm"
+              }`}
+              title="Increase difficulty"
+              disabled={localPowDifficulty >= 24}
+            >
+              +
+            </button>
+            
+            {/* Difficulty Info */}
+            <span className={`text-xs ${
+              theme === "matrix" ? "text-gray-400" : "text-gray-500"
+            }`} title={`~${Math.pow(2, localPowDifficulty - 8) < 1 ? '< 1' : Math.pow(2, localPowDifficulty - 8)} second${Math.pow(2, localPowDifficulty - 8) === 1 ? '' : 's'} mining time`}>
+              ({Math.pow(2, localPowDifficulty - 8) < 1 ? '< 1' : Math.pow(2, localPowDifficulty - 8)}s)
+            </span>
           </div>
         )}
       </div>
@@ -830,7 +818,7 @@ export function ChatInput({
           </span>
         )}
         <span className="ml-2 text-xs text-gray-400">
-          • Ctrl+P: Toggle PoW controls • Ctrl+Shift+P: Toggle PoW
+          • Ctrl+P: Toggle PoW
         </span>
       </div>
     </section>
