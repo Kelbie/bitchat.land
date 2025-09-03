@@ -14,7 +14,7 @@ export type ListProps<T> = {
   items: ListItem<T>[];
   renderItem: (item: T, index: number) => React.ReactNode;
   renderSectionHeader: (title: string) => React.ReactNode;
-  headerTitle: string;
+  headerTitle: string | React.ReactNode;
   theme: "matrix" | "material";
   emptyMessage: string;
   estimateItemSize?: number;
