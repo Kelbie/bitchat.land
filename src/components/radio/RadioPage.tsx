@@ -5,6 +5,7 @@ import { CountryService } from "../../services/countryService";
 import { RadioService } from "../../services/radioService";
 import { StationWithDistance } from "../../types/radio";
 import { Slider } from "../common/Slider";
+import { AlertTriangle } from "lucide-react";
 
 interface RadioPageProps {
   searchText: string;
@@ -424,7 +425,12 @@ export function RadioPage({ searchText, theme }: RadioPageProps) {
         )}
 
         {/* Error State */}
-        {error && <div className={t.error}>⚠️ {error}</div>}
+        {error && (
+          <div className={`${t.error} flex items-center gap-1`}>
+            <AlertTriangle className="w-4 h-4" />
+            {error}
+          </div>
+        )}
 
         {/* Tags Filter UI */}
         {allTags.length > 0 && (

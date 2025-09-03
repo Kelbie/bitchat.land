@@ -113,7 +113,10 @@ export async function sendJoinMessage({
       const failed = results.filter(r => r.status === 'rejected');
       
       if (failed.length > 0) {
-        console.warn(`⚠️ Failed to publish join message to ${failed.length} relays:`, failed);
+        console.warn(
+          `Warning: Failed to publish join message to ${failed.length} relays:`,
+          failed
+        );
       }
       
       if (successful.length === 0) {
@@ -125,7 +128,7 @@ export async function sendJoinMessage({
     }
     
   } catch (error) {
-    console.error("❌ Failed to send join message:", error);
+    console.error("Failed to send join message:", error);
     // Don't throw - this is a non-critical feature
   }
 }

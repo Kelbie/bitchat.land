@@ -4,6 +4,7 @@ import { EVENT_KINDS } from "../../constants/eventKinds";
 import { List, ListItem } from "../common/List";
 import { SectionHeader } from "../common/SectionHeader";
 import { globalStyles } from "../../styles";
+import { Heart } from "lucide-react";
 
 type ChannelMeta = {
   key: string;
@@ -20,6 +21,7 @@ type Props = {
   theme?: "matrix" | "material";
   pinnedChannels?: string[];
   onPinnedChannelsChange?: (pinnedChannels: string[]) => void;
+  className?: string;
 };
 
 // Separate ChannelItem component
@@ -106,12 +108,13 @@ const ChannelItem = React.memo(({
         <button
           type="button"
           onClick={(e) => onHeartClick(e, channelKey)}
-          className={`${t.heartButton} ${
-            isPinned ? t.heartIconPinned : t.heartIcon
-          } cursor-pointer`}
+          className={`${t.heartButton} cursor-pointer`}
           title={isPinned ? "Unpin channel" : "Pin channel"}
         >
-          {isPinned ? "❤️" : "🤍"}
+          <Heart
+            className={isPinned ? t.heartIconPinned : t.heartIcon}
+            fill={isPinned ? "currentColor" : "none"}
+          />
         </button>
       </div>
     </div>
@@ -130,6 +133,7 @@ export function ChannelList({
   theme = "matrix",
   pinnedChannels: externalPinnedChannels,
   onPinnedChannelsChange,
+  className,
 }: Props) {
   const [internalPinnedChannels, setInternalPinnedChannels] = useState<string[]>([]);
 
@@ -382,6 +386,7 @@ export function ChannelList({
       emptyMessage="no channels"
       estimateItemSize={50}
       borderDirection="right"
+      className={className}
     />
   );
 }

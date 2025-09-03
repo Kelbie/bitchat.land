@@ -2,6 +2,18 @@ import { globalStyles } from "../../styles";
 import type { NostrEvent } from "../../types";
 import { ThemedButton } from "../common/ThemedButton";
 import { ThemedInput } from "../common/ThemedInput";
+import {
+  Menu,
+  Users,
+  Map as MapIcon,
+  MessageSquare,
+  Radio as RadioIcon,
+  Key,
+  Download,
+  Settings as SettingsIcon,
+  X,
+  Search,
+} from "lucide-react";
 
 interface MobileHeaderProps {
   activeView: "map" | "chat" | "panel" | "radio";
@@ -18,6 +30,8 @@ interface MobileHeaderProps {
   onSettingsClick?: () => void;
   theme?: "matrix" | "material";
   onThemeChange?: (next: "matrix" | "material") => void;
+  onToggleChannels?: () => void;
+  onToggleUsers?: () => void;
 }
 
 const styles = globalStyles["MobileHeader"];
@@ -34,6 +48,8 @@ export function MobileHeader({
   onLoginClick,
   onSettingsClick,
   theme = "matrix",
+  onToggleChannels,
+  onToggleUsers,
 }: MobileHeaderProps) {
   // avoid unused warnings for props not yet used
   void zoomedGeohash;
@@ -43,50 +59,59 @@ export function MobileHeader({
 
   return (
     <header className={t.header}>
-      <div className="flex items-center gap-2 mb-0">
-        <img src={`/favicon${theme === "matrix" ? ".webp" : `_${theme}.webp`}`} alt="bitchat.land" className="w-12 h-12 -ml-3" />
-        <div className={t.logoText}>bitchat.land</div>
+      <div className="flex items-center justify-between w-full mb-1">
+        <ThemedButton
+          onClick={onToggleChannels}
+          theme={theme}
+          className="p-2 md:hidden"
+        >
+          <Menu className="w-5 h-5" />
+        </ThemedButton>
+        <img
+          src={`/favicon${theme === "matrix" ? ".webp" : `_${theme}.webp`}`}
+          alt="bitchat.land"
+          className="w-8 h-8"
+        />
+        <ThemedButton
+          onClick={onToggleUsers}
+          theme={theme}
+          className="p-2 md:hidden"
+        >
+          <Users className="w-5 h-5" />
+        </ThemedButton>
       </div>
 
-      <div className="flex gap-1 justify-center w-full max-w-md">
-        {/* <ThemedButton
-          onClick={() => onViewChange("panel")}
-          active={activeView === "panel"}
-          theme={theme}
-          className="flex-1 px-3 py-2 text-sm text-center"
-        >
-          menu
-        </ThemedButton> */}
+      <div className="flex gap-1 justify-center w-full mb-1">
         <ThemedButton
           onClick={() => onViewChange("map")}
           active={activeView === "map"}
           theme={theme}
-          className="flex-1 px-3 py-2 text-sm text-center"
+          className="px-2 py-2"
         >
-          map
+          <MapIcon className="w-5 h-5" />
         </ThemedButton>
         <ThemedButton
           onClick={() => onViewChange("chat")}
           active={activeView === "chat"}
           theme={theme}
-          className="flex-1 px-3 py-2 text-sm text-center"
+          className="px-2 py-2"
         >
-          chat
+          <MessageSquare className="w-5 h-5" />
         </ThemedButton>
         <ThemedButton
           onClick={() => onViewChange("radio")}
           active={activeView === "radio"}
           theme={theme}
-          className="flex-1 px-3 py-2 text-sm text-center"
+          className="px-2 py-2"
         >
-          radio
+          <RadioIcon className="w-5 h-5" />
         </ThemedButton>
         <ThemedButton
           onClick={onLoginClick}
           theme={theme}
-          className="flex-1 px-3 py-2 text-sm text-center"
+          className="px-2 py-2"
         >
-          login
+          <Key className="w-5 h-5" />
         </ThemedButton>
         <ThemedButton
           as="a"
@@ -94,38 +119,26 @@ export function MobileHeader({
           target="_blank"
           rel="noopener noreferrer"
           theme={theme}
-          className="flex-1 px-3 py-2 text-sm text-center"
+          className="px-2 py-2"
         >
-          download
+          <Download className="w-5 h-5" />
         </ThemedButton>
         <ThemedButton
           onClick={onSettingsClick}
           theme={theme}
-          className="flex-1 px-3 py-2 text-sm text-center"
+          className="px-2 py-2"
         >
-          settings
+          <SettingsIcon className="w-5 h-5" />
         </ThemedButton>
       </div>
 
-      <div className="w-full mt-2 mb-4 px-4">
+      <div className="w-full mt-2 mb-2 px-4">
         <div className="flex flex-col gap-2 mx-auto max-w-md">
           {/* Search Input */}
           <div className="flex gap-2 items-center">
             <div className="relative w-full">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  className={t.searchIcon}
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.35-4.35" />
-                </svg>
+                <Search className={`${t.searchIcon} w-4 h-4`} />
               </div>
               <ThemedInput
                 value={searchText}
@@ -141,7 +154,7 @@ export function MobileHeader({
             </div>
             {searchText && (
               <button onClick={() => onSearch("")} className={t.clearButton}>
-                ✕
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>

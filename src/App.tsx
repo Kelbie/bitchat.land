@@ -29,6 +29,7 @@ import { MarqueeBanner } from "./components/header/MarqueeBanner";
 import { CornerOverlay } from "./components/common/CornerOverlay";
 import { ChannelList, ChannelMeta } from "./components/sidebars/ChannelList";
 import { UserList, UserMeta } from "./components/sidebars/UserList";
+import { Heart } from "lucide-react";
 import { Connections } from "./components/map/Connections";
 import { NostrImageSearch } from "./components/modals/image/DiscoverPage";
 import { FavoritesModal } from "./components/modals/image/FavoritesModal";
@@ -110,6 +111,14 @@ export default function App({
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showFavoritesModal, setShowFavoritesModal] = useState(false);
   const [pinnedChannels, setPinnedChannels] = useState<string[]>([]);
+  type SidebarVisibility = "hidden" | "visible";
+  const [channelSidebar, setChannelSidebar] = useState<SidebarVisibility>("hidden");
+  const [userSidebar, setUserSidebar] = useState<SidebarVisibility>("hidden");
+
+  const toggleChannelSidebar = () =>
+    setChannelSidebar((prev) => (prev === "visible" ? "hidden" : "visible"));
+  const toggleUserSidebar = () =>
+    setUserSidebar((prev) => (prev === "visible" ? "hidden" : "visible"));
 
   // Search and zoom state
   const [searchText, setSearchText] = useState("");
@@ -804,6 +813,8 @@ export default function App({
           onSettingsClick={() => setShowSettingsModal(true)}
           theme={theme}
           onThemeChange={setTheme}
+          onToggleChannels={toggleChannelSidebar}
+          onToggleUsers={toggleUserSidebar}
         />
       </header>
 
@@ -859,6 +870,7 @@ export default function App({
                 theme={theme}
                 pinnedChannels={pinnedChannels}
                 onPinnedChannelsChange={setPinnedChannels}
+                className="hidden md:flex h-full"
               />
 
               {/* Chat column */}
@@ -892,9 +904,18 @@ export default function App({
                             } channel`
                       }
                     >
-                      {pinnedChannels.includes(selectedChannelKey || "global")
-                        ? "❤️"
-                        : "🤍"}
+                      <Heart
+                        className={
+                          pinnedChannels.includes(selectedChannelKey || "global")
+                            ? "fill-current"
+                            : ""
+                        }
+                        fill={
+                          pinnedChannels.includes(selectedChannelKey || "global")
+                            ? "currentColor"
+                            : "none"
+                        }
+                      />
                     </button>
                   </div>
                 </div>
@@ -940,6 +961,7 @@ export default function App({
                 searchText={searchText}
                 filteredEvents={filteredEvents}
                 theme={theme}
+                className="hidden md:flex h-full"
               />
             </div>
           )}
@@ -970,6 +992,7 @@ export default function App({
               theme={theme}
               pinnedChannels={pinnedChannels}
               onPinnedChannelsChange={setPinnedChannels}
+              className="hidden md:flex h-full"
             />
 
             <div className={`${t.chatColumn} h-full overflow-hidden`}>
@@ -983,10 +1006,60 @@ export default function App({
               searchText={searchText}
               filteredEvents={filteredEvents}
               theme={theme}
+              className="hidden md:flex h-full"
             />
           </div>
         </>
       </main>
+
+      <div
+        className={`fixed inset-0 z-50 flex md:hidden transition-opacity ${
+          channelSidebar === "visible" ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <ChannelList
+          channels={channels}
+          selectedChannel={selectedChannelKey}
+          unreadCounts={unreadCountByChannel}
+          onOpenChannel={handleOpenChannel}
+          theme={theme}
+          pinnedChannels={pinnedChannels}
+          onPinnedChannelsChange={setPinnedChannels}
+          className={`w-64 h-full transform transition-transform duration-300 ${
+            channelSidebar === "visible" ? "translate-x-0" : "-translate-x-full"
+          }`}
+        />
+        <div
+          className={`flex-1 bg-black/50 transition-opacity duration-300 ${
+            channelSidebar === "visible" ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={() => setChannelSidebar("hidden")}
+        />
+      </div>
+
+      <div
+        className={`fixed inset-0 z-50 flex justify-end md:hidden transition-opacity ${
+          userSidebar === "visible" ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <div
+          className={`flex-1 bg-black/50 transition-opacity duration-300 ${
+            userSidebar === "visible" ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={() => setUserSidebar("hidden")}
+        />
+        <UserList
+          users={users}
+          selectedUser={selectedUser}
+          onSelectUser={handleSelectUser}
+          searchText={searchText}
+          allStoredEvents={allStoredEvents}
+          theme={theme}
+          className={`w-64 h-full transform transition-transform duration-300 ${
+            userSidebar === "visible" ? "translate-x-0" : "translate-x-full"
+          }`}
+        />
+      </div>
 
       {/* Connections Panel - Top left on map view */}
       {activeView === "map" && (

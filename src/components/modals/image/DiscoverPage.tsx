@@ -3,6 +3,13 @@ import { SimplePool, Event, Filter } from "nostr-tools";
 import { addToFavorites, isFavorited } from "../../../utils/favorites";
 import { MasonryGrid, MasonryImage as BaseMasonryImage } from "../../common/MasonryGrid";
 import { globalStyles } from "../../../styles";
+import {
+  Heart,
+  Link as LinkIcon,
+  AlertTriangle,
+  Search as SearchIcon,
+  Lightbulb,
+} from "lucide-react";
 
 interface NostrImageSearchProps {
   theme: "matrix" | "material";
@@ -72,7 +79,10 @@ const MasonryImage: React.FC<{
           }`}
           title={isFavoritedState ? "Already in favorites" : "Add to favorites"}
         >
-          {isFavoritedState ? "❤️" : "🤍"}
+          <Heart
+            className="w-4 h-4"
+            fill={isFavoritedState ? "currentColor" : "none"}
+          />
         </button>
         
         {/* Link Button */}
@@ -85,7 +95,7 @@ const MasonryImage: React.FC<{
           }`}
           title="Copy image URL"
         >
-          🔗
+          <LinkIcon className="w-4 h-4" />
         </button>
       </div>
 
@@ -479,14 +489,18 @@ export function DiscoverPage({
 
       {error && (
         <div className={s.errorContainer}>
-          <div className="font-medium">⚠️ Search Error</div>
+          <div className="font-medium flex items-center gap-1">
+            <AlertTriangle className="w-4 h-4" /> Search Error
+          </div>
           <div className="text-sm mt-1">{error}</div>
         </div>
       )}
 
       {!isLoading && !error && images.length === 0 && hasInitialized && (
         <div className={s.noResultsContainer}>
-          <div className="text-2xl mb-2">🔍</div>
+          <div className="text-2xl mb-2">
+            <SearchIcon className="w-6 h-6" />
+          </div>
           <div className="font-medium">No images found</div>
           <div className="text-sm mt-1 opacity-75">
             Try different search terms or click a topic button
@@ -496,9 +510,9 @@ export function DiscoverPage({
 
       {images.length > 0 && (
         <>
-          <div className="text-sm opacity-75 mb-4">
-            💡 Found {images.length} image{images.length !== 1 ? "s" : ""}.
-            Click any image to select it.
+          <div className="text-sm opacity-75 mb-4 flex items-center gap-1">
+            <Lightbulb className="w-4 h-4" /> Found {images.length} image
+            {images.length !== 1 ? "s" : ""}. Click any image to select it.
           </div>
 
           <MasonryGrid
