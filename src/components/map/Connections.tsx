@@ -137,11 +137,11 @@ export function Connections({
         
         <ThemedButton
           onClick={() => {
-            window.open("https://primal.net/p/nprofile1qqsvvullpd0j9rltp2a3qqvgy9udf3vgh389p7zhzu65fd258dz5lqg9ryan5", "_blank");
+            window.open("https://signal.group/#CjQKICWO018PO3W_PtxDVkUPLfoaY830C0Wkc_Yo4o8rLwm-EhC1lOGktzdGS53xD5ykNg89", "_blank");
           }}
-          className={t.actionButton}
+          className={`${t.actionButton} rainbow-button`}
         >
-          Follow Kelbie
+          Join our Signal
         </ThemedButton>
       </div>
     </div>
