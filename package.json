@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.8.4",
+    "@cashu/cashu-ts": "^2.7.1",
     "@luigivampa/radio-browser-api": "^6.0.2",
     "@rapideditor/country-coder": "^5.5.1",
     "@tanstack/react-virtual": "^3.13.12",
