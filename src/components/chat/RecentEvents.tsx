@@ -6,10 +6,9 @@ import {
   addGeohashToSearch,
   ParsedSearch,
 } from "../../utils/searchParser";
-import { renderTextWithLinks } from "../../utils/linkRenderer";
 import { colorForPeerSeed } from "../../utils/userColor";
-import { hasImageUrl, extractImageUrl } from "../../utils/imageUtils";
-import { Image } from "../common/Image";
+import { hasImageUrl, extractImageUrl } from "../../utils/contentParsers";
+import { RichContentDisplay } from "../common/RichContentDisplay";
 import React from "react"; // Added missing import
 import { globalStyles } from "../../styles";
 import { getPow } from "nostr-tools/nip13";
@@ -196,48 +195,10 @@ const EventItem = React.memo(({
               className="pl-2 text-[15px]"
               style={{ color: userColors.hex }}
             >
-              {event.content
-                ? (() => {
-                    if (hasImageUrl(event.content)) {
-                      // Find the image URL and its position
-                      const imageUrl = extractImageUrl(event.content);
-                      if (imageUrl) {
-                        // Split content around the image URL to preserve position
-                        const parts = event.content.split(imageUrl);
-                        return (
-                          <>
-                            {parts[0] && (
-                              <span>
-                                {renderTextWithLinks(parts[0], theme)}
-                              </span>
-                            )}
-                            <br />
-                            <div className="block my-2">
-                              <Image
-                                src={imageUrl}
-                                alt=""
-                                theme={theme}
-                                showControls={true}
-                                maxWidth="200px"
-                                maxHeight="200px"
-                                className="max-w-[200px] h-auto rounded-lg shadow-sm"
-                                tags={[]}
-                                showTags={false}
-                              />
-                            </div>
-                            <br />
-                            {parts[1] && (
-                              <span>
-                                {renderTextWithLinks(parts[1], theme)}
-                              </span>
-                            )}
-                          </>
-                        );
-                      }
-                    }
-                    return renderTextWithLinks(event.content, theme);
-                  })()
-                : "[No content]"}
+              <RichContentDisplay 
+                content={event.content || ""} 
+                theme={theme}
+              />
             </span>
 
             <span className="pl-2 text-[11px] font-mono text-gray-500">

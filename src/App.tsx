@@ -38,7 +38,7 @@ import {
   buildSearchQuery,
 } from "./utils/searchParser";
 
-import { hasImageUrl } from "./utils/imageUtils";
+import { hasImageUrl } from "./utils/contentParsers";
 import {
   getFavorites,
   addToFavorites,
