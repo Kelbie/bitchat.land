@@ -4,8 +4,8 @@ import { ThemedButton } from "../common/ThemedButton";
 import { ThemedInput } from "../common/ThemedInput";
 
 interface MobileHeaderProps {
-  activeView: "map" | "chat" | "panel" | "radio";
-  onViewChange: (view: "map" | "chat" | "panel" | "radio") => void;
+  activeView: "map" | "chat" | "panel" | "radio" | "admin";
+  onViewChange: (view: "map" | "chat" | "panel" | "radio" | "admin") => void;
   searchText: string;
   onSearch: (value: string) => void;
   zoomedGeohash: string | null;

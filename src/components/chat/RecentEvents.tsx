@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useMemo } from "react";
 import { NostrEvent } from "../../types";
 import {
   parseSearchQuery,
@@ -12,6 +11,7 @@ import { RichContentDisplay } from "../common/RichContentDisplay";
 import React from "react"; // Added missing import
 import { globalStyles } from "../../styles";
 import { getPow } from "nostr-tools/nip13";
+import { VirtualizedScroller } from "./VirtualizedScroller";
 
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
 
@@ -340,13 +340,6 @@ export function RecentEvents({
   currentUsername,
   currentUserHash,
 }: RecentEventsProps) {
-  const parentRef = useRef<HTMLDivElement>(null);
-  const [lastSeenEventId, setLastSeenEventId] = useState<string | null>(null);
-  const [isUserAtBottom, setIsUserAtBottom] = useState(true);
-
-  const prevEventsLengthRef = useRef(0);
-
-  const t = styles[theme];
 
   // Parse search and filter events
   const parsedSearch: ParsedSearch = parseSearchQuery(searchText);
@@ -445,141 +438,18 @@ export function RecentEvents({
   );
   const hasImageFilter = parsedSearch.has?.includes("image") || false;
 
-  // Calculate unread count
-  const unreadCount = useMemo(() => {
-    if (!lastSeenEventId || sortedEvents.length === 0) return 0;
-
-    const lastSeenIndex = sortedEvents.findIndex(
-      (event) => event.id === lastSeenEventId
-    );
-    if (lastSeenIndex === -1) return sortedEvents.length;
-
-    return sortedEvents.length - lastSeenIndex - 1;
-  }, [sortedEvents, lastSeenEventId]);
-
-  // Update last seen event when user is at bottom
-  useEffect(() => {
-    if (isUserAtBottom && sortedEvents.length > 0) {
-      const latestEvent = sortedEvents[sortedEvents.length - 1];
-      if (latestEvent && latestEvent.id !== lastSeenEventId) {
-        setLastSeenEventId(latestEvent.id);
-      }
-    }
-  }, [isUserAtBottom, sortedEvents, lastSeenEventId]);
-
-  // Simplified measureElement function - remove the caching logic that might cause issues
-  const measureElement = useCallback(
-    (element: Element) => {
-      if (!element) return 180; // fallback to estimate
-      
-      const height = element.getBoundingClientRect().height;
-      
-      // Simple validation - ensure we have a reasonable height
-      return Math.max(height, 60); // minimum height to prevent zero/negative heights
-    },
-    []
-  );
-
-  // TanStack Virtual setup with proper chat configuration
-  const virtualizer = useVirtualizer({
-    count: sortedEvents.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 180, // Increased from 120 - accounts for images/buttons
-    overscan: 5,
-    measureElement,
-    // Add this to ensure proper measurement timing
-    lanes: 1,
-  });
-
-  // Clear measurements when content significantly changes
-  useEffect(() => {
-    // Clear cache and remeasure when events change significantly
-    const currentLength = sortedEvents.length;
-    const prevLength = prevEventsLengthRef.current;
-    
-    if (Math.abs(currentLength - prevLength) > 5) {
-      // Significant change - remeasure everything
-      virtualizer.measure();
-    }
-    
-    prevEventsLengthRef.current = currentLength;
-  }, [sortedEvents.length, virtualizer]);
-
-  // Disable automatic scroll position adjustment - the root cause of the issue
-  virtualizer.shouldAdjustScrollPositionOnItemSizeChange = () => false;
-
-  // Detect if user is at bottom with proper threshold
-  const checkIsAtBottom = useCallback(() => {
-    const element = parentRef.current;
-    if (!element) return false;
-
-    const { scrollTop, scrollHeight, clientHeight } = element;
-    const threshold = 100; // Generous threshold for better UX
-    return scrollHeight - scrollTop - clientHeight <= threshold;
-  }, []);
-
-  // Scroll to bottom function
-  const scrollToBottom = useCallback(() => {
-    const element = parentRef.current;
-    if (!element) return;
-
-    element.scrollTo({
-      top: element.scrollHeight,
-      behavior: "smooth",
-    });
-  }, []);
-
-  // Handle scroll events to track user position
-  const handleScroll = useCallback(() => {
-    setIsUserAtBottom(checkIsAtBottom());
-  }, [checkIsAtBottom]);
-
-  // Auto-scroll logic: only when user is at bottom
-  useEffect(() => {
-    const currentLength = sortedEvents.length;
-    const prevLength = prevEventsLengthRef.current;
-
-    if (currentLength > prevLength && currentLength > 0 && isUserAtBottom) {
-      // Use RAF to ensure DOM updates are complete
-      requestAnimationFrame(() => {
-        scrollToBottom();
-      });
-    }
-
-    prevEventsLengthRef.current = currentLength;
-  }, [sortedEvents.length, isUserAtBottom, scrollToBottom]);
-
-  // Setup scroll listener
-  useEffect(() => {
-    const element = parentRef.current;
-    if (!element) return;
-
-    element.addEventListener("scroll", handleScroll, { passive: true });
-    return () => element.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
-
-  // Add a useEffect to handle dynamic content changes (images loading, etc.)
-  useEffect(() => {
-    const handleImageLoad = () => {
-      // Remeasure when images finish loading
-      virtualizer.measure();
-    };
-
-    const images = parentRef.current?.querySelectorAll('img');
-    images?.forEach(img => {
-      if (!img.complete) {
-        img.addEventListener('load', handleImageLoad);
-        img.addEventListener('error', handleImageLoad);
-      }
-    });
-
-    return () => {
-      images?.forEach(img => {
-        img.removeEventListener('load', handleImageLoad);
-        img.removeEventListener('error', handleImageLoad);
-      });
-    };
-  }, [virtualizer, sortedEvents]);
+  // Create render function for VirtualizedScroller
+  const renderEvent = useMemo(() => (event: NostrEvent) => (
+    <EventItem
+      event={event}
+      searchText={searchText}
+      onSearch={onSearch}
+      onReply={onReply}
+      theme={theme}
+      currentUsername={currentUsername}
+      currentUserHash={currentUserHash}
+    />
+  ), [searchText, onSearch, onReply, theme, currentUsername, currentUserHash]);
 
   // Image grid view
   if (hasImageFilter) {
@@ -679,83 +549,18 @@ export function RecentEvents({
     );
   }
 
-  const items = virtualizer.getVirtualItems();
-
   if (!nostrEnabled) return null;
 
   return (
-    <>
-      <div className={styles[theme].container}>
-        <div className="flex-1 relative">
-          <div
-            ref={parentRef}
-            className="h-full overflow-auto"
-            style={{ contain: "strict", overflowAnchor: "none" }}
-          >
-            <div
-              style={{
-                height: `${virtualizer.getTotalSize()}px`,
-                width: "100%",
-                position: "relative",
-              }}
-            >
-              {items.map((virtualItem) => {
-                const event = sortedEvents[virtualItem.index];
-                if (!event) return null;
-
-                return (
-                  <div
-                    key={virtualItem.key}
-                    data-index={virtualItem.index}
-                    ref={virtualizer.measureElement}
-                    className={t.eventItemContainer}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateY(${virtualItem.start}px)`,
-                      // Add these to ensure proper layout
-                      minHeight: "60px",
-                      boxSizing: "border-box",
-                    }}
-                  >
-                    <EventItem
-                      event={event}
-                      searchText={searchText}
-                      onSearch={onSearch}
-                      onReply={onReply}
-                      theme={theme}
-                      currentUsername={currentUsername}
-                      currentUserHash={currentUserHash}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {!isUserAtBottom && (
-            <button
-              onClick={scrollToBottom}
-              className={
-                unreadCount > 0 ? t.scrollButtonWithCount : t.scrollButton
-              }
-            >
-              {unreadCount > 0 ? (
-                <span className="flex items-center gap-1">
-                  <span className="text-xs">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                  <span>↓</span>
-                </span>
-              ) : (
-                "↓"
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-    </>
+    <div className={styles[theme].container}>
+      <VirtualizedScroller
+        items={sortedEvents}
+        renderItem={renderEvent}
+        estimatedItemSize={5} // Slightly larger estimate for your content
+        overscan={5}
+        scrollToBottomOnNewItems={true}
+        className="h-full"
+      />
+    </div>
   );
 }

@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 
 import {
   generateGeohashes,
@@ -30,7 +31,6 @@ import { CornerOverlay } from "./components/common/CornerOverlay";
 import { ChannelList, ChannelMeta } from "./components/sidebars/ChannelList";
 import { UserList, UserMeta } from "./components/sidebars/UserList";
 import { Connections } from "./components/map/Connections";
-import { NostrImageSearch } from "./components/modals/image/DiscoverPage";
 import { FavoritesModal } from "./components/modals/image/FavoritesModal";
 import {
   addGeohashToSearch,
@@ -57,6 +57,12 @@ import { EVENT_KINDS } from "./constants/eventKinds";
 import { sendJoinMessage } from "./utils/systemMessageSender";
 import { RadioPage } from "./components/radio/RadioPage";
 import { globalStyles } from "./styles";
+import { Navigation } from "./components/common/Navigation";
+import { AdminPage } from "./pages/AdminPage";
+import { MapPage } from "./pages/MapPage";
+import { ChatPage } from "./pages/ChatPage";
+import { PanelPage } from "./pages/PanelPage";
+import { RadioPage as RadioPageComponent } from "./pages/RadioPage";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -85,6 +91,8 @@ export default function App({
   height,
   events = true,
 }: GeoMercatorProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [projection, setProjection] = useState("natural_earth");
   // const [showHeatmap] = useState(true); // Currently unused
   // const [geohashPrecision] = useState(4); // Currently unused
@@ -100,10 +108,16 @@ export default function App({
   const { settings, updateSettings } = useSettingsState();
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
-  // View state
-  const [activeView, setActiveView] = useState<
-    "map" | "chat" | "panel" | "radio"
-  >("map");
+  // Determine current view from location
+  const activeView = useMemo(() => {
+    const path = location.pathname;
+    if (path === "/") return "map";
+    if (path === "/chat") return "chat";
+    if (path === "/panel") return "panel";
+    if (path === "/radio") return "radio";
+    if (path === "/admin") return "admin";
+    return "map"; // default
+  }, [location.pathname]);
 
   // Profile state using React state with localStorage initialization
   const [savedProfile, setSavedProfile] = useState<any>(null);
@@ -355,7 +369,7 @@ export default function App({
 
     // Switch to chat view with a small delay to ensure state updates
     setTimeout(() => {
-      setActiveView("chat");
+      navigate("/chat");
     }, 50);
   };
 
@@ -785,207 +799,224 @@ export default function App({
   return (
     <div className={t.appContainer}>
       {/* eSIM Marquee Banner */}
-      <MarqueeBanner theme={theme} />
+      {activeView !== "admin" && <MarqueeBanner theme={theme} />}
 
       {/* Mobile Header */}
-      <header>
+      {activeView !== "admin" && (
+        <header>
+          <MobileHeader
+            activeView={activeView}
+            onViewChange={(view) => {
+              const pathMap = {
+                map: "/",
+                chat: "/chat", 
+                panel: "/panel",
+                radio: "/radio"
+              };
+              navigate(pathMap[view as keyof typeof pathMap] || "/");
+            }}
+            searchText={searchText}
+            onSearch={handleTextSearch}
+            zoomedGeohash={zoomedGeohash}
+            nostrEnabled={nostrEnabled}
+            filteredEventsCount={searchFilteredEvents.length}
+            totalEventsCount={totalEventsCount}
+            allStoredEvents={allStoredEvents}
+            onLoginClick={() => setShowProfileModal(true)}
+            onSettingsClick={() => setShowSettingsModal(true)}
+            theme={theme}
+            onThemeChange={setTheme}
+          />
+        </header>
+      )}
 
-        <MobileHeader
-          activeView={activeView}
-          onViewChange={setActiveView}
-          searchText={searchText}
-          onSearch={handleTextSearch}
-          zoomedGeohash={zoomedGeohash}
-          nostrEnabled={nostrEnabled}
-          filteredEventsCount={searchFilteredEvents.length}
-          totalEventsCount={totalEventsCount}
-          allStoredEvents={allStoredEvents}
-          onLoginClick={() => setShowProfileModal(true)}
-          onSettingsClick={() => setShowSettingsModal(true)}
-          theme={theme}
-          onThemeChange={setTheme}
-        />
-      </header>
+      {/* Navigation */}
+      {/* {activeView !== "admin" && <Navigation theme={theme} />} */}
 
       {/* Main Content Area */}
       <main className={t.mainArea}>
-        {/* Map - Always rendered, but might be hidden on mobile */}
+        <Routes>
+          {/* Map Route */}
+          <Route path="/" element={
+            <MapPage>
+              <section
+                aria-label="Interactive World Map with Geohash Heatmap"
+                className="w-full h-full"
+              >
+                <Map
+                  filteredEvents={filteredEvents}
+                  width={mapWidth || 800}
+                  height={mapHeight || 600}
+                  projection={projection || "natural_earth"}
+                  currentScale={currentScale || 1}
+                  centerX={centerX || 0}
+                  centerY={centerY || 0}
+                  isDragging={isDragging || false}
+                  hasDragged={hasDragged || false}
+                  events={!!events}
+                  onMapClick={handleMapClick}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMoveWithDrag}
+                  onMouseUp={handleMouseUp}
+                  currentGeohashes={currentGeohashes || []}
+                  geohashActivity={geohashActivity || {}}
+                  allEventsByGeohash={allEventsByGeohash || {}}
+                  animatingGeohashes={animatingGeohashes || []}
+                  showSingleCharGeohashes={showSingleCharGeohashes || false}
+                  showGeohashText={showGeohashText || false}
+                  effectivePrecision={effectivePrecision || 1}
+                  shouldShowLocalizedPrecision={!!shouldShowLocalizedPrecision}
+                  searchText={searchText || ""}
+                  onGeohashClick={handleGeohashClickForSearch}
+                  theme={theme || "matrix"}
+                />
+              </section>
+            </MapPage>
+          } />
 
-        <section
-          aria-label="Interactive World Map with Geohash Heatmap"
-          className={`${
-            activeView !== "map" ? "hidden" : "block"
-          } w-full h-full`}
-        >
-          <Map
-            filteredEvents={filteredEvents}
-            width={mapWidth || 800}
-            height={mapHeight || 600}
-            projection={projection || "natural_earth"}
-            currentScale={currentScale || 1}
-            centerX={centerX || 0}
-            centerY={centerY || 0}
-            isDragging={isDragging || false}
-            hasDragged={hasDragged || false}
-            events={!!events}
-            onMapClick={handleMapClick}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMoveWithDrag}
-            onMouseUp={handleMouseUp}
-            currentGeohashes={currentGeohashes || []}
-            geohashActivity={geohashActivity || {}}
-            allEventsByGeohash={allEventsByGeohash || {}}
-            animatingGeohashes={animatingGeohashes || []}
-            showSingleCharGeohashes={showSingleCharGeohashes || false}
-            showGeohashText={showGeohashText || false}
-            effectivePrecision={effectivePrecision || 1}
-            shouldShowLocalizedPrecision={!!shouldShowLocalizedPrecision}
-            searchText={searchText || ""}
-            onGeohashClick={handleGeohashClickForSearch}
-            theme={theme || "matrix"}
-          />
-        </section>
+          {/* Chat Route */}
+          <Route path="/chat" element={
+            <ChatPage>
+              <div className={t.chatViewContainer}>
+                <ChannelList
+                  channels={channels}
+                  selectedChannel={selectedChannelKey}
+                  unreadCounts={unreadCountByChannel}
+                  onOpenChannel={handleOpenChannel}
+                  theme={theme}
+                  pinnedChannels={pinnedChannels}
+                  onPinnedChannelsChange={setPinnedChannels}
+                />
 
-        {/* Mobile Layout - Show panels based on activeView */}
-        <>
-          {/* Chat View */}
-          {activeView === "chat" && (
-            <div className={t.chatViewContainer}>
-              <ChannelList
-                channels={channels}
-                selectedChannel={selectedChannelKey}
-                unreadCounts={unreadCountByChannel}
-                onOpenChannel={handleOpenChannel}
-                theme={theme}
-                pinnedChannels={pinnedChannels}
-                onPinnedChannelsChange={setPinnedChannels}
-              />
-
-              {/* Chat column */}
-              <div className={t.chatColumn}>
-                {/* Sub header (chat) to align next to channels */}
-                <div className={t.subHeader}>
-                  <div className="flex items-center justify-between w-full">
-                    <div className={t.subHeaderTitle}>
-                      RECENT NOSTR EVENTS{" "}
-                      {searchText ? `MATCHING "${searchText}"` : ""}
+                {/* Chat column */}
+                <div className={t.chatColumn}>
+                  {/* Sub header (chat) to align next to channels */}
+                  <div className={t.subHeader}>
+                    <div className="flex items-center justify-between w-full">
+                      <div className={t.subHeaderTitle}>
+                        RECENT NOSTR EVENTS{" "}
+                        {searchText ? `MATCHING "${searchText}"` : ""}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRecentEventsHeartClick}
+                        className={`w-6 h-6 flex items-center justify-center transition-all hover:scale-110 ${
+                          theme === "matrix"
+                            ? "text-[#00ff00] hover:text-[#00aa00]"
+                            : "text-blue-600 hover:text-blue-800"
+                        }`}
+                        title={
+                          pinnedChannels.includes(selectedChannelKey || "global")
+                            ? `Unpin ${
+                                selectedChannelKey
+                                  ? selectedChannelKey.slice(1)
+                                  : "global"
+                              } channel`
+                            : `Pin ${
+                                selectedChannelKey
+                                  ? selectedChannelKey.slice(1)
+                                  : "global"
+                              } channel`
+                        }
+                      >
+                        {pinnedChannels.includes(selectedChannelKey || "global")
+                          ? "❤️"
+                          : "🤍"}
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleRecentEventsHeartClick}
-                      className={`w-6 h-6 flex items-center justify-center transition-all hover:scale-110 ${
-                        theme === "matrix"
-                          ? "text-[#00ff00] hover:text-[#00aa00]"
-                          : "text-blue-600 hover:text-blue-800"
-                      }`}
-                      title={
-                        pinnedChannels.includes(selectedChannelKey || "global")
-                          ? `Unpin ${
-                              selectedChannelKey
-                                ? selectedChannelKey.slice(1)
-                                : "global"
-                            } channel`
-                          : `Pin ${
-                              selectedChannelKey
-                                ? selectedChannelKey.slice(1)
-                                : "global"
-                            } channel`
-                      }
-                    >
-                      {pinnedChannels.includes(selectedChannelKey || "global")
-                        ? "❤️"
-                        : "🤍"}
-                    </button>
                   </div>
-                </div>
 
-                {/* Messages area */}
-                <div className="flex-1 overflow-hidden">
-                  <RecentEvents
-                    nostrEnabled={nostrEnabled}
-                    searchText={searchText}
-                    filteredEvents={filteredEvents}
-                    onSearch={handleTextSearch}
-                    onReply={handleReply}
+                  {/* Messages area */}
+                  <div className="flex-1 overflow-hidden">
+                    <RecentEvents
+                      nostrEnabled={nostrEnabled}
+                      searchText={searchText}
+                      filteredEvents={filteredEvents}
+                      onSearch={handleTextSearch}
+                      onReply={handleReply}
+                      theme={theme}
+                      currentUsername={savedProfile?.username}
+                      currentUserHash={savedProfile?.publicKey ? savedProfile.publicKey.slice(-4) : undefined}
+                    />
+                  </div>
+
+                  {/* Chat input */}
+                  <ChatInput
+                    currentChannel={
+                      selectedChannelKey ? selectedChannelKey.slice(1) : "global"
+                    } // Use global if no specific channel
+                    onMessageSent={handleMessageSent}
+                    onOpenProfileModal={() => setShowProfileModal(true)}
+                    prefillText={replyPrefillText}
+                    savedProfile={savedProfile}
                     theme={theme}
-                    currentUsername={savedProfile?.username}
-                    currentUserHash={savedProfile?.publicKey ? savedProfile.publicKey.slice(-4) : undefined}
+                    onInsertImage={handleInsertImage}
+                    powEnabled={settings.powEnabled}
+                    powDifficulty={settings.powDifficulty}
+                    onPowSettingsChange={(enabled, difficulty) => 
+                      updateSettings({ powEnabled: enabled, powDifficulty: difficulty })
+                    }
                   />
                 </div>
 
-                {/* Chat input */}
-                <ChatInput
-                  currentChannel={
-                    selectedChannelKey ? selectedChannelKey.slice(1) : "global"
-                  } // Use global if no specific channel
-                  onMessageSent={handleMessageSent}
-                  onOpenProfileModal={() => setShowProfileModal(true)}
-                  prefillText={replyPrefillText}
-                  savedProfile={savedProfile}
+                {/* User List on the right side */}
+                <UserList
+                  users={users}
+                  selectedUser={selectedUser}
+                  onSelectUser={handleSelectUser}
+                  searchText={searchText}
+                  filteredEvents={filteredEvents}
                   theme={theme}
-                  onInsertImage={handleInsertImage}
-                  powEnabled={settings.powEnabled}
-                  powDifficulty={settings.powDifficulty}
-                  onPowSettingsChange={(enabled, difficulty) => 
-                    updateSettings({ powEnabled: enabled, powDifficulty: difficulty })
-                  }
                 />
               </div>
+            </ChatPage>
+          } />
 
-              {/* User List on the right side */}
-              <UserList
-                users={users}
-                selectedUser={selectedUser}
-                onSelectUser={handleSelectUser}
-                searchText={searchText}
-                filteredEvents={filteredEvents}
-                theme={theme}
-              />
-            </div>
-          )}
-
-          {/* Panel View */}
-          {activeView === "panel" && (
-            <div className="absolute inset-0 w-full h-full bg-black overflow-hidden">
+          {/* Panel Route */}
+          <Route path="/panel" element={
+            <PanelPage>
               <EventHierarchy
                 searchText={searchText}
                 allEventsByGeohash={allEventsByGeohash}
                 onSearch={handleTextSearch}
                 theme={theme}
               />
-            </div>
-          )}
+            </PanelPage>
+          } />
 
-          {/* Radio View */}
-          <div
-            className={`${t.chatViewContainer} h-full ${
-              activeView === "radio" ? "block" : "hidden"
-            } pb-[97px]`}
-          >
-            <ChannelList
-              channels={channels}
-              selectedChannel={selectedChannelKey}
-              unreadCounts={unreadCountByChannel}
-              onOpenChannel={handleOpenChannel}
-              theme={theme}
-              pinnedChannels={pinnedChannels}
-              onPinnedChannelsChange={setPinnedChannels}
-            />
+          {/* Radio Route */}
+          <Route path="/radio" element={
+            <RadioPageComponent>
+              <div className={`${t.chatViewContainer} h-full pb-[97px]`}>
+                <ChannelList
+                  channels={channels}
+                  selectedChannel={selectedChannelKey}
+                  unreadCounts={unreadCountByChannel}
+                  onOpenChannel={handleOpenChannel}
+                  theme={theme}
+                  pinnedChannels={pinnedChannels}
+                  onPinnedChannelsChange={setPinnedChannels}
+                />
 
-            <div className={`${t.chatColumn} h-full overflow-hidden`}>
-              <RadioPage searchText={searchText} theme={theme} />
-            </div>
+                <div className={`${t.chatColumn} h-full overflow-hidden`}>
+                  <RadioPage searchText={searchText} theme={theme} />
+                </div>
 
-            <UserList
-              users={users}
-              selectedUser={selectedUser}
-              onSelectUser={handleSelectUser}
-              searchText={searchText}
-              filteredEvents={filteredEvents}
-              theme={theme}
-            />
-          </div>
-        </>
+                <UserList
+                  users={users}
+                  selectedUser={selectedUser}
+                  onSelectUser={handleSelectUser}
+                  searchText={searchText}
+                  filteredEvents={filteredEvents}
+                  theme={theme}
+                />
+              </div>
+            </RadioPageComponent>
+          } />
+
+          {/* Admin Route */}
+          <Route path="/admin" element={<AdminPage theme={"material"} />} />
+        </Routes>
       </main>
 
       {/* Connections Panel - Top left on map view */}
