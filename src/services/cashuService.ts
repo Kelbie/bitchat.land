@@ -5,6 +5,7 @@ import type { Mint, Keyset, Token, MintQuoteResponse, MeltQuoteResponse, MintInf
 export interface CashuBalance {
   mintUrl: string;
   balance: number;
+  mintName?: string;
 }
 
 class CashuService {
@@ -96,10 +97,26 @@ class CashuService {
     const manager = await this.initializeManager();
     const balances = await manager.wallet.getBalances();
     
-    return Object.entries(balances).map(([mintUrl, balance]) => ({
-      mintUrl,
-      balance
-    }));
+    // Fetch mint info for each mint to get the name
+    const balancePromises = Object.entries(balances).map(async ([mintUrl, balance]) => {
+      try {
+        const mintInfo = await manager.mint.getMintInfo(mintUrl);
+        return {
+          mintUrl,
+          balance,
+          mintName: mintInfo.name || undefined
+        };
+      } catch (error) {
+        console.warn(`Failed to fetch mint info for ${mintUrl}:`, error);
+        return {
+          mintUrl,
+          balance,
+          mintName: undefined
+        };
+      }
+    });
+    
+    return Promise.all(balancePromises);
   }
 
   async send(mintUrl: string, amount: number): Promise<Token> {

@@ -143,11 +143,11 @@ const useMints = () => {
     }
   };
 
-  const addMint = async (url: string, name?: string) => {
+  const addMint = async (url: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      await cashuService.addMint(url, name);
+      await cashuService.addMint(url);
       loadMints();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add mint');
@@ -218,7 +218,7 @@ const THEME_STYLES = {
     textSecondary: 'text-green-400/70',
     border: 'border-green-400/20',
     hover: 'hover:bg-green-400/10',
-    input: 'bg-black/50 border-green-400/30 text-green-400 placeholder-green-400/50',
+    input: 'bg-gray-900 border-green-400 text-green-400 placeholder-green-400/50 focus:outline-none focus:ring-0 focus:border-green-400',
     button: 'bg-green-400/20 border-green-400/50 text-green-400 hover:bg-green-400/30',
     tab: 'text-green-400/70 hover:text-green-400 hover:bg-green-400/10',
     tabActive: 'text-green-400 bg-green-400/10 border-b-2 border-green-400',
@@ -234,7 +234,7 @@ const THEME_STYLES = {
     textSecondary: 'text-gray-600',
     border: 'border-gray-200',
     hover: 'hover:bg-gray-50',
-    input: 'bg-white border-gray-300 text-gray-900 placeholder-gray-500',
+    input: 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-0 focus:border-blue-500',
     button: 'bg-blue-500 border-blue-500 text-white hover:bg-blue-600',
     tab: 'text-gray-600 hover:text-gray-900 hover:bg-gray-50',
     tabActive: 'text-blue-600 bg-blue-50 border-b-2 border-blue-600',
@@ -360,7 +360,7 @@ const SendModal: React.FC<SendModalProps> = ({
           <select
             value={mintUrl}
             onChange={(e) => setMintUrl(e.target.value)}
-            className={`w-full p-3 rounded-lg border ${styles.input} focus:outline-none focus:ring-2 focus:ring-current/50`}
+            className={`w-full p-3 rounded-lg border ${styles.input}`}
           >
             <option value="">Select a mint</option>
             {Array.isArray(mints) && mints.map((mint) => (
@@ -495,7 +495,18 @@ const MintsModal: React.FC<MintsModalProps> = ({
   };
 
   const formatTimestamp = (timestamp: number): string => {
-    return new Date(timestamp * 1000).toLocaleString();
+    if (!timestamp || isNaN(timestamp)) {
+      return 'Unknown date';
+    }
+    
+    // Check if timestamp is in milliseconds (13 digits) or seconds (10 digits)
+    const date = timestamp > 1e12 ? new Date(timestamp) : new Date(timestamp * 1000);
+    
+    if (isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+    
+    return date.toLocaleString();
   };
 
   return (
@@ -512,15 +523,6 @@ const MintsModal: React.FC<MintsModalProps> = ({
               placeholder="https://mint.example.com"
               theme={theme}
               type="url"
-            />
-          </div>
-          <div>
-            <ThemedInputWithLabel
-              label="Name (optional)"
-              value={newMintName}
-              onChange={(e) => setNewMintName(e.target.value)}
-              placeholder="My Mint"
-              theme={theme}
             />
           </div>
           <ThemedButton
@@ -552,7 +554,7 @@ const MintsModal: React.FC<MintsModalProps> = ({
                         {mint.url}
                       </div>
                       <div className={`text-xs ${styles.textSecondary} mt-1`}>
-                        Added {formatTimestamp(mint.addedAt)}
+                        Added {formatTimestamp(mint.createdAt)}
                       </div>
                     </div>
                     <div className="flex space-x-2">
@@ -866,7 +868,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
               {/* Recent Transactions */}
               {Array.isArray(transactionHook.transactions) && transactionHook.transactions.length > 0 && (
                 <div className="space-y-4">
-                  <h3 className={`text-lg font-bold uppercase tracking-wider text-center ${styles.text}`}>
+                  <h3 className={`text-lg font-bold uppercase tracking-wider text-start ${styles.text}`}>
                     Recent Transactions
                   </h3>
                   <div className="space-y-3">
