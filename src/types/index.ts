@@ -3,10 +3,14 @@ export interface NostrEvent {
   pubkey: string;
   created_at: number;
   kind: number;
-  tags: string[][];
+  tags: [string, string][];
   content: string;
   sig: string;
   relayUrl?: string; // URL of the relay that sent this event
+}
+
+export interface StoredEvent extends NostrEvent {
+  // Additional properties for stored events if needed
 }
 
 export type GeoMercatorProps = {

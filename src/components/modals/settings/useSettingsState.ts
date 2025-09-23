@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react';
 interface SettingsState {
   powEnabled: boolean;
   powDifficulty: number;
+  walletVisible: boolean;
 }
 
 export function useSettingsState() {
   const [settings, setSettings] = useState<SettingsState>({
     powEnabled: false,
     powDifficulty: 12,
+    walletVisible: false,
   });
 
   // Load settings from localStorage on mount

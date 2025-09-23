@@ -1,4 +1,3 @@
-import React from 'react';
 import { Modal } from '../../common/Modal';
 import { SettingsPage } from './SettingsPage';
 import { NostrEvent } from '../../../types';
@@ -12,6 +11,8 @@ interface SettingsModalProps {
   onPowToggle: (enabled: boolean) => void;
   powDifficulty: number;
   onPowDifficultyChange: (difficulty: number) => void;
+  walletVisible: boolean;
+  onWalletToggle: (visible: boolean) => void;
   allStoredEvents: NostrEvent[];
 }
 
@@ -24,6 +25,8 @@ export function SettingsModal({
   onPowToggle,
   powDifficulty,
   onPowDifficultyChange,
+  walletVisible,
+  onWalletToggle,
   allStoredEvents
 }: SettingsModalProps) {
   return (
@@ -41,6 +44,8 @@ export function SettingsModal({
         onPowToggle={onPowToggle}
         powDifficulty={powDifficulty}
         onPowDifficultyChange={onPowDifficultyChange}
+        walletVisible={walletVisible}
+        onWalletToggle={onWalletToggle}
         allStoredEvents={allStoredEvents}
       />
     </Modal>

@@ -22,6 +22,8 @@
     "axios": "^1.7.2",
     "buffer": "^6.0.3",
     "cheerio": "^1.1.2",
+    "coco-cashu-core": "^1.0.0-rc8",
+    "coco-cashu-indexeddb": "^0.8.0",
     "d3-geo": "3.0.1",
     "d3-geo-polygon": "1.12.1",
     "dotenv": "^17.2.2",

@@ -12,7 +12,7 @@ export const globalStyles = {
       username: 'text-cyan-500',
       error:
         'text-red-400 bg-red-400/10 px-2 py-1 rounded border border-red-400/30',
-      inputWrapper: "flex-1 relative flex flex-col",
+      inputWrapper: "flex-1 relative flex flex-col overflow-visible",
       charCount: 'absolute -bottom-4 right-0 text-[10px] font-mono text-gray-500',
       charCountExceeded: 'text-red-400',
       sendButton:
@@ -33,7 +33,7 @@ export const globalStyles = {
         "text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200",
       username: "text-blue-600",
       error: "text-red-600 bg-red-100 px-2 py-1 rounded border border-red-300",
-      inputWrapper: "flex-1 relative flex flex-col",
+      inputWrapper: "flex-1 relative flex flex-col overflow-visible",
       charCount: "absolute -bottom-4 right-0 text-[10px] text-gray-500",
       charCountExceeded: "text-red-600",
       sendButton:
@@ -45,6 +45,26 @@ export const globalStyles = {
         "p-4 bg-white border-t border-gray-200 flex items-center justify-center",
       noProfileButton:
         "text-blue-600 text-sm font-sans bg-blue-50 border-2 border-blue-600 rounded-lg px-5 py-3 cursor-pointer transition-colors duration-200 hover:bg-blue-100",
+    }
+  },
+  CommandSuggestions: {
+    matrix: {
+      container: 'absolute z-50 w-full max-w-md bg-gray-900 border border-green-500 rounded-lg shadow-[0_0_10px_rgba(0,255,0,0.3)] max-h-60 overflow-y-auto',
+      suggestionItem: 'px-3 py-2 cursor-pointer border-b border-gray-700 last:border-b-0 text-gray-300 hover:bg-gray-800',
+      selectedItem: 'bg-green-800 text-green-200',
+      commandPrefix: 'text-green-400 font-mono text-sm',
+      userPrefix: 'text-blue-400 text-sm',
+      description: 'text-xs text-gray-400',
+      userInfo: 'text-xs text-gray-400 mt-1'
+    },
+    material: {
+      container: 'absolute z-50 w-full max-w-md bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto',
+      suggestionItem: 'px-3 py-2 cursor-pointer border-b border-gray-200 last:border-b-0 text-gray-700 hover:bg-gray-100',
+      selectedItem: 'bg-blue-100 text-blue-900',
+      commandPrefix: 'text-green-600 font-mono text-sm',
+      userPrefix: 'text-blue-600 text-sm',
+      description: 'text-xs text-gray-500',
+      userInfo: 'text-xs text-gray-500 mt-1'
     }
   },
   RecentEvents: {
@@ -127,7 +147,7 @@ export const globalStyles = {
       tabButton: "px-4 py-2 text-sm font-medium rounded-t-lg transition-colors",
       tabButtonActive: 'bg-green-400 text-gray-900',
       tabButtonInactive: 'bg-green-900 text-green-400 hover:bg-green-800',
-      body: "p-4",
+      body: "p-4 overflow-y-auto",
       flowContainer: "space-y-4",
       flowTitle: 'text-lg font-bold text-green-400 mb-4',
       flowActions: 'flex gap-2 pt-4 border-t border-green-900',
@@ -142,7 +162,7 @@ export const globalStyles = {
       tabButton: "px-4 py-2 text-sm font-medium rounded-t-lg transition-colors",
       tabButtonActive: "bg-blue-600 text-white",
       tabButtonInactive: "bg-gray-200 text-gray-700 hover:bg-gray-300",
-      body: "p-4",
+      body: "p-4 overflow-y-auto",
       flowContainer: "space-y-4",
       flowTitle: "text-lg font-bold text-gray-800 mb-4",
       flowActions: "flex gap-2 pt-4 border-t border-gray-200",

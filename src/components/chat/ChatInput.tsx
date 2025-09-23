@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { SimplePool } from "nostr-tools/pool";
 import { finalizeEvent, validateEvent, verifyEvent } from "nostr-tools/pure";
 import { NOSTR_RELAYS } from "../../constants/projections";
@@ -7,6 +7,8 @@ import { sha256 } from "@noble/hashes/sha256";
 import { ThemedInput } from "../common/ThemedInput";
 import { GeoRelayDirectory } from "../../utils/geoRelayDirectory";
 import { globalStyles } from "../../styles";
+import { CommandSuggestions } from "./CommandSuggestions";
+import { processCommandMessage, parseRollCommand, type UserInfo, type RollRange } from "../../utils/commands";
 
 // Extend Window interface to include our custom method
 declare global {
@@ -19,30 +21,15 @@ declare global {
   }
 }
 
-interface RollRange {
-  min: number;
-  max: number;
-}
 
-function parseRollCommand(input: string): RollRange | null {
-  const match = input.trim().match(/^!roll(?:\s+(\d+)(?:-(\d+))?)?$/i);
-  if (!match) return null;
-
-  let min = 1;
-  let max = 10;
-  if (match[1]) {
-    if (match[2]) {
-      min = parseInt(match[1], 10);
-      max = parseInt(match[2], 10);
-    } else {
-      min = 0;
-      max = parseInt(match[1], 10);
-    }
-  }
-  if (min > max) {
-    [min, max] = [max, min];
-  }
-  return { min, max };
+interface UserMeta {
+  pubkey: string;
+  displayName: string;
+  hasMessages: boolean;
+  eventKind: number;
+  lastSeen: number;
+  messageCount: number;
+  isPinned: boolean;
 }
 
 interface ChatInputProps {
@@ -56,6 +43,7 @@ interface ChatInputProps {
   powEnabled?: boolean;
   powDifficulty?: number;
   onPowSettingsChange?: (enabled: boolean, difficulty: number) => void;
+  users?: UserMeta[]; // Users for command suggestions
 }
 
 interface SavedProfile {
@@ -105,6 +93,7 @@ export function ChatInput({
   powEnabled = true,
   powDifficulty = 8,
   onPowSettingsChange,
+  users = [],
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -113,6 +102,9 @@ export function ChatInput({
   const [eventTemplateForPow, setEventTemplateForPow] = useState<EventTemplate | null>(null);
   const [localPowEnabled, setLocalPowEnabled] = useState(powEnabled);
   const [localPowDifficulty, setLocalPowDifficulty] = useState(powDifficulty);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState(0);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
   const lastPrefillRef = useRef<string>("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const powWorkerRef = useRef<Worker | null>(null);
@@ -229,7 +221,7 @@ export function ChatInput({
           handlePowError(data);
           break;
         case 'POW_STOPPED':
-          handlePowStopped(data);
+          handlePowStopped();
           break;
         default:
           console.log('Unknown worker message type:', type);
@@ -268,7 +260,7 @@ export function ChatInput({
     continueWithoutPow();
   };
 
-  const handlePowStopped = (data: PowWorkerMessage['data']) => {
+  const handlePowStopped = () => {
     setIsMiningPow(false);
     // Continue without POW
     continueWithoutPow();
@@ -293,6 +285,14 @@ export function ChatInput({
     if (eventTemplateForPow) {
       continueWithEvent(eventTemplateForPow);
     } else {
+      // Process the message for commands first
+      const currentUser: UserInfo = {
+        username: savedProfile?.username || "Anonymous",
+        publicKey: savedProfile?.publicKey || "0000"
+      };
+      const commandResult = processCommandMessage(message, currentUser);
+      const processedContent = commandResult.message;
+      
       // Create a proper event template with current channel information
       const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
       
@@ -314,7 +314,7 @@ export function ChatInput({
       const basicTemplate: EventTemplate = {
         kind,
         created_at: Math.floor(Date.now() / 1000),
-        content: message.trim(),
+        content: processedContent,
         tags,
       };
       continueWithEvent(basicTemplate);
@@ -334,7 +334,7 @@ export function ChatInput({
     publishEvent(signedEvent);
     
     // Handle roll command after message is sent
-    const rollRange = parseRollCommand(message.trim());
+    const rollRange = parseRollCommand(eventToUse.content);
     if (rollRange) {
       setTimeout(() => {
         handleRoll(rollRange).catch(console.error);
@@ -459,7 +459,7 @@ export function ChatInput({
     const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
   
     const tags = [
-      ["n", "!roll"],
+      ["n", "bitchat.land"],
       ["client", "bitchat.land"],
     ];
   
@@ -528,7 +528,14 @@ export function ChatInput({
     setError("");
   
     try {
-      const rollRange = parseRollCommand(message.trim());
+      // Process the message for commands first
+      const currentUser: UserInfo = {
+        username: savedProfile.username,
+        publicKey: savedProfile.publicKey
+      };
+      const commandResult = processCommandMessage(message, currentUser);
+      const processedContent = commandResult.message;
+      parseRollCommand(processedContent);
   
       // Determine event kind and tags based on channel
       const isGeohash = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/i.test(currentChannel);
@@ -552,7 +559,7 @@ export function ChatInput({
       const eventTemplate = {
         kind: kind,
         created_at: Math.floor(Date.now() / 1000),
-        content: message.trim(),
+        content: processedContent,
         tags: tags,
       };
 
@@ -598,6 +605,19 @@ export function ChatInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Handle suggestion navigation first
+    if (showSuggestions) {
+      switch (e.key) {
+        case 'ArrowDown':
+        case 'ArrowUp':
+        case 'Tab':
+        case 'Escape':
+          e.preventDefault();
+          // Let the CommandSuggestions component handle these
+          return;
+      }
+    }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -615,6 +635,88 @@ export function ChatInput({
       }
     }
   };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    const newCursorPos = e.target.selectionStart;
+    
+    setMessage(newValue);
+    setCursorPosition(newCursorPos);
+    
+    // Show suggestions if we're typing a command
+    const textBeforeCursor = newValue.substring(0, newCursorPos);
+    const hasSlash = textBeforeCursor.includes('/') && textBeforeCursor.match(/\/(\w*)$/);
+    const hasCommandWithSpace = textBeforeCursor.match(/\/(\w+)\s+(\w*)$/);
+    
+    // Always show suggestions if we have a slash or command with space
+    setShowSuggestions(!!(hasSlash || hasCommandWithSpace));
+  };
+
+  const handleSuggestionSelect = (suggestion: { type: 'command' | 'user'; value: string; displayText: string }) => {
+    const textBeforeCursor = message.substring(0, cursorPosition);
+    
+    if (suggestion.type === 'command') {
+      // Replace the partial command with the full command
+      const slashMatch = textBeforeCursor.match(/\/(\w*)$/);
+      if (slashMatch) {
+        const newText = textBeforeCursor.replace(slashMatch[0], suggestion.value) + ' ';
+        const newMessage = message.substring(0, cursorPosition).replace(slashMatch[0], suggestion.value) + ' ' + message.substring(cursorPosition);
+        setMessage(newMessage);
+        setCursorPosition(newText.length);
+        
+        // Check if this command needs user suggestions
+        const commandName = suggestion.value.replace('/', '');
+        const needsUser = ['slap', 'hug', 'send'].includes(commandName);
+        
+        if (needsUser) {
+          // Keep suggestions open for user selection
+          setShowSuggestions(true);
+        } else {
+          // Close suggestions for commands that don't need users
+          setShowSuggestions(false);
+        }
+        
+        // Focus the textarea and set cursor position
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.focus();
+            textareaRef.current.setSelectionRange(newText.length, newText.length);
+          }
+        }, 0);
+      }
+    } else if (suggestion.type === 'user') {
+      // Replace the partial username with the full username
+      const commandWithSpaceMatch = textBeforeCursor.match(/\/(\w+)\s+(\w*)$/);
+      if (commandWithSpaceMatch) {
+        const [, command] = commandWithSpaceMatch;
+        // Replace the entire command + space + partial user with command + space + full user
+        const newText = textBeforeCursor.replace(/\/(\w+)\s+(\w*)$/, `/${command} ${suggestion.value} `);
+        const newMessage = message.substring(0, cursorPosition).replace(/\/(\w+)\s+(\w*)$/, `/${command} ${suggestion.value} `) + message.substring(cursorPosition);
+        setMessage(newMessage);
+        setCursorPosition(newText.length);
+        
+        // Focus the textarea and set cursor position
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.focus();
+            textareaRef.current.setSelectionRange(newText.length, newText.length);
+          }
+        }, 0);
+      }
+      
+      // Close suggestions after user selection
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClose = () => {
+    setShowSuggestions(false);
+  };
+
+  const handleSelectedIndexChange = useCallback((index: number) => {
+    setSelectedSuggestionIndex(index);
+  }, []);
+
 
   // Handle inserting image URL into input
   const handleInsertImage = (imageUrl: string) => {
@@ -740,26 +842,40 @@ export function ChatInput({
 
       <div className="flex gap-2 items-stretch">
         <div className={t.inputWrapper}>
-          <ThemedInput
-            ref={textareaRef}
-            as="textarea"
-            value={message}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              currentChannel === "global"
-                ? "Select a channel to start chatting..."
-                : `Message #${currentChannel}...`
-            }
-            disabled={isSending}
-            theme={theme}
-            data-chat-input="true"
-            className={`w-full min-h-[36px] max-h-[120px] p-2 resize-vertical ${
-              theme === "matrix"
-                ? "focus:shadow-[0_0_8px_rgba(0,255,0,0.3)]"
-                : "focus:ring-2 focus:ring-blue-600"
-            }`}
-          />
+          <div className="relative overflow-visible">
+            {showSuggestions && (
+              <CommandSuggestions
+                inputValue={message}
+                cursorPosition={cursorPosition}
+                users={users}
+                theme={theme}
+                onSuggestionSelect={handleSuggestionSelect}
+                onClose={handleSuggestionClose}
+                selectedIndex={selectedSuggestionIndex}
+                onSelectedIndexChange={handleSelectedIndexChange}
+              />
+            )}
+            <ThemedInput
+              ref={textareaRef}
+              as="textarea"
+              value={message}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                currentChannel === "global"
+                  ? "Select a channel to start chatting..."
+                  : `Message #${currentChannel}...`
+              }
+              disabled={isSending}
+              theme={theme}
+              data-chat-input="true"
+              className={`w-full min-h-[36px] max-h-[120px] p-2 resize-vertical ${
+                theme === "matrix"
+                  ? "focus:shadow-[0_0_8px_rgba(0,255,0,0.3)]"
+                  : "focus:ring-2 focus:ring-blue-600"
+              }`}
+            />
+          </div>
           <div
             className={`${t.charCount} ${
               message.length > 280 ? t.charCountExceeded : ""

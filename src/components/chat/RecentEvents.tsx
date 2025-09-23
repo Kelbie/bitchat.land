@@ -12,6 +12,7 @@ import React from "react"; // Added missing import
 import { globalStyles } from "../../styles";
 import { getPow } from "nostr-tools/nip13";
 import { VirtualizedScroller } from "./VirtualizedScroller";
+import { generateActionMessage, isActionMessage, type UserInfo } from "../../utils/commands";
 
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
 
@@ -69,24 +70,6 @@ const EventItem = React.memo(({
   const eventGeohash = (geoTag ? geoTag[1] : "").toLowerCase();
   const userColors = colorForPeerSeed("nostr:" + event.pubkey.toLowerCase(), true);
 
-  function isActionMessage(content: string): boolean {
-    // Check for asterisk wrapper pattern
-    const hasAsteriskWrapper =
-      content.startsWith("* ") && content.endsWith(" *");
-
-    if (!hasAsteriskWrapper) {
-      return false;
-    }
-
-    // Check for specific action indicators
-    const hasActionIndicators =
-      content.includes("🫂") || // hug emoji
-      content.includes("🐟") || // slap emoji
-      content.includes("took a screenshot") ||
-      content.includes("joined the channel"); // join messages
-
-    return hasActionIndicators;
-  }
 
   if (isActionMessage(event.content)) {
     return (
@@ -248,29 +231,12 @@ const EventItem = React.memo(({
                   e.stopPropagation();
                   // Send the action message directly to the chat input
                   if (window.updateChatInputValue) {
-                    const senderName = currentUsername || "Anonymous";
-                    const senderHash = currentUserHash || "0000";
+                    const currentUser: UserInfo = {
+                      username: currentUsername || "Anonymous",
+                      publicKey: currentUserHash || "0000"
+                    };
                     
-                    // Check if user is hugging themselves
-                    const isSelfHug = senderName === username && senderHash === pubkeyHash;
-                    
-                    let actionMessage;
-                    if (isSelfHug) {
-                      // Random easter egg messages for self-hug
-                      const selfHugMessages = [
-                        `* 🫂 ${senderName}#${senderHash} gives themselves a big self-hug and feels a bit lonely *`,
-                        `* 🫂 ${senderName}#${senderHash} wraps their arms around themselves and wonders if this is normal *`,
-                        `* 🫂 ${senderName}#${senderHash} self-hugs so hard they almost fall over *`,
-                        `* 🫂 ${senderName}#${senderHash} gives themselves a comforting hug and whispers "it's okay" *`,
-                        `* 🫂 ${senderName}#${senderHash} attempts a self-hug but realizes they're not very flexible *`
-                      ];
-                      const randomIndex = Math.floor(Math.random() * selfHugMessages.length);
-                      actionMessage = selfHugMessages[randomIndex];
-                    } else {
-                      // Normal hug message
-                      actionMessage = `* 🫂 ${senderName}#${senderHash} gives @${username}#${pubkeyHash} a warm hug *`;
-                    }
-                    
+                    const actionMessage = generateActionMessage('hug', username, pubkeyHash, currentUser);
                     window.updateChatInputValue(actionMessage, actionMessage.length);
                   }
                 }}
@@ -287,29 +253,12 @@ const EventItem = React.memo(({
                   e.stopPropagation();
                   // Send the action message directly to the chat input
                   if (window.updateChatInputValue) {
-                    const senderName = currentUsername || "Anonymous";
-                    const senderHash = currentUserHash || "0000";
+                    const currentUser: UserInfo = {
+                      username: currentUsername || "Anonymous",
+                      publicKey: currentUserHash || "0000"
+                    };
                     
-                    // Check if user is slapping themselves
-                    const isSelfSlap = senderName === username && senderHash === pubkeyHash;
-                    
-                    let actionMessage;
-                    if (isSelfSlap) {
-                      // Random easter egg messages for self-slap
-                      const selfSlapMessages = [
-                        `* 🐟 ${senderName}#${senderHash} slapped themselves in the face with a large trout *`,
-                        `* 🐟 ${senderName}#${senderHash} hits themselves with the trout and immediately regrets it *`,
-                        `* 🐟 ${senderName}#${senderHash} slaps themselves so hard they see stars and fish *`,
-                        `* 🐟 ${senderName}#${senderHash} attempts a self-slap but the trout has other ideas *`,
-                        `* 🐟 ${senderName}#${senderHash} slaps themselves and wonders why they keep doing this *`
-                      ];
-                      const randomIndex = Math.floor(Math.random() * selfSlapMessages.length);
-                      actionMessage = selfSlapMessages[randomIndex];
-                    } else {
-                      // Normal slap message
-                      actionMessage = `* 🐟 ${senderName}#${senderHash} slaps @${username}#${pubkeyHash} around a bit with a large trout *`;
-                    }
-                    
+                    const actionMessage = generateActionMessage('slap', username, pubkeyHash, currentUser);
                     window.updateChatInputValue(actionMessage, actionMessage.length);
                   }
                 }}

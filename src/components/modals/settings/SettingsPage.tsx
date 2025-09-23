@@ -11,6 +11,8 @@ interface SettingsPageProps {
   onPowToggle: (enabled: boolean) => void;
   powDifficulty: number;
   onPowDifficultyChange: (difficulty: number) => void;
+  walletVisible: boolean;
+  onWalletToggle: (visible: boolean) => void;
   allStoredEvents: NostrEvent[];
 }
 
@@ -21,6 +23,8 @@ export function SettingsPage({
   onPowToggle,
   powDifficulty,
   onPowDifficultyChange,
+  walletVisible,
+  onWalletToggle,
   allStoredEvents
 }: SettingsPageProps) {
   // Calculate POW difficulty distribution from recent events
@@ -196,6 +200,47 @@ export function SettingsPage({
             </div>
           </div>
         )}
+      </div>
+
+      {/* Wallet Section */}
+      <div className="space-y-4">
+        <h3 className={`text-lg font-normal ${styles.accent}`}>
+          wallet
+        </h3>
+        
+        {/* Wallet Toggle */}
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => onWalletToggle(false)}
+            className={`px-4 py-2 text-sm rounded border transition-colors ${
+              !walletVisible
+                ? styles.powButtonActive
+                : styles.powButtonInactive
+            }`}
+          >
+            hidden
+          </button>
+          <button
+            onClick={() => onWalletToggle(true)}
+            className={`px-4 py-2 text-sm rounded border transition-colors relative ${
+              walletVisible
+                ? styles.powButtonActive
+                : styles.powButtonInactive
+            }`}
+          >
+            visible
+            {walletVisible && (
+              <div className={`absolute -right-1 -top-1 w-2 h-2 rounded-full ${styles.accent}`} />
+            )}
+          </button>
+        </div>
+        
+        <div className={`text-sm ${styles.accent} space-y-2`}>
+          <div>experimental lightning wallet integration.</div>
+          <div className={`text-xs ${theme === "matrix" ? "text-red-400" : "text-red-600"}`}>
+            ⚠️ warning: this feature is experimental and funds may be lost. use at your own risk.
+          </div>
+        </div>
       </div>
     </div>
   );

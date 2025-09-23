@@ -32,6 +32,7 @@ import { ChannelList, ChannelMeta } from "./components/sidebars/ChannelList";
 import { UserList, UserMeta } from "./components/sidebars/UserList";
 import { Connections } from "./components/map/Connections";
 import { FavoritesModal } from "./components/modals/image/FavoritesModal";
+import { FloatingWalletIcon, WalletModal } from "./components/wallet";
 import {
   addGeohashToSearch,
   parseSearchQuery,
@@ -57,7 +58,6 @@ import { EVENT_KINDS } from "./constants/eventKinds";
 import { sendJoinMessage } from "./utils/systemMessageSender";
 import { RadioPage } from "./components/radio/RadioPage";
 import { globalStyles } from "./styles";
-import { Navigation } from "./components/common/Navigation";
 import { AdminPage } from "./pages/AdminPage";
 import { MapPage } from "./pages/MapPage";
 import { ChatPage } from "./pages/ChatPage";
@@ -80,10 +80,10 @@ declare global {
 }
 
 Array.prototype.max = function () {
-  return Math.max.apply(null, this);
+  return Math.max.apply(null, this as number[]);
 };
 Array.prototype.min = function () {
-  return Math.min.apply(null, this);
+  return Math.min.apply(null, this as number[]);
 };
 
 export default function App({
@@ -120,9 +120,10 @@ export default function App({
   }, [location.pathname]);
 
   // Profile state using React state with localStorage initialization
-  const [savedProfile, setSavedProfile] = useState<any>(null);
+  const [savedProfile, setSavedProfile] = useState<{ username: string; privateKey: string; publicKey: string } | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showFavoritesModal, setShowFavoritesModal] = useState(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
   const [pinnedChannels, setPinnedChannels] = useState<string[]>([]);
 
   // Search and zoom state
@@ -308,8 +309,8 @@ export default function App({
 
       // If a channel is selected, only process events from that channel
       if (selectedChannelKey) {
-        const g = ev.tags.find((t: any) => t[0] === "g");
-        const d = ev.tags.find((t: any) => t[0] === "d");
+        const g = ev.tags.find((t: [string, string]) => t[0] === "g");
+        const d = ev.tags.find((t: [string, string]) => t[0] === "d");
         const gv = g && typeof g[1] === "string" ? g[1].toLowerCase() : "";
         const dv = d && typeof d[1] === "string" ? d[1].toLowerCase() : "";
 
@@ -336,7 +337,7 @@ export default function App({
         // Create new user
         userMap[pubkey] = {
           pubkey,
-          displayName: ev.tags.find((t: any) => t[0] === "n")?.[1] || "", // Could be extracted from profile events in the future
+          displayName: ev.tags.find((t: [string, string]) => t[0] === "n")?.[1] || "", // Could be extracted from profile events in the future
           hasMessages: true,
           eventKind: ev.kind,
           lastSeen: ev.created_at * 1000,
@@ -392,7 +393,7 @@ export default function App({
   }, []);
 
   // Handle profile saved - update state immediately
-  const handleProfileSaved = (profile: any) => {
+  const handleProfileSaved = (profile: { username: string; privateKey: string; publicKey: string }) => {
     // Directly update the profile state for immediate UI update
     setSavedProfile(profile);
   };
@@ -431,17 +432,77 @@ export default function App({
 
   // Expose openFavoritesModal globally for ChatInput to use
   useEffect(() => {
-    (window as any).openFavoritesModal = openFavoritesModal;
-    (window as any).addToFavorites = addToFavorites;
-    (window as any).removeFromFavorites = removeFromFavorites;
-    (window as any).getFavorites = getFavorites;
-    (window as any).onInsertImage = handleInsertImage; // Expose the new function
+    (window as unknown as { 
+      openFavoritesModal: () => void;
+      addToFavorites: typeof addToFavorites;
+      removeFromFavorites: typeof removeFromFavorites;
+      getFavorites: typeof getFavorites;
+      onInsertImage: typeof handleInsertImage;
+    }).openFavoritesModal = openFavoritesModal;
+    (window as unknown as { 
+      openFavoritesModal: () => void;
+      addToFavorites: typeof addToFavorites;
+      removeFromFavorites: typeof removeFromFavorites;
+      getFavorites: typeof getFavorites;
+      onInsertImage: typeof handleInsertImage;
+    }).addToFavorites = addToFavorites;
+    (window as unknown as { 
+      openFavoritesModal: () => void;
+      addToFavorites: typeof addToFavorites;
+      removeFromFavorites: typeof removeFromFavorites;
+      getFavorites: typeof getFavorites;
+      onInsertImage: typeof handleInsertImage;
+    }).removeFromFavorites = removeFromFavorites;
+    (window as unknown as { 
+      openFavoritesModal: () => void;
+      addToFavorites: typeof addToFavorites;
+      removeFromFavorites: typeof removeFromFavorites;
+      getFavorites: typeof getFavorites;
+      onInsertImage: typeof handleInsertImage;
+    }).getFavorites = getFavorites;
+    (window as unknown as { 
+      openFavoritesModal: () => void;
+      addToFavorites: typeof addToFavorites;
+      removeFromFavorites: typeof removeFromFavorites;
+      getFavorites: typeof getFavorites;
+      onInsertImage: typeof handleInsertImage;
+    }).onInsertImage = handleInsertImage;
     return () => {
-      delete (window as any).openFavoritesModal;
-      delete (window as any).addToFavorites;
-      delete (window as any).removeFromFavorites;
-      delete (window as any).getFavorites;
-      delete (window as any).onInsertImage; // Clean up the new function
+      delete (window as unknown as { 
+        openFavoritesModal?: () => void;
+        addToFavorites?: typeof addToFavorites;
+        removeFromFavorites?: typeof removeFromFavorites;
+        getFavorites?: typeof getFavorites;
+        onInsertImage?: typeof handleInsertImage;
+      }).openFavoritesModal;
+      delete (window as unknown as { 
+        openFavoritesModal?: () => void;
+        addToFavorites?: typeof addToFavorites;
+        removeFromFavorites?: typeof removeFromFavorites;
+        getFavorites?: typeof getFavorites;
+        onInsertImage?: typeof handleInsertImage;
+      }).addToFavorites;
+      delete (window as unknown as { 
+        openFavoritesModal?: () => void;
+        addToFavorites?: typeof addToFavorites;
+        removeFromFavorites?: typeof removeFromFavorites;
+        getFavorites?: typeof getFavorites;
+        onInsertImage?: typeof handleInsertImage;
+      }).removeFromFavorites;
+      delete (window as unknown as { 
+        openFavoritesModal?: () => void;
+        addToFavorites?: typeof addToFavorites;
+        removeFromFavorites?: typeof removeFromFavorites;
+        getFavorites?: typeof getFavorites;
+        onInsertImage?: typeof handleInsertImage;
+      }).getFavorites;
+      delete (window as unknown as { 
+        openFavoritesModal?: () => void;
+        addToFavorites?: typeof addToFavorites;
+        removeFromFavorites?: typeof removeFromFavorites;
+        getFavorites?: typeof getFavorites;
+        onInsertImage?: typeof handleInsertImage;
+      }).onInsertImage;
     };
   }, [
     openFavoritesModal,
@@ -461,8 +522,8 @@ export default function App({
   const latestEventTimestampByChannel = useMemo(() => {
     const latest: Record<string, number> = {};
     for (const ev of filteredEvents) {
-      const g = ev.tags.find((t: any) => t[0] === "g");
-      const d = ev.tags.find((t: any) => t[0] === "d");
+      const g = ev.tags.find((t: [string, string]) => t[0] === "g");
+      const d = ev.tags.find((t: [string, string]) => t[0] === "d");
       const gv = g && typeof g[1] === "string" ? g[1].toLowerCase() : "";
       const dv = d && typeof d[1] === "string" ? d[1].toLowerCase() : "";
       const createdAt = ev.created_at || 0;
@@ -481,8 +542,8 @@ export default function App({
   const unreadCountByChannel = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const ev of filteredEvents) {
-      const g = ev.tags.find((t: any) => t[0] === "g");
-      const d = ev.tags.find((t: any) => t[0] === "d");
+      const g = ev.tags.find((t: [string, string]) => t[0] === "g");
+      const d = ev.tags.find((t: [string, string]) => t[0] === "d");
       const gv = g && typeof g[1] === "string" ? g[1].toLowerCase() : "";
       const dv = d && typeof d[1] === "string" ? d[1].toLowerCase() : "";
       const createdAt = ev.created_at || 0;
@@ -523,8 +584,8 @@ export default function App({
 
     // Go through all events to determine the kind for each channel
     for (const ev of filteredEvents) {
-      const g = ev.tags.find((t: any) => t[0] === "g");
-      const d = ev.tags.find((t: any) => t[0] === "d");
+      const g = ev.tags.find((t: [string, string]) => t[0] === "g");
+      const d = ev.tags.find((t: [string, string]) => t[0] === "d");
       const gv = g && typeof g[1] === "string" ? g[1].toLowerCase() : "";
       const dv = d && typeof d[1] === "string" ? d[1].toLowerCase() : "";
 
@@ -708,9 +769,9 @@ export default function App({
 
     // Extract event data
     const messageContent = (event.content || "").toLowerCase();
-    const nameTag = event.tags.find((tag: any) => tag[0] === "n");
+    const nameTag = event.tags.find((tag: [string, string]) => tag[0] === "n");
     const username = (nameTag ? nameTag[1] : "").toLowerCase();
-    const geoTag = event.tags.find((tag: any) => tag[0] === "g");
+    const geoTag = event.tags.find((tag: [string, string]) => tag[0] === "g");
     const eventGeohash = (geoTag ? geoTag[1] : "").toLowerCase();
     const pubkeyHash = event.pubkey.slice(-4).toLowerCase();
     const hasFilters = parsedSearch.has;
@@ -948,7 +1009,7 @@ export default function App({
                     onMessageSent={handleMessageSent}
                     onOpenProfileModal={() => setShowProfileModal(true)}
                     prefillText={replyPrefillText}
-                    savedProfile={savedProfile}
+                    savedProfile={savedProfile || undefined}
                     theme={theme}
                     onInsertImage={handleInsertImage}
                     powEnabled={settings.powEnabled}
@@ -956,6 +1017,7 @@ export default function App({
                     onPowSettingsChange={(enabled, difficulty) => 
                       updateSettings({ powEnabled: enabled, powDifficulty: difficulty })
                     }
+                    users={users}
                   />
                 </div>
 
@@ -1058,6 +1120,8 @@ export default function App({
         onPowToggle={(enabled) => updateSettings({ powEnabled: enabled })}
         powDifficulty={settings.powDifficulty}
         onPowDifficultyChange={(difficulty) => updateSettings({ powDifficulty: difficulty })}
+        walletVisible={settings.walletVisible}
+        onWalletToggle={(visible) => updateSettings({ walletVisible: visible })}
         allStoredEvents={allStoredEvents}
       />
 
@@ -1068,16 +1132,31 @@ export default function App({
         theme={theme}
         onImageSelect={(imageUrl) => {
           // Insert the image URL into the chat input
-          if (window.onInsertImage) {
+          if ((window as unknown as { onInsertImage?: typeof handleInsertImage }).onInsertImage) {
             // Get current cursor position and value from ChatInput
             const cursorPos =
-              (window as any).getChatInputCursorPosition?.() || 0;
-            const currentValue = (window as any).getChatInputValue?.() || "";
-            window.onInsertImage(imageUrl, cursorPos, currentValue);
+              (window as unknown as { getChatInputCursorPosition?: () => number }).getChatInputCursorPosition?.() || 0;
+            const currentValue = (window as unknown as { getChatInputValue?: () => string }).getChatInputValue?.() || "";
+            (window as unknown as { onInsertImage: typeof handleInsertImage }).onInsertImage(imageUrl, cursorPos, currentValue);
           }
           setShowFavoritesModal(false);
         }}
       />
+
+      {/* Wallet Modal */}
+      <WalletModal
+        isOpen={showWalletModal}
+        onClose={() => setShowWalletModal(false)}
+        theme={theme}
+      />
+
+      {/* Floating Wallet Icon - Show on all pages except admin, only if enabled in settings */}
+      {activeView !== "admin" && settings.walletVisible && (
+        <FloatingWalletIcon
+          theme={theme}
+          onClick={() => setShowWalletModal(true)}
+        />
+      )}
     </div>
   );
 }
