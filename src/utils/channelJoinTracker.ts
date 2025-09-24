@@ -6,9 +6,9 @@ export interface ChannelJoinDate {
 }
 
 /**
- * Get the date when a channel was last opened
+ * Get the date when a channel was last opened (internal helper)
  */
-export function getChannelLastOpened(channelKey: string): string | null {
+function getChannelLastOpened(channelKey: string): string | null {
   try {
     const stored = localStorage.getItem(CHANNEL_JOIN_DATES_KEY);
     
@@ -69,15 +69,3 @@ export function markChannelOpenedThisHour(channelKey: string): void {
   }
 }
 
-/**
- * Get all channel join dates
- */
-export function getAllChannelJoinDates(): Record<string, string> {
-  try {
-    const stored = localStorage.getItem(CHANNEL_JOIN_DATES_KEY);
-    return stored ? JSON.parse(stored) : {};
-  } catch (error) {
-    console.warn('Failed to get channel join dates:', error);
-    return {};
-  }
-}

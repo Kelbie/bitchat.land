@@ -68,12 +68,3 @@ export const isFavorited = (imageUrl: string): boolean => {
   return getFavorites().some(fav => fav.url === imageUrl);
 };
 
-export const getFavoriteTags = (imageUrl: string): string[] => {
-  const favorite = getFavorites().find(fav => fav.url === imageUrl);
-  return favorite ? favorite.tags : [];
-};
-
-// Backward compatibility: get just the URLs as strings
-export const getFavoriteUrls = (): string[] => {
-  return getFavorites().map(fav => fav.url);
-};

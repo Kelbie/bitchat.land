@@ -86,15 +86,15 @@ function getRandomSelfMessage(messages: string[], senderName: string, senderHash
 
 // Check if user is targeting themselves
 function isSelfTarget(username: string, hash: string, currentUser: UserInfo): boolean {
-  return username.toLowerCase() === currentUser.username.toLowerCase() && 
-         (hash === '' || hash === currentUser.publicKey.slice(-4));
+  return username.toLowerCase() === currentUser.username.toLowerCase() &&
+    (hash === '' || hash === currentUser.publicKey.slice(-4));
 }
 
 // Process slap command
 export function processSlapCommand(targetUsername: string, targetHash: string, currentUser: UserInfo): CommandResult {
   const fullTarget = targetHash ? `${targetUsername}#${targetHash}` : targetUsername;
   const isSelf = isSelfTarget(targetUsername, targetHash, currentUser);
-  
+
   if (isSelf) {
     const message = getRandomSelfMessage(SELF_SLAP_MESSAGES, currentUser.username, currentUser.publicKey.slice(-4));
     return { success: true, message, isAction: true };
@@ -108,7 +108,7 @@ export function processSlapCommand(targetUsername: string, targetHash: string, c
 export function processHugCommand(targetUsername: string, targetHash: string, currentUser: UserInfo): CommandResult {
   const fullTarget = targetHash ? `${targetUsername}#${targetHash}` : targetUsername;
   const isSelf = isSelfTarget(targetUsername, targetHash, currentUser);
-  
+
   if (isSelf) {
     const message = getRandomSelfMessage(SELF_HUG_MESSAGES, currentUser.username, currentUser.publicKey.slice(-4));
     return { success: true, message, isAction: true };
@@ -133,34 +133,34 @@ export function processRollCommand(input: string): CommandResult {
 // Main command processor - converts command strings to action messages
 export function processCommandMessage(message: string, currentUser: UserInfo): CommandResult {
   const trimmedMessage = message.trim();
-  
+
   // Check for slap command
   const slapMatch = trimmedMessage.match(/^\/slap\s+@?([^#\s]+)#?([0-9a-f]*)$/i);
   if (slapMatch) {
     const [, username, hash] = slapMatch;
     return processSlapCommand(username, hash, currentUser);
   }
-  
+
   // Check for hug command
   const hugMatch = trimmedMessage.match(/^\/hug\s+@?([^#\s]+)#?([0-9a-f]*)$/i);
   if (hugMatch) {
     const [, username, hash] = hugMatch;
     return processHugCommand(username, hash, currentUser);
   }
-  
+
   // Check for send command
   const sendMatch = trimmedMessage.match(/^\/send\s+@?([^#\s]+)#?([0-9a-f]*)\s+(.+)$/i);
   if (sendMatch) {
     const [, username, hash, messageText] = sendMatch;
     return processSendCommand(username, hash, messageText, currentUser);
   }
-  
+
   // Check for roll command
   const rollMatch = trimmedMessage.match(/^\/roll(?:\s+(\d+)(?:-(\d+))?)?$/i);
   if (rollMatch) {
     return processRollCommand(trimmedMessage);
   }
-  
+
   // If no command matched, return the original message
   return { success: true, message: trimmedMessage, isAction: false };
 }
@@ -179,13 +179,11 @@ export function generateActionMessage(
     const result = processHugCommand(targetUsername, targetHash, currentUser);
     return result.message;
   }
-  
+
   return '';
 }
 
-// Check if a message contains action emojis
+// Check if a message is a system message (starts with "* " followed by specific emojis)
 export function isActionMessage(content: string): boolean {
-  return content.includes("🫂") || // hug emoji
-         content.includes("🐟") || // slap emoji
-         content.includes("*") && content.includes("#"); // action message pattern
+  return /^\* (🫂|🐟|👋)/.test(content);
 }

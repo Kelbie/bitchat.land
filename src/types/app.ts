@@ -205,6 +205,7 @@ export interface UserListProps {
   users: UserMeta[];
   selectedUser: string | null;
   onSelectUser: (pubkey: string) => void;
+  onOpenDM?: (user: UserMeta) => void;
   searchText: string;
   filteredEvents: StoredEvent[];
   theme?: Theme;
@@ -214,6 +215,7 @@ export interface UserItemProps {
   user: UserMeta;
   isSelected: boolean;
   onSelectUser: (pubkey: string) => void;
+  onOpenDM?: (user: UserMeta) => void;
   theme: Theme;
 }
 
