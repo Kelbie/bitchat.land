@@ -1,4 +1,4 @@
-import { EVENT_KINDS } from "../constants/eventKinds";
+import { EVENT_KINDS } from "@/constants/eventKinds";
 
 export interface UserCategory {
   type: 'pinned' | 'geohash' | 'standard';

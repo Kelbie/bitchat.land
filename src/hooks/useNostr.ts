@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { RelayPool } from "nostr-relaypool";
 import type { Event as NostrEventOriginal } from "nostr-tools";
-import { NostrEvent, GeohashActivity } from "../types";
-import { NOSTR_RELAYS } from "../constants/projections";
-import { findMatchingGeohash } from "../utils/geohashUtils";
-import { GeoRelayDirectory } from "../utils/geoRelayDirectory";
+import { NostrEvent, GeohashActivity } from "@/types";
+import { NOSTR_RELAYS } from "@/constants/projections";
+import { findMatchingGeohash } from "@/utils/geohashUtils";
+import { GeoRelayDirectory } from "@/utils/geoRelayDirectory";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;

@@ -1,5 +1,5 @@
-import { BASE32 } from "../constants/projections";
-import { GeohashBounds } from "../types";
+import { BASE32 } from "@/constants";
+import { GeohashBounds } from "@/types";
 
 // Fixed function to decode any single character geohash to its bounding box
 export function decodeGeohash(geohash: string): GeohashBounds {

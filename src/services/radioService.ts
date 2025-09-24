@@ -1,6 +1,5 @@
 import { RadioBrowserApi, Station } from '@luigivampa/radio-browser-api';
-import { StationWithDistance } from '../types/radio';
-import { CountryInRegion } from '../types/radio';
+import { StationWithDistance, CountryInRegion } from '@/types/app';
 
 interface CachedData {
   stations: StationWithDistance[];

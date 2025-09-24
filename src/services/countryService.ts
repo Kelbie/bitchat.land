@@ -1,4 +1,4 @@
-import { GeohashInfo, CountryInRegion } from '../types/radio';
+import { GeohashInfo, CountryInRegion } from '@/types/app';
 import * as ngeohash from 'ngeohash';
 import { iso1A2Code, iso1A2Codes } from '@rapideditor/country-coder';
 

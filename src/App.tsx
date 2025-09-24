@@ -12,27 +12,21 @@ import {
   generateLocalizedGeohashes,
 } from "./utils/geohashUtils";
 
-import { GeoMercatorProps } from "./types";
-import { useDrag } from "./hooks/useDrag";
-import { useZoom } from "./hooks/useZoom";
-import { useNostr } from "./hooks/useNostr";
+import { GeoMercatorProps } from "@/types";
+import { useDrag, useZoom } from "./components/features/map";
+import { useNostr } from "@/hooks";
 import { getPow } from "nostr-tools/nip13";
-import { EventHierarchy } from "./components/panel/EventHierarchy";
-import { RecentEvents } from "./components/chat/RecentEvents";
-import { Map } from "./components/map/Map";
-import { MobileHeader } from "./components/header/MobileHeader";
-import { ProfileGenerationModal } from "./components/modals/login";
-import { ChatInput } from "./components/chat/ChatInput";
-import { ProjectionSelector } from "./components/map/ProjectionSelector";
-import { SettingsModal } from "./components/modals/settings";
-import { useSettingsState } from "./components/modals/settings/useSettingsState";
-import { MarqueeBanner } from "./components/header/MarqueeBanner";
-import { CornerOverlay } from "./components/common/CornerOverlay";
-import { ChannelList, ChannelMeta } from "./components/sidebars/ChannelList";
-import { UserList, UserMeta } from "./components/sidebars/UserList";
-import { Connections } from "./components/map/Connections";
-import { FavoritesModal } from "./components/modals/image/FavoritesModal";
-import { FloatingWalletIcon, WalletModal } from "./components/wallet";
+import { RecentEvents, ChatInput } from "./components/features/chat";
+import { Map, ProjectionSelector, Connections } from "./components/features/map";
+import { MobileHeader, MarqueeBanner } from "./components/layout";
+import { ProfileGenerationModal } from "./components/modals/auth";
+import { SettingsModal, useSettingsState } from "./components/modals/settings";
+import { CornerOverlay } from "./components/ui/layout";
+import { ChannelList } from "./components/features/channels";
+import { UserList } from "./components/features/users";
+import { FavoritesModal } from "./components/modals/media";
+import { FloatingWalletIcon } from "./components/features/wallet";
+import { WalletModal } from "./components/modals/wallet";
 import {
   addGeohashToSearch,
   parseSearchQuery,
@@ -54,14 +48,13 @@ import {
   addPinnedChannel,
   removePinnedChannel,
 } from "./utils/pinnedChannels";
-import { EVENT_KINDS } from "./constants/eventKinds";
+import { EVENT_KINDS } from "@/constants";
 import { sendJoinMessage } from "./utils/systemMessageSender";
-import { RadioPage } from "./components/radio/RadioPage";
-import { globalStyles } from "./styles";
+import { RadioPage } from "./components/features/radio";
+import { globalStyles } from "@/styles";
 import { AdminPage } from "./pages/AdminPage";
 import { MapPage } from "./pages/MapPage";
 import { ChatPage } from "./pages/ChatPage";
-import { PanelPage } from "./pages/PanelPage";
 import { RadioPage as RadioPageComponent } from "./pages/RadioPage";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
@@ -113,7 +106,6 @@ export default function App({
     const path = location.pathname;
     if (path === "/") return "map";
     if (path === "/chat") return "chat";
-    if (path === "/panel") return "panel";
     if (path === "/radio") return "radio";
     if (path === "/admin") return "admin";
     return "map"; // default
@@ -871,7 +863,6 @@ export default function App({
               const pathMap = {
                 map: "/",
                 chat: "/chat", 
-                panel: "/panel",
                 radio: "/radio"
               };
               navigate(pathMap[view as keyof typeof pathMap] || "/");
@@ -890,10 +881,7 @@ export default function App({
           />
         </header>
       )}
-
-      {/* Navigation */}
-      {/* {activeView !== "admin" && <Navigation theme={theme} />} */}
-
+      
       {/* Main Content Area */}
       <main className={t.mainArea}>
         <Routes>
@@ -1032,18 +1020,6 @@ export default function App({
                 />
               </div>
             </ChatPage>
-          } />
-
-          {/* Panel Route */}
-          <Route path="/panel" element={
-            <PanelPage>
-              <EventHierarchy
-                searchText={searchText}
-                allEventsByGeohash={allEventsByGeohash}
-                onSearch={handleTextSearch}
-                theme={theme}
-              />
-            </PanelPage>
           } />
 
           {/* Radio Route */}

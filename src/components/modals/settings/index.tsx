@@ -1,6 +1,6 @@
-import { Modal } from '../../common/Modal';
+import { Modal } from '@/components/ui/layout';
 import { SettingsPage } from './SettingsPage';
-import { NostrEvent } from '../../../types';
+import { NostrEvent } from '@/types';
 
 interface SettingsModalProps {
   isOpen: boolean;

@@ -1,5 +1,5 @@
 import * as ngeohash from 'ngeohash';
-import { GeohashInfo } from '../types/radio';
+import { GeohashInfo } from '@/types/app';
 
 export class GeohashService {
   /**

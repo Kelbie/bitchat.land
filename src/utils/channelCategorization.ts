@@ -1,4 +1,4 @@
-import { EVENT_KINDS } from "../constants/eventKinds";
+import { EVENT_KINDS } from "@/constants";
 
 // Regex for valid geohash characters (same as used in the app)
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;

@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
-import { Slider } from '../../common/Slider';
-import { PowDistributionGraph } from '../../common/PowDistributionGraph';
-import { NostrEvent } from '../../../types';
+import { useMemo } from 'react';
+import { Slider, PowDistributionGraph } from '@/components/ui/data';
+import { Button } from '@/components/ui/base';
+import { NostrEvent } from '@/types';
 import { getPow } from 'nostr-tools/nip13';
 
 interface SettingsPageProps {
@@ -72,20 +72,12 @@ export function SettingsPage({
     matrix: {
       bg: "bg-gray-900",
       text: "text-white",
-      accent: "text-green-400",
-      buttonActive: "bg-gray-600 text-white",
-      buttonInactive: "bg-transparent text-gray-400 border border-gray-600 hover:text-gray-300",
-      powButtonActive: "bg-gray-600 text-white border-gray-600",
-      powButtonInactive: "bg-transparent text-gray-400 border-gray-600 hover:text-gray-300"
+      accent: "text-green-400"
     },
     material: {
       bg: "bg-white",
       text: "text-gray-900",
-      accent: "text-blue-600",
-      buttonActive: "bg-blue-600 text-white",
-      buttonInactive: "bg-transparent text-blue-600 border border-blue-600 hover:bg-blue-50",
-      powButtonActive: "bg-blue-600 text-white border-blue-600",
-      powButtonInactive: "bg-transparent text-blue-600 border-blue-600 hover:bg-blue-50"
+      accent: "text-blue-600"
     }
   };
 
@@ -100,26 +92,22 @@ export function SettingsPage({
         </h3>
         
         <div className="flex items-center space-x-3">
-          <button
+          <Button
+            theme={theme}
+            active={theme === "matrix"}
             onClick={() => onThemeChange("matrix")}
-            className={`px-4 py-2 text-sm rounded transition-colors ${
-              theme === "matrix"
-                ? styles.buttonActive
-                : styles.buttonInactive
-            }`}
+            className="px-4 py-2 text-sm rounded"
           >
             matrix
-          </button>
-          <button
+          </Button>
+          <Button
+            theme={theme}
+            active={theme === "material"}
             onClick={() => onThemeChange("material")}
-            className={`px-4 py-2 text-sm rounded transition-colors ${
-              theme === "material"
-                ? styles.buttonActive
-                : styles.buttonInactive
-            }`}
+            className="px-4 py-2 text-sm rounded"
           >
             material
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -131,29 +119,25 @@ export function SettingsPage({
         
         {/* PoW Toggle */}
         <div className="flex items-center space-x-3">
-          <button
+          <Button
+            theme={theme}
+            active={!powEnabled}
             onClick={() => onPowToggle(false)}
-            className={`px-4 py-2 text-sm rounded border transition-colors ${
-              !powEnabled
-                ? styles.powButtonActive
-                : styles.powButtonInactive
-            }`}
+            className="px-4 py-2 text-sm rounded border"
           >
             pow off
-          </button>
-          <button
+          </Button>
+          <Button
+            theme={theme}
+            active={powEnabled}
             onClick={() => onPowToggle(true)}
-            className={`px-4 py-2 text-sm rounded border transition-colors relative ${
-              powEnabled
-                ? styles.powButtonActive
-                : styles.powButtonInactive
-            }`}
+            className="px-4 py-2 text-sm rounded border relative"
           >
             pow on
             {powEnabled && (
               <div className={`absolute -right-1 -top-1 w-2 h-2 rounded-full ${styles.accent}`} />
             )}
-          </button>
+          </Button>
         </div>
         
         <div className={`text-sm ${styles.accent}`}>
@@ -210,29 +194,25 @@ export function SettingsPage({
         
         {/* Wallet Toggle */}
         <div className="flex items-center space-x-3">
-          <button
+          <Button
+            theme={theme}
+            active={!walletVisible}
             onClick={() => onWalletToggle(false)}
-            className={`px-4 py-2 text-sm rounded border transition-colors ${
-              !walletVisible
-                ? styles.powButtonActive
-                : styles.powButtonInactive
-            }`}
+            className="px-4 py-2 text-sm rounded border"
           >
             hidden
-          </button>
-          <button
+          </Button>
+          <Button
+            theme={theme}
+            active={walletVisible}
             onClick={() => onWalletToggle(true)}
-            className={`px-4 py-2 text-sm rounded border transition-colors relative ${
-              walletVisible
-                ? styles.powButtonActive
-                : styles.powButtonInactive
-            }`}
+            className="px-4 py-2 text-sm rounded border relative"
           >
             visible
             {walletVisible && (
               <div className={`absolute -right-1 -top-1 w-2 h-2 rounded-full ${styles.accent}`} />
             )}
-          </button>
+          </Button>
         </div>
         
         <div className={`text-sm ${styles.accent} space-y-2`}>

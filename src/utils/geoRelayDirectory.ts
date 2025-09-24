@@ -1,4 +1,4 @@
-import { BASE32 } from "../constants/projections";
+import { BASE32 } from "@/constants";
 
 export interface GeoRelayEntry {
   host: string;
