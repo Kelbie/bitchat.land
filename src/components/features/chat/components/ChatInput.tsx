@@ -3,7 +3,7 @@ import { SimplePool } from "nostr-tools/pool";
 import { finalizeEvent, validateEvent, verifyEvent } from "nostr-tools/pure";
 import { NOSTR_RELAYS } from "@/constants/projections";
 import { generateSecretKey, getPublicKey } from "nostr-tools";
-import { sha256 } from "@noble/hashes/sha256";
+import { sha256 } from '@noble/hashes/sha2.js';
 import { Input, Button } from "@/components/ui";
 import { GeoRelayDirectory } from "@/utils/geoRelayDirectory";
 import { globalStyles } from "@/styles";

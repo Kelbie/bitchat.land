@@ -15,6 +15,7 @@ export class RadioService {
 
   constructor(userAgent: string = 'GeohashRadioFinder/1.0') {
     this.api = new RadioBrowserApi(userAgent);
+    this.api.setBaseUrl('https://de2.api.radio-browser.info')
   }
 
   /**

@@ -34,7 +34,34 @@ interface GeohashStats {
   geohash: string;
   lastActivity: number;
   eventCount: number;
-  totalEvents: number; // Raw count of all events for this geohash
+  totalEvents: number;
+}
+
+// New interfaces for DM support
+interface DirectMessage {
+  id: string;
+  content: string;
+  senderPubkey: string;
+  recipientPubkey: string;
+  timestamp: number;
+  conversationKey: string;
+  messageType: 'privateMessage' | 'delivered' | 'readReceipt';
+  relayUrl?: string;
+}
+
+interface ConversationStats {
+  conversationKey: string;
+  lastActivity: number;
+  messageCount: number;
+  unreadCount: number;
+  senderPubkey: string; // Full pubkey for the conversation
+}
+
+// Mock identity interface - you'll need to implement actual key derivation
+interface NostrIdentity {
+  publicKeyHex: string;
+  privateKeyHex: string;
+  // Add methods for encryption/decryption as needed
 }
 
 class NostrConnection {
@@ -46,19 +73,26 @@ class NostrConnection {
   private _status: string = "Disconnected";
   private _events: NostrEvent[] = [];
   private _geohashStats: Map<string, GeohashStats> = new Map();
+  
+  // DM-related state
+  private _directMessages: DirectMessage[] = [];
+  private _conversationStats: Map<string, ConversationStats> = new Map();
+  private _nostrKeyMapping: Map<string, string> = new Map(); // conversation key -> full pubkey
+  private processedNostrEvents: Set<string> = new Set();
+  private currentGeohashIdentity: NostrIdentity | null = null;
 
   // Search parameters
   private searchGeohash: string;
   private currentGeohashes: string[];
   private onGeohashAnimate?: (geohash: string) => void;
-  private onStateChange?: () => void; // Add callback for state changes
+  private onStateChange?: () => void;
   private currentChannel: string = "";
 
   constructor(
     searchGeohash: string = "",
     currentGeohashes: string[] = [],
     onGeohashAnimate?: (geohash: string) => void,
-    onStateChange?: () => void, // Add this parameter
+    onStateChange?: () => void,
   ) {
     this.searchGeohash = searchGeohash;
     this.currentGeohashes = currentGeohashes;
@@ -72,7 +106,6 @@ class NostrConnection {
   getHierarchicalEventCount(targetGeohash: string): number {
     let totalCount = 0;
 
-    // Count all events that have geohashes starting with the target geohash
     this._geohashStats.forEach((stats, eventGeohash) => {
       if (eventGeohash.startsWith(targetGeohash)) {
         totalCount += stats.totalEvents;
@@ -81,8 +114,6 @@ class NostrConnection {
 
     return totalCount;
   }
-
-
 
   // Public getter for the complete connection state
   get connectionState(): ConnectionState {
@@ -97,6 +128,30 @@ class NostrConnection {
   // Public getters for data
   get events(): NostrEvent[] { return [...this._events]; }
   get geohashStats(): Map<string, GeohashStats> { return new Map(this._geohashStats); }
+  
+  // New getters for DM support
+  get directMessages(): DirectMessage[] { return [...this._directMessages]; }
+  get conversationStats(): Map<string, ConversationStats> { return new Map(this._conversationStats); }
+
+  // BitChat-compatible getter: allEventsByDirectMessage
+  get allEventsByDirectMessage(): Map<string, DirectMessage[]> {
+    const messagesByConversation = new Map<string, DirectMessage[]>();
+    
+    // Group messages by conversation key
+    this._directMessages.forEach(message => {
+      const existing = messagesByConversation.get(message.conversationKey) || [];
+      existing.push(message);
+      messagesByConversation.set(message.conversationKey, existing);
+    });
+
+    // Sort messages in each conversation by timestamp
+    messagesByConversation.forEach((messages, key) => {
+      messages.sort((a, b) => a.timestamp - b.timestamp);
+      messagesByConversation.set(key, messages);
+    });
+
+    return messagesByConversation;
+  }
 
   // Backward compatibility getters
   get geohashActivity(): Map<string, GeohashActivity> {
@@ -114,18 +169,15 @@ class NostrConnection {
   get allEventsByGeohash(): Map<string, number> {
     const eventCounts = new Map<string, number>();
 
-    // Get all unique geohash prefixes that we need to calculate counts for
     const allGeohashes = Array.from(this._geohashStats.keys());
     const prefixesNeeded = new Set<string>();
 
-    // For each geohash, add all its prefixes
     allGeohashes.forEach(geohash => {
       for (let i = 1; i <= geohash.length; i++) {
         prefixesNeeded.add(geohash.substring(0, i));
       }
     });
 
-    // Calculate hierarchical counts for each prefix
     prefixesNeeded.forEach(prefix => {
       const hierarchicalCount = this.getHierarchicalEventCount(prefix);
       if (hierarchicalCount > 0) {
@@ -167,18 +219,15 @@ class NostrConnection {
       }
     }
 
-    // Trigger React re-render when status changes
     this.onStateChange?.();
   }
 
   private createRelayPool(): void {
     if (this.relayPool) {
-      // Clean up existing pool
       this.currentSubscriptions.forEach(unsub => unsub());
       this.currentSubscriptions.clear();
     }
 
-    // Create RelayPool with advanced features enabled
     this.relayPool = new RelayPool([], {
       useEventCache: true,
       logSubscriptions: false,
@@ -187,14 +236,12 @@ class NostrConnection {
       autoReconnect: true,
     });
 
-    // Set up error and notice handlers
     this.relayPool.onerror((err: string, relayUrl: string) => {
       console.error("RelayPool error from", relayUrl, ":", err);
-      // Update specific relay status
       this.relays = this.relays.map(relay =>
         relay.url === relayUrl ? { ...relay, status: 'disconnected' } : relay
       );
-      this.updateStatus(); // This will trigger re-render
+      this.updateStatus();
     });
 
     this.relayPool.onnotice((relayUrl: string, notice: string) => {
@@ -205,18 +252,16 @@ class NostrConnection {
   private getInitialRelays(): RelayInfo[] {
     const initialRelays: RelayInfo[] = [];
 
-    // Use the predefined NOSTR_RELAYS array for initial connections
     for (const url of NOSTR_RELAYS) {
       initialRelays.push({
         url,
-        geohash: "", // Global/default geohash
+        geohash: "",
         status: 'connecting',
         lastPing: Date.now(),
         type: 'initial'
       });
     }
 
-    // Fallback to hardcoded relay if NOSTR_RELAYS is empty
     if (initialRelays.length === 0) {
       initialRelays.push({
         url: "wss://relay.damus.io",
@@ -233,15 +278,21 @@ class NostrConnection {
   private createMainSubscription(relays: string[]): void {
     if (!this.relayPool) return;
 
-    // Close existing main subscription
+    // Close existing subscriptions
     const mainSub = this.currentSubscriptions.get('main');
     if (mainSub) {
       mainSub();
       this.currentSubscriptions.delete('main');
     }
 
-    // Create subscription for both kind 20000 (geohash) and 23333 (group) events
-    const unsubscribe = this.relayPool.subscribe(
+    const dmSub = this.currentSubscriptions.get('dms');
+    if (dmSub) {
+      dmSub();
+      this.currentSubscriptions.delete('dms');
+    }
+
+    // Create subscription for geohash and group events
+    const unsubscribeMain = this.relayPool.subscribe(
       [{
         kinds: [20000, 23333], 
         since: Math.floor(Date.now() / 1000) - (60 * 60)
@@ -252,11 +303,10 @@ class NostrConnection {
       },
       undefined,
       (relayURL: string) => {
-        // Update relay status to connected when EOSE is received
         this.relays = this.relays.map(relay =>
           relay.url === relayURL ? { ...relay, status: 'connected' } : relay
         );
-        this.updateStatus(); // This will trigger re-render
+        this.updateStatus();
       },
       {
         allowDuplicateEvents: false,
@@ -266,7 +316,157 @@ class NostrConnection {
       }
     );
 
-    this.currentSubscriptions.set('main', unsubscribe);
+    this.currentSubscriptions.set('main', unsubscribeMain);
+
+    // Create DM subscription if we have an identity for the current geohash
+    if (this.currentGeohashIdentity) {
+      this.createDMSubscription(relays);
+    }
+  }
+
+  private createDMSubscription(relays: string[]): void {
+    if (!this.relayPool || !this.currentGeohashIdentity) return;
+
+    // Subscribe to NIP-17 gift-wrapped messages (kind 1059)
+    const unsubscribeDM = this.relayPool.subscribe(
+      [{
+        kinds: [1059], // NIP-17 gift wrap
+        "#p": [this.currentGeohashIdentity.publicKeyHex],
+        since: Math.floor(Date.now() / 1000) - (24 * 60 * 60) // 24 hour lookback
+      }],
+      relays,
+      (event: NostrEventOriginal, isAfterEose: boolean, relayURL?: string) => {
+        this.handleGiftWrap(event, relayURL);
+      },
+      undefined,
+      undefined,
+      {
+        allowDuplicateEvents: false,
+        allowOlderEvents: true,
+        logAllEvents: false,
+        unsubscribeOnEose: false,
+      }
+    );
+
+    this.currentSubscriptions.set('dms', unsubscribeDM);
+  }
+
+  private handleGiftWrap(giftWrap: NostrEventOriginal, relayURL?: string): void {
+    // Check for duplicates
+    if (this.processedNostrEvents.has(giftWrap.id)) {
+      return;
+    }
+    this.processedNostrEvents.add(giftWrap.id);
+
+    // TODO: Implement NIP-17 decryption here
+    // This is a simplified version - you'll need to implement actual decryption
+    try {
+      const decryptedResult = this.decryptGiftWrap(giftWrap);
+      if (!decryptedResult) return;
+
+      const { content, senderPubkey, timestamp } = decryptedResult;
+
+      // Check if content contains BitChat packet
+      if (!content.startsWith("bitchat1:")) {
+        return;
+      }
+
+      // Extract and decode BitChat packet
+      const packetData = content.substring("bitchat1:".length);
+      const decodedPacket = this.decodeBitchatPacket(packetData);
+      if (!decodedPacket) return;
+
+      // Create conversation key (similar to BitChat iOS implementation)
+      const convKey = "nostr_" + senderPubkey.substring(0, 16);
+      this._nostrKeyMapping.set(convKey, senderPubkey);
+
+      // Create direct message
+      const directMessage: DirectMessage = {
+        id: giftWrap.id,
+        content: decodedPacket.content,
+        senderPubkey,
+        recipientPubkey: this.currentGeohashIdentity!.publicKeyHex,
+        timestamp,
+        conversationKey: convKey,
+        messageType: this.getMessageType(decodedPacket.type),
+        relayUrl: relayURL
+      };
+
+      // Add to messages array (avoid duplicates)
+      if (!this._directMessages.some(msg => msg.id === directMessage.id)) {
+        this._directMessages = [directMessage, ...this._directMessages];
+      }
+
+      // Update conversation stats
+      this.updateConversationStats(convKey, senderPubkey, timestamp);
+
+      // Trigger re-render
+      this.onStateChange?.();
+
+    } catch (error) {
+      console.warn("Failed to process gift wrap:", error);
+    }
+  }
+
+  private decryptGiftWrap(giftWrap: NostrEventOriginal): { content: string; senderPubkey: string; timestamp: number } | null {
+    // TODO: Implement actual NIP-17 decryption
+    // This is a placeholder - you need to implement:
+    // 1. Unwrap the outer gift wrap layer
+    // 2. Decrypt the inner seal layer  
+    // 3. Extract the rumor content
+    
+    // For now, returning null to indicate decryption not implemented
+    console.warn("Gift wrap decryption not yet implemented");
+    return null;
+  }
+
+  private decodeBitchatPacket(packetData: string): { content: string; type: string } | null {
+    try {
+      // TODO: Implement base64URL decoding and BitChatPacket parsing
+      // This should match the iOS implementation's packet format
+      
+      // Placeholder implementation
+      const decoded = atob(packetData.replace(/-/g, '+').replace(/_/g, '/'));
+      // Parse the decoded packet according to BitChat format
+      
+      return null; // Placeholder
+    } catch (error) {
+      console.warn("Failed to decode BitChat packet:", error);
+      return null;
+    }
+  }
+
+  private getMessageType(packetType: string): 'privateMessage' | 'delivered' | 'readReceipt' {
+    // Map BitChat packet types to message types
+    switch (packetType) {
+      case 'delivered':
+        return 'delivered';
+      case 'readReceipt':
+        return 'readReceipt';
+      default:
+        return 'privateMessage';
+    }
+  }
+
+  private updateConversationStats(convKey: string, senderPubkey: string, timestamp: number): void {
+    const existing = this._conversationStats.get(convKey);
+    
+    if (existing) {
+      this._conversationStats.set(convKey, {
+        ...existing,
+        lastActivity: Math.max(existing.lastActivity, timestamp),
+        messageCount: existing.messageCount + 1,
+        unreadCount: existing.unreadCount + 1 // Simplified - you may want more sophisticated unread tracking
+      });
+    } else {
+      this._conversationStats.set(convKey, {
+        conversationKey: convKey,
+        lastActivity: timestamp,
+        messageCount: 1,
+        unreadCount: 1,
+        senderPubkey
+      });
+    }
   }
 
   private handleEvent(event: NostrEventOriginal, isAfterEose: boolean, relayURL?: string): void {
@@ -326,7 +526,6 @@ class NostrConnection {
           ...matchingStats,
           lastActivity: Date.now(),
           eventCount: matchingStats.eventCount + 1,
-          // Don't double-count if eventGeohash === matchingGeohash
           totalEvents: eventGeohash === matchingGeohash ?
             matchingStats.totalEvents : matchingStats.totalEvents + 1
         });
@@ -357,6 +556,29 @@ class NostrConnection {
     this.onStateChange?.();
   }
 
+  // Method to set the identity for DM decryption
+  setGeohashIdentity(identity: NostrIdentity | null): void {
+    this.currentGeohashIdentity = identity;
+    
+    // If we're connected and have an identity, create DM subscription
+    if (this._isConnected && identity && this.relayPool) {
+      const relayUrls = this.relays.map(r => r.url);
+      this.createDMSubscription(relayUrls);
+    }
+  }
+
+  // Method to mark messages as read for a conversation
+  markConversationAsRead(conversationKey: string): void {
+    const stats = this._conversationStats.get(conversationKey);
+    if (stats) {
+      this._conversationStats.set(conversationKey, {
+        ...stats,
+        unreadCount: 0
+      });
+      this.onStateChange?.();
+    }
+  }
+
   // Method to update search parameters
   updateSearchParams(searchGeohash: string, currentGeohashes: string[], onGeohashAnimate?: (geohash: string) => void): void {
     this.searchGeohash = searchGeohash;
@@ -381,7 +603,7 @@ class NostrConnection {
 
       const initialRelays = this.getInitialRelays();
       this.relays = initialRelays;
-      this.updateStatus(); // This will trigger re-render
+      this.updateStatus();
 
       const relayUrls = initialRelays.map(r => r.url);
       this.createMainSubscription(relayUrls);
@@ -391,7 +613,7 @@ class NostrConnection {
       this.relays = [];
       this._isConnected = false;
       this._status = "Connection failed";
-      this.onStateChange?.(); // Trigger re-render on error
+      this.onStateChange?.();
     }
   }
 
@@ -414,7 +636,7 @@ class NostrConnection {
     }));
 
     this._status = "Disconnected";
-    this.onStateChange?.(); // Trigger re-render when disconnecting
+    this.onStateChange?.();
   }
 
   async toggle(): Promise<void> {
@@ -470,7 +692,7 @@ class NostrConnection {
       const allRelayUrls = this.relays.map(r => r.url);
       this.createMainSubscription(allRelayUrls);
 
-      this.updateStatus(); // This will trigger re-render
+      this.updateStatus();
       return geoRelays;
 
     } catch (error) {
@@ -506,7 +728,8 @@ export function useNostr(
   searchGeohash: string,
   currentGeohashes: string[],
   onGeohashAnimate: (geohash: string) => void,
-  currentChannel: string = ""
+  currentChannel: string = "",
+  geohashIdentity?: NostrIdentity // Add identity parameter
 ) {
   // Force re-render when data changes
   const [, forceUpdate] = useState({});
@@ -520,19 +743,15 @@ export function useNostr(
       searchGeohash,
       currentGeohashes,
       onGeohashAnimate,
-      forceRerender // Pass the forceRerender callback
+      forceRerender
     );
 
-    // Remove the periodic interval - no longer needed!
-    // const interval = setInterval(forceRerender, 1000);
-
     return () => {
-      // clearInterval(interval); // Remove this line too
       if (connectionRef.current) {
         connectionRef.current.disconnect();
       }
     };
-  }, []); // Empty dependency array - only run once
+  }, []);
 
   // Update parameters when they change
   useEffect(() => {
@@ -547,11 +766,23 @@ export function useNostr(
     }
   }, [currentChannel]);
 
+  // Update identity when it changes
+  useEffect(() => {
+    if (connectionRef.current) {
+      connectionRef.current.setGeohashIdentity(geohashIdentity || null);
+    }
+  }, [geohashIdentity]);
+
   // Simple wrapper functions
   const toggleNostr = async () => {
     if (connectionRef.current) {
       await connectionRef.current.toggle();
-      // No need to manually call forceRerender - the class will do it via callback
+    }
+  };
+
+  const markConversationAsRead = (conversationKey: string) => {
+    if (connectionRef.current) {
+      connectionRef.current.markConversationAsRead(conversationKey);
     }
   };
 
@@ -562,6 +793,11 @@ export function useNostr(
       allStoredEvents: [],
       geohashActivity: new Map(),
       allEventsByGeohash: new Map(),
+      // New DM-related returns
+      directMessages: [],
+      allEventsByDirectMessage: new Map(),
+      conversationStats: new Map(),
+      markConversationAsRead: () => {},
       nostrEnabled: false,
       toggleNostr: async () => { },
       connectionInfo: {
@@ -579,14 +815,18 @@ export function useNostr(
   const connectionState = connection.connectionState;
 
   return {
-    // All data comes directly from the class
+    // Existing data
     events,
-    allStoredEvents: events, // Alias for backward compatibility
-
-    // Backward compatibility - derived from _geohashStats
+    allStoredEvents: events,
     geohashActivity: connection.geohashActivity,
     allEventsByGeohash: connection.allEventsByGeohash,
     geohashStats: connection.geohashStats,
+
+    // New DM-related data - BitChat compatible
+    directMessages: connection.directMessages,
+    allEventsByDirectMessage: connection.allEventsByDirectMessage,
+    conversationStats: connection.conversationStats,
+    markConversationAsRead,
 
     // Connection state
     nostrEnabled: connectionState.isEnabled,

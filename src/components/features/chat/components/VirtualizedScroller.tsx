@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { LegendList } from "@legendapp/list";
 
 interface VirtualizedScrollerProps {
   items: any[];
@@ -26,47 +26,12 @@ export function VirtualizedScroller({
   const [isUserAtBottom, setIsUserAtBottom] = useState(true);
   const [lastItemCount, setLastItemCount] = useState(0);
   const scrollTimeoutRef = useRef<NodeJS.Timeout>();
-  const measureTimeoutRef = useRef<NodeJS.Timeout>();
   const isScrollingToBottomRef = useRef(false);
   
   // Track if we're in the middle of adding new items
   const [isAddingItems, setIsAddingItems] = useState(false);
 
-  // Create measureElement function that doesn't depend on virtualizer
-  const measureElement = useCallback((element: Element) => {
-    if (!element) return estimatedItemSize;
-    
-    // Get the actual height of the element
-    const rect = element.getBoundingClientRect();
-    let height = rect.height;
-    
-    // If height is 0 or very small, check if content is still loading
-    if (height <= 10) {
-      // Try to get height from offsetHeight as backup
-      const offsetHeight = (element as HTMLElement).offsetHeight;
-      height = offsetHeight > 0 ? offsetHeight : estimatedItemSize;
-    }
-    
-    // Return the exact height without adding extra padding
-    return Math.max(height, 50); // Reduced minimum from 60 to 50
-  }, [estimatedItemSize]);
-
-  const virtualizer = useVirtualizer({
-    count: items.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => estimatedItemSize,
-    overscan,
-    measureElement,
-    lanes: 1,
-    // Enable dynamic sizing with better item key
-    getItemKey: (index) => items[index]?.id || `item-${index}`,
-    // Disable padding between items
-    paddingStart: 0,
-    paddingEnd: 0,
-  });
-
-  // Force measurements to be more accurate but less aggressive
-  virtualizer.shouldAdjustScrollPositionOnItemSizeChange = () => false;
+  // LegendList handles measurement internally
 
   // Check if user is at bottom with proper threshold
   const checkIsAtBottom = useCallback(() => {
@@ -159,13 +124,9 @@ export function VirtualizedScroller({
   // Handle images and dynamic content loading (less aggressive)
   useEffect(() => {
     const handleContentLoad = () => {
-      // Only remeasure if user is at bottom to avoid scroll jumping
-      if (isUserAtBottom) {
+      if (isUserAtBottom && scrollToBottomOnNewItems) {
         setTimeout(() => {
-          virtualizer.measure();
-          if (scrollToBottomOnNewItems) {
-            scrollToBottom();
-          }
+          scrollToBottom();
         }, 50);
       }
     };
@@ -189,7 +150,7 @@ export function VirtualizedScroller({
         img.removeEventListener('error', handleContentLoad);
       });
     };
-  }, [virtualizer, isUserAtBottom, scrollToBottomOnNewItems, scrollToBottom]);
+  }, [isUserAtBottom, scrollToBottomOnNewItems, scrollToBottom]);
 
   // Setup scroll listener
   useEffect(() => {
@@ -203,9 +164,6 @@ export function VirtualizedScroller({
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
-      if (measureTimeoutRef.current) {
-        clearTimeout(measureTimeoutRef.current);
-      }
     };
   }, [handleScroll]);
 
@@ -217,8 +175,6 @@ export function VirtualizedScroller({
       }, 100);
     }
   }, []); // Only run once on mount
-
-  const virtualItems = virtualizer.getVirtualItems();
 
   return (
     <div className={`flex-1 relative ${className}`}>
@@ -232,38 +188,17 @@ export function VirtualizedScroller({
           scrollBehavior: "auto", // Always use auto for better performance
         }}
       >
-        <div
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            width: "100%",
-            position: "relative",
-          }}
-        >
-          {virtualItems.map((virtualItem) => {
-            const item = items[virtualItem.index];
-            if (!item) return null;
-
-            return (
-              <div
-                key={virtualItem.key}
-                data-index={virtualItem.index}
-                ref={virtualizer.measureElement}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  transform: `translateY(${virtualItem.start}px)`,
-                  boxSizing: "border-box",
-                  // Ensure proper rendering
-                  willChange: "transform",
-                }}
-              >
-                {renderItem(item, virtualItem.index)}
-              </div>
-            );
-          })}
-        </div>
+        <LegendList
+          data={items}
+          estimatedItemSize={estimatedItemSize}
+          overscan={overscan}
+          keyExtractor={(item, index) => (item?.id ? String(item.id) : `item-${index}`)}
+          renderItem={({ item, index }) => (
+            <div style={{ boxSizing: "border-box" }}>
+              {renderItem(item, index)}
+            </div>
+          )}
+        />
       </div>
 
       {/* Scroll to bottom button - only show if not maintaining scroll position */}

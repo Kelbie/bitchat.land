@@ -183,7 +183,11 @@ export function generateActionMessage(
   return '';
 }
 
-// Check if a message is a system message (starts with "* " followed by specific emojis)
+// Check if a message contains action emojis or is a system message
 export function isActionMessage(content: string): boolean {
-  return /^\* (🫂|🐟|👋)/.test(content);
+  return (content.startsWith("*") && content.endsWith("*")) && (
+    content.includes("🫂") || // hug emoji
+    content.includes("🐟") || // slap emoji
+    content.includes("👋") // welcome/join emoji
+  );
 }
