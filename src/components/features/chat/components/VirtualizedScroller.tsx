@@ -20,6 +20,7 @@ interface VirtualizedScrollerProps<T> {
   maintainScrollAtEnd?: boolean | { onLayout?: boolean; onItemLayout?: boolean; onDataChange?: boolean };
   resetKey?: string | number;  // Add this to force remount on channel change
   ItemSeparatorComponent?: React.ComponentType<{ leadingItem: T }>;
+  alignItemsAtEnd?: boolean;
 }
 
 export function VirtualizedScroller<T>({
@@ -41,6 +42,7 @@ export function VirtualizedScroller<T>({
   maintainScrollAtEnd = false,
   resetKey,  // Add this parameter
   ItemSeparatorComponent,
+  alignItemsAtEnd = false,
 }: VirtualizedScrollerProps<T>) {
   const parentRef = useRef<HTMLDivElement>(null);
   const scrollElRef = useRef<HTMLElement | null>(null);
@@ -252,6 +254,7 @@ export function VirtualizedScroller<T>({
           getEstimatedItemSize={getEstimatedItemSize}
           itemsAreEqual={itemsAreEqual}
           ItemSeparatorComponent={ItemSeparatorComponent}
+          alignItemsAtEnd={alignItemsAtEnd}
           keyExtractor={(item, index) => (keyExtractor ? keyExtractor(item, index) : `item-${index}`)}
           renderItem={({ item, index }: { item: T; index: number }) => (
             <div 

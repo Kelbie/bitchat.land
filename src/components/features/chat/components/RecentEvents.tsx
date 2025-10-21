@@ -483,6 +483,7 @@ export function RecentEvents({
         resetKey={searchText}
         enableAverages={true}
         recycleItems={true}
+        alignItemsAtEnd={true}
       />
     </div>
   );
