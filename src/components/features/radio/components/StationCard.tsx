@@ -1,5 +1,5 @@
 import { StationWithDistance, Theme } from "@/types/filter";
-import { HStack, VStack } from "@/components/ui/Layout";
+import { HStack, VStack } from "@/components/ui/layout/Layout";
 import { cn } from "@/lib/utils";
 import { cva } from "class-variance-authority";
 
