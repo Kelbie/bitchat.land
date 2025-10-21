@@ -6,7 +6,7 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   define: {
-    __DEV__: 'import.meta.env.DEV',
+    __DEV__: JSON.stringify(process.env.NODE_ENV === 'development'),
   },
   resolve: {
     alias: {
