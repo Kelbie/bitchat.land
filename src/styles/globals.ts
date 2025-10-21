@@ -78,7 +78,7 @@ export const globalStyles = {
         'absolute bottom-[32px] right-[30px] bg-green-500 text-gray-900 rounded-full w-[50px] h-[50px] cursor-pointer font-bold shadow-[0_4px_12px_rgba(34,197,94,0.3)] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110 flex items-center justify-center',
       scrollButtonWithCount:
         'absolute bottom-[32px] right-[30px] bg-green-500 text-gray-900 rounded-full min-w-[50px] h-[50px] px-2 cursor-pointer font-bold shadow-[0_4px_12px_rgba(34,197,94,0.3)] transition-all duration-200 z-[1000] hover:bg-green-600 hover:scale-110 flex items-center justify-center',
-      messageCard: "mx-3 px-3 py-2 bg-gray-900/30 rounded-lg transition-all",
+      messageCard: "px-3 py-2 bg-gray-900/30 rounded-lg transition-all",
       hashTag: "text-gray-500 text-[10px] font-mono",
       replyButton:
         "bg-transparent text-gray-500 rounded text-[10px] font-mono cursor-pointer transition-colors hover:bg-gray-900/20 hover:text-gray-300",
@@ -112,7 +112,7 @@ export const globalStyles = {
       countryCode: "text-blue-600",
       countryName: "text-gray-600",
       // Add styles to prevent layout issues
-      eventItemContainer: 'min-h-[60px] box-border w-full p-[1px_0]',
+      eventItemContainer: 'min-h-[60px] box-border w-full p-[1px_0] overflow-hidden',
       eventContent: 'img { max-width: 100%; height: auto; display: block; }',
     },
   },
@@ -243,7 +243,7 @@ export const globalStyles = {
       borderRight: 'border-r border-green-900',
               header: 'bg-gray-900/98 text-green-600 px-3 py-3 border-b border-green-900 sticky top-0 z-20',
       headerText: 'text-[16px] uppercase tracking-wider font-mono drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]',
-      list: "overflow-y-auto px-2 py-2 flex-1",
+      list: "px-2 py-2 flex-1 min-h-0 overflow-hidden",
       empty: "text-[10px] opacity-70 px-2 py-1",
     },
     material: {
@@ -252,7 +252,7 @@ export const globalStyles = {
       borderRight: "border-r border-gray-300",
       header: "bg-white text-blue-600 px-4 py-3 border-b border-blue-200 sticky top-0 z-20",
       headerText: "text-base uppercase tracking-wider",
-      list: "overflow-y-auto px-2 py-2 flex-1",
+      list: "px-2 py-2 flex-1 min-h-0 overflow-hidden",
       empty: "text-xs text-gray-500 px-2 py-1",
     },
   },
@@ -568,7 +568,7 @@ export const globalStyles = {
       mainArea: "flex-1 relative w-full overflow-hidden",
               chatViewContainer:
           "absolute inset-0 w-full h-full bg-gray-900 flex flex-row overflow-hidden",
-      chatColumn: "flex-1 flex flex-col",
+      chatColumn: "flex-1 flex flex-col min-h-0 overflow-hidden",
               subHeader: 'bg-gray-900/95 text-green-600 px-4 py-3 border-b border-green-900',
       subHeaderTitle:
         'text-base uppercase tracking-wider [text-shadow:0_0_10px_rgba(74,222,128,0.5)]',

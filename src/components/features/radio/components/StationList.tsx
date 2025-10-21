@@ -1,6 +1,7 @@
 import { StationWithDistance, Theme } from "@/types/app";
 import { StationCard } from "./StationCard";
 import { VStack, Center } from "@/components/ui/layout/Layout";
+import { VirtualizedScroller } from "@/components/features/chat/components/VirtualizedScroller";
 import { cn } from "@/lib/utils";
 import { cva } from "class-variance-authority";
 
@@ -15,7 +16,7 @@ interface StationListProps {
 const variants = cva("", {
   variants: {
     type: {
-      container: "flex-1 min-h-0 overflow-y-auto",
+      container: "h-full flex flex-col min-h-0 h-full w-full", // ensure full height for scroller
       list: "space-y-1 h-full",
       emptyState: "flex-1 flex items-center justify-center",
       emptyContent: "text-center",
@@ -60,14 +61,19 @@ export function StationList({
     );
   }
 
+  const sorted = [...stations].sort((a, b) => a.distanceKm - b.distanceKm);
+
   return (
     <div className={cn(variants({ type: "container" }))}>
-      <VStack className={cn(variants({ type: "list" }))}>
-        {stations
-          .sort((a, b) => a.distanceKm - b.distanceKm)
-          .map((station, index) => (
+      <VirtualizedScroller
+        items={sorted}
+        estimatedItemSize={96}
+        overscan={6}
+        className="h-full"
+        scrollToBottomOnNewItems={false}
+        renderItem={(station: StationWithDistance, index: number) => (
+          <div className="w-full">
             <StationCard
-              key={station.id}
               station={station}
               index={index}
               isActive={currentStation?.id === station.id}
@@ -75,8 +81,9 @@ export function StationList({
               theme={theme}
               onClick={onStationPlay}
             />
-          ))}
-      </VStack>
+          </div>
+        )}
+      />
     </div>
   );
 }

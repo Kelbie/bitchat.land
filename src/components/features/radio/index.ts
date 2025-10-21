@@ -10,3 +10,4 @@ export { useAudioPlayer } from './hooks/useAudioPlayer';
 export { useRadioFilters } from './hooks/useRadioFilters';
 export { useRadioPlayer } from './hooks/useRadioPlayer';
 export { useRadioStations } from './hooks/useRadioStations';
+export { RadioPlayerProvider, useRadioPlayerContext } from './context/RadioPlayerContext';

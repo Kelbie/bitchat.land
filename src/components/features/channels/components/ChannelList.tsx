@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { EVENT_KINDS } from "@/constants";
-import { List, ListItem } from "@/components/ui/data";
+import { List, ListItem, SectionInfo } from "@/components/ui/data";
 import { SectionHeader } from "@/components/ui/content";
 import { ChannelToggle, ChannelItem } from "@/components/features/channels";
 import { useChannelCategorization, useChannelPinning } from "@/components/features/channels/hooks";
@@ -30,105 +30,82 @@ export function ChannelList({
   );
 
   // Create a flat list of all channels with their category info for virtualization
-  const virtualizedChannels = useMemo((): ListItem<{ channelKey: string; category: 'pinned' | 'geohash' | 'standard' | 'country'; countryName?: string }>[] => {
+  const { virtualizedChannels, sections } = useMemo(() => {
     const result: ListItem<{ channelKey: string; category: 'pinned' | 'geohash' | 'standard' | 'country'; countryName?: string }>[] = [];
+    const sectionInfo: SectionInfo[] = [];
+    let currentIndex = 0;
 
     if (viewMode === 'country' && countryCategorized) {
       // Country view mode - no separate pinned section since they're integrated into countries
 
       // Add standard section
       if (countryCategorized.standard.length > 0) {
-        result.push({ 
-          key: 'standard-header', 
-          data: { channelKey: '', category: 'standard' }, 
-          isSectionHeader: true, 
-          sectionTitle: 'STANDARD' 
-        });
-        countryCategorized.standard.forEach(channelKey => {
+        sectionInfo.push({ title: 'STANDARD', index: currentIndex });
+        countryCategorized.standard.forEach((channelKey: string, index: number) => {
           result.push({ 
-            key: channelKey, 
-            data: { channelKey, category: 'standard' }, 
-            isSectionHeader: false 
+            key: `country-std-${channelKey}-${index}`, 
+            data: { channelKey, category: 'standard' }
           });
+          currentIndex++;
         });
       }
 
       // Add country sections
       Object.entries(countryCategorized.countries).forEach(([countryName, channelKeys]) => {
-        if (channelKeys.length > 0) {
-          result.push({ 
-            key: `country-header-${countryName}`, 
-            data: { channelKey: '', category: 'country', countryName }, 
-            isSectionHeader: true, 
-            sectionTitle: countryName.toUpperCase()
-          });
-          channelKeys.forEach(channelKey => {
+        if (Array.isArray(channelKeys) && channelKeys.length > 0) {
+          sectionInfo.push({ title: countryName.toUpperCase(), index: currentIndex });
+          channelKeys.forEach((channelKey: string, index: number) => {
             result.push({ 
-              key: `${countryName}-${channelKey}`, // Unique key for country-channel combination
-              data: { channelKey, category: 'country', countryName }, 
-              isSectionHeader: false 
+              key: `country-${countryName}-${channelKey}-${index}`, // Unique key with country, channel, and index
+              data: { channelKey, category: 'country', countryName }
             });
+            currentIndex++;
           });
         }
       });
 
-      return result;
+      return { virtualizedChannels: result, sections: sectionInfo };
     }
 
     // Default geohash view mode
 
     // Add pinned section
     if (categorized.pinned.length > 0) {
-      result.push({ 
-        key: 'pinned-header', 
-        data: { channelKey: '', category: 'pinned' }, 
-        isSectionHeader: true, 
-        sectionTitle: 'PINNED' 
-      });
-      categorized.pinned.forEach(channelKey => {
+      sectionInfo.push({ title: 'PINNED', index: currentIndex });
+      categorized.pinned.forEach((channelKey, index) => {
         result.push({ 
-          key: channelKey, 
-          data: { channelKey, category: 'pinned' }, 
-          isSectionHeader: false 
+          key: `pinned-${channelKey}-${index}`, 
+          data: { channelKey, category: 'pinned' }
         });
+        currentIndex++;
       });
     }
 
     // Add standard section (before geohash since there are usually fewer)
     if (categorized.standard.length > 0) {
-      result.push({ 
-        key: 'standard-header', 
-        data: { channelKey: '', category: 'standard' }, 
-        isSectionHeader: true, 
-        sectionTitle: 'STANDARD' 
-      });
-      categorized.standard.forEach(channelKey => {
+      sectionInfo.push({ title: 'STANDARD', index: currentIndex });
+      categorized.standard.forEach((channelKey, index) => {
         result.push({ 
-          key: channelKey, 
-          data: { channelKey, category: 'standard' }, 
-          isSectionHeader: false 
+          key: `std-${channelKey}-${index}`, 
+          data: { channelKey, category: 'standard' }
         });
+        currentIndex++;
       });
     }
 
     // Add geohash section
     if (categorized.geohash.length > 0) {
-      result.push({ 
-        key: 'geohash-header', 
-        data: { channelKey: '', category: 'geohash' }, 
-        isSectionHeader: true, 
-        sectionTitle: 'GEOHASH' 
-      });
-      categorized.geohash.forEach(channelKey => {
+      sectionInfo.push({ title: 'GEOHASH', index: currentIndex });
+      categorized.geohash.forEach((channelKey, index) => {
         result.push({ 
-          key: channelKey, 
-          data: { channelKey, category: 'geohash' }, 
-          isSectionHeader: false 
+          key: `geo-${channelKey}-${index}`, 
+          data: { channelKey, category: 'geohash' }
         });
+        currentIndex++;
       });
     }
 
-    return result;
+    return { virtualizedChannels: result, sections: sectionInfo };
   }, [categorized, viewMode, countryCategorized]);
 
   const renderChannelItem = (data: { channelKey: string; category: 'pinned' | 'geohash' | 'standard' | 'country'; countryName?: string }) => {
@@ -193,6 +170,7 @@ export function ChannelList({
   return (
     <List
       items={virtualizedChannels}
+      sections={sections}
       renderItem={renderChannelItem}
       renderSectionHeader={renderChannelSectionHeader}
       headerTitle={headerContent}
@@ -204,6 +182,7 @@ export function ChannelList({
       }
       estimateItemSize={50}
       borderDirection="right"
+      resetKey={`${selectedChannel}-${viewMode}`}
     />
   );
 }

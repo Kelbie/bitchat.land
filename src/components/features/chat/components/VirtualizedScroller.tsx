@@ -1,18 +1,28 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { LegendList } from "@legendapp/list";
 
-interface VirtualizedScrollerProps {
-  items: any[];
-  renderItem: (item: any, index: number) => React.ReactNode;
+interface VirtualizedScrollerProps<T> {
+  items: T[];
+  renderItem: (item: T, index: number) => React.ReactNode;
   estimatedItemSize?: number;
   overscan?: number;
   className?: string;
   onScroll?: () => void;
   maintainScrollPosition?: boolean;
   scrollToBottomOnNewItems?: boolean;
+  keyExtractor?: (item: T, index: number) => string;
+  maintainVisibleContentPosition?: boolean;
+  getItemType?: (item: T, index: number) => string | undefined;
+  getEstimatedItemSize?: (index: number, item: T, type: string | undefined) => number;
+  itemsAreEqual?: (prev: T, next: T, index: number, data: readonly T[]) => boolean;
+  enableAverages?: boolean;
+  recycleItems?: boolean;
+  maintainScrollAtEnd?: boolean | { onLayout?: boolean; onItemLayout?: boolean; onDataChange?: boolean };
+  resetKey?: string | number;  // Add this to force remount on channel change
+  ItemSeparatorComponent?: React.ComponentType<{ leadingItem: T }>;
 }
 
-export function VirtualizedScroller({
+export function VirtualizedScroller<T>({
   items,
   renderItem,
   estimatedItemSize = 180,
@@ -20,42 +30,48 @@ export function VirtualizedScroller({
   className = "",
   onScroll,
   maintainScrollPosition = false,
-  scrollToBottomOnNewItems = true
-}: VirtualizedScrollerProps) {
+  scrollToBottomOnNewItems = true,
+  keyExtractor,
+  maintainVisibleContentPosition = true,
+  getItemType,
+  getEstimatedItemSize,
+  itemsAreEqual,
+  enableAverages = true,
+  recycleItems = false,
+  maintainScrollAtEnd = false,
+  resetKey,  // Add this parameter
+  ItemSeparatorComponent,
+}: VirtualizedScrollerProps<T>) {
   const parentRef = useRef<HTMLDivElement>(null);
+  const scrollElRef = useRef<HTMLElement | null>(null);
+  const [useInternalScroll, setUseInternalScroll] = useState(false);
   const [isUserAtBottom, setIsUserAtBottom] = useState(true);
   const [lastItemCount, setLastItemCount] = useState(0);
   const scrollTimeoutRef = useRef<NodeJS.Timeout>();
   const isScrollingToBottomRef = useRef(false);
-  
-  // Track if we're in the middle of adding new items
-  const [isAddingItems, setIsAddingItems] = useState(false);
-
-  // LegendList handles measurement internally
+  const lastScrollHeightRef = useRef<number>(0);
 
   // Check if user is at bottom with proper threshold
   const checkIsAtBottom = useCallback(() => {
-    const element = parentRef.current;
+    const element = scrollElRef.current;
     if (!element) return true;
 
     const { scrollTop, scrollHeight, clientHeight } = element;
-    const threshold = 50; // Pixels from bottom
+    const threshold = 50;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
     return distanceFromBottom <= threshold;
   }, []);
 
   // Reliable scroll to bottom function
   const scrollToBottom = useCallback(() => {
-    const element = parentRef.current;
+    const element = scrollElRef.current;
     if (!element) return;
 
     isScrollingToBottomRef.current = true;
     
-    // Use requestAnimationFrame to ensure DOM is updated
     requestAnimationFrame(() => {
       element.scrollTop = element.scrollHeight;
       
-      // Double-check after a brief delay in case content is still loading
       setTimeout(() => {
         if (element.scrollTop < element.scrollHeight - element.clientHeight - 10) {
           element.scrollTop = element.scrollHeight;
@@ -65,63 +81,62 @@ export function VirtualizedScroller({
     });
   }, []);
 
-  // Handle scroll events with less aggressive debouncing
+  // Handle scroll events
   const handleScroll = useCallback(() => {
-    // Don't update state if we're programmatically scrolling
     if (isScrollingToBottomRef.current) return;
     
-    // Clear any pending scroll timeouts
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
     }
 
-    // Less aggressive debounce for smoother scroll feel
     scrollTimeoutRef.current = setTimeout(() => {
       const newIsAtBottom = checkIsAtBottom();
       if (newIsAtBottom !== isUserAtBottom) {
         setIsUserAtBottom(newIsAtBottom);
       }
       onScroll?.();
-    }, 100); // Increased from 50ms to 100ms
+    }, 100);
   }, [checkIsAtBottom, isUserAtBottom, onScroll]);
 
-  // Track when items are being added
+  // Track last count for scroll-to-bottom logic
   useEffect(() => {
-    const currentCount = items.length;
-    const previousCount = lastItemCount;
-    
-    if (currentCount > previousCount) {
-      setIsAddingItems(true);
-      
-      // Clear the adding items flag after content settles
-      setTimeout(() => {
-        setIsAddingItems(false);
-      }, 100);
-    }
-    
-    setLastItemCount(currentCount);
-  }, [items.length, lastItemCount]);
+    setLastItemCount(items.length);
+  }, [items.length]);
 
-  // Handle new items when scroll-to-bottom is enabled (less aggressive)
+  // Maintain scroll position when not at bottom and list grows
+  useEffect(() => {
+    if (!maintainScrollPosition) return;
+    const element = scrollElRef.current;
+    if (!element) return;
+
+    const previousHeight = lastScrollHeightRef.current || element.scrollHeight;
+    requestAnimationFrame(() => {
+      const newHeight = element.scrollHeight;
+      const heightDelta = newHeight - previousHeight;
+      if (!isUserAtBottom && heightDelta !== 0) {
+        element.scrollTop = element.scrollTop + heightDelta;
+      }
+      lastScrollHeightRef.current = element.scrollHeight;
+    });
+  }, [items, maintainScrollPosition, isUserAtBottom]);
+
+  // Handle new items when scroll-to-bottom is enabled
   useEffect(() => {
     if (!scrollToBottomOnNewItems) return;
     
     const currentCount = items.length;
     const previousCount = lastItemCount;
     
-    // Only scroll if we have new items and user was at bottom
     if (currentCount > previousCount && previousCount > 0 && isUserAtBottom) {
-      // Less aggressive approach - just scroll, don't force remeasure every time
       scrollToBottom();
       
-      // Single delayed scroll after content settles
       setTimeout(() => {
         scrollToBottom();
       }, 150);
     }
   }, [items.length, isUserAtBottom, scrollToBottomOnNewItems, scrollToBottom, lastItemCount]);
 
-  // Handle images and dynamic content loading (less aggressive)
+  // Handle images and dynamic content loading
   useEffect(() => {
     const handleContentLoad = () => {
       if (isUserAtBottom && scrollToBottomOnNewItems) {
@@ -131,7 +146,6 @@ export function VirtualizedScroller({
       }
     };
 
-    // Monitor images for load events only
     const element = parentRef.current;
     if (!element) return;
 
@@ -154,11 +168,38 @@ export function VirtualizedScroller({
 
   // Setup scroll listener
   useEffect(() => {
-    const element = parentRef.current;
+    const root = parentRef.current;
+    if (!root) return;
+
+    const isScrollable = (el: HTMLElement) => {
+      const cs = getComputedStyle(el);
+      const canScrollY = cs.overflowY === 'auto' || cs.overflowY === 'scroll';
+      const canScrollX = cs.overflowX === 'auto' || cs.overflowX === 'scroll';
+      const overflowsY = el.scrollHeight > el.clientHeight + 1;
+      const overflowsX = el.scrollWidth > el.clientWidth + 1;
+      return (canScrollY && overflowsY) || (canScrollX && overflowsX);
+    };
+
+    let cur: HTMLElement | null = root.parentElement as HTMLElement | null;
+    let found: HTMLElement | null = null;
+    while (cur && cur !== document.body) {
+      if (isScrollable(cur)) { found = cur; break; }
+      cur = cur.parentElement as HTMLElement | null;
+    }
+
+    if (found) {
+      scrollElRef.current = found;
+      setUseInternalScroll(false);
+    } else {
+      scrollElRef.current = root;
+      setUseInternalScroll(true);
+    }
+    const element = scrollElRef.current;
     if (!element) return;
 
     element.addEventListener("scroll", handleScroll, { passive: true });
-    
+    lastScrollHeightRef.current = element.scrollHeight;
+
     return () => {
       element.removeEventListener("scroll", handleScroll);
       if (scrollTimeoutRef.current) {
@@ -167,41 +208,66 @@ export function VirtualizedScroller({
     };
   }, [handleScroll]);
 
-  // Initial scroll to bottom
+  // Initial scroll to bottom when enabled
   useEffect(() => {
     if (items.length > 0 && scrollToBottomOnNewItems) {
       setTimeout(() => {
         scrollToBottom();
       }, 100);
     }
-  }, []); // Only run once on mount
+  }, [items.length, scrollToBottomOnNewItems, scrollToBottom]);
 
   return (
-    <div className={`flex-1 relative ${className}`}>
+    <div className={`flex-1 relative ${className} h-full`}>
       <div
         ref={parentRef}
-        className="h-full overflow-auto"
+        className="h-full flex-1"
         style={{ 
           contain: "strict", 
           overflowAnchor: "none",
-          // Smoother scroll behavior
-          scrollBehavior: "auto", // Always use auto for better performance
+          scrollBehavior: "auto",
+          overflowY: useInternalScroll ? 'auto' : 'hidden',
+          overflowX: useInternalScroll ? 'auto' : 'hidden',
         }}
       >
         <LegendList
+          key={resetKey ? `list-${resetKey}` : undefined}  // Force remount when this changes
+          style={{ 
+            overflow: 'visible', 
+            height: '100%', 
+            display: 'flex',
+            flexDirection: 'column',
+            width: '100%',
+            position: 'relative'
+          }}
           data={items}
           estimatedItemSize={estimatedItemSize}
           overscan={overscan}
-          keyExtractor={(item, index) => (item?.id ? String(item.id) : `item-${index}`)}
-          renderItem={({ item, index }) => (
-            <div style={{ boxSizing: "border-box" }}>
+          maintainVisibleContentPosition={maintainVisibleContentPosition}
+          suggestEstimatedItemSize={true}
+          enableAverages={enableAverages}
+          recycleItems={recycleItems}
+          maintainScrollAtEnd={maintainScrollAtEnd}
+          getItemType={getItemType}
+          getEstimatedItemSize={getEstimatedItemSize}
+          itemsAreEqual={itemsAreEqual}
+          ItemSeparatorComponent={ItemSeparatorComponent}
+          keyExtractor={(item, index) => (keyExtractor ? keyExtractor(item, index) : `item-${index}`)}
+          renderItem={({ item, index }: { item: T; index: number }) => (
+            <div 
+              style={{ 
+                width: '100%', 
+                minHeight: 0,
+                position: 'relative',
+                isolation: 'isolate'
+              }}
+            >
               {renderItem(item, index)}
             </div>
           )}
         />
       </div>
 
-      {/* Scroll to bottom button - only show if not maintaining scroll position */}
       {!maintainScrollPosition && !isUserAtBottom && (
         <button
           onClick={scrollToBottom}

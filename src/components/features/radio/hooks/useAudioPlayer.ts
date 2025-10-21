@@ -1,6 +1,5 @@
-import { useState, useRef, useCallback } from 'react';
-import { Station } from '@luigivampa/radio-browser-api';
-import { RadioPlayerState } from '@/types/app';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { RadioPlayerState, StationWithDistance } from '@/types/app';
 
 export const useAudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -19,7 +18,55 @@ export const useAudioPlayer = () => {
     isLive: true
   });
 
-  const play = useCallback(async (station: Station) => {
+  const startBufferRecording = useCallback((audio: HTMLAudioElement) => {
+    try {
+      // Create MediaRecorder to capture audio stream (if supported)
+      type WithCapture = HTMLMediaElement & { captureStream?: () => MediaStream };
+      const withCapture = audio as WithCapture;
+      const capture = withCapture.captureStream;
+      if (!capture) {
+        throw new Error('captureStream not supported');
+      }
+      const stream = capture.call(audio);
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+      
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      bufferStartTimeRef.current = Date.now();
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+          
+          // Keep only last 60 seconds of audio
+          const currentTime = Date.now();
+          const bufferAge = currentTime - bufferStartTimeRef.current;
+          
+          if (bufferAge > 60000) { // 60 seconds
+            // Remove old chunks to maintain 60-second buffer
+            const chunksToRemove = Math.floor((bufferAge - 60000) / 1000);
+            audioChunksRef.current = audioChunksRef.current.slice(chunksToRemove);
+            bufferStartTimeRef.current = currentTime - 60000;
+          }
+          
+          // Update buffer available time
+          setPlayerState(prev => ({
+            ...prev,
+            bufferAvailable: Math.min(60, bufferAge / 1000)
+          }));
+        }
+      };
+      
+      mediaRecorder.start(1000); // Capture every second
+    } catch {
+      console.warn('Buffer recording not supported');
+      setPlayerState(prev => ({ ...prev, bufferAvailable: 0 }));
+    }
+  }, []);
+
+  const play = useCallback(async (station: StationWithDistance) => {
     try {
       setPlayerState(prev => ({ ...prev, loading: true, error: null }));
       
@@ -28,6 +75,11 @@ export const useAudioPlayer = () => {
         audioRef.current.pause();
         audioRef.current = null;
       }
+      if (mediaRecorderRef.current) {
+        try { mediaRecorderRef.current.stop(); } catch { /* noop */ }
+        mediaRecorderRef.current = null;
+      }
+      audioChunksRef.current = [];
       
       // Create new audio element
       const audio = new Audio(station.urlResolved || station.url);
@@ -74,7 +126,7 @@ export const useAudioPlayer = () => {
       audioRef.current = audio;
       await audio.play();
       
-    } catch (error) {
+    } catch {
       setPlayerState(prev => ({
         ...prev,
         loading: false,
@@ -82,49 +134,7 @@ export const useAudioPlayer = () => {
         isPlaying: false
       }));
     }
-  }, [playerState.volume]);
-
-  const startBufferRecording = useCallback((audio: HTMLAudioElement) => {
-    try {
-      // Create MediaRecorder to capture audio stream
-      const stream = audio.captureStream();
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
-      
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-      bufferStartTimeRef.current = Date.now();
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-          
-          // Keep only last 60 seconds of audio
-          const currentTime = Date.now();
-          const bufferAge = currentTime - bufferStartTimeRef.current;
-          
-          if (bufferAge > 60000) { // 60 seconds
-            // Remove old chunks to maintain 60-second buffer
-            const chunksToRemove = Math.floor((bufferAge - 60000) / 1000);
-            audioChunksRef.current = audioChunksRef.current.slice(chunksToRemove);
-            bufferStartTimeRef.current = currentTime - 60000;
-          }
-          
-          // Update buffer available time
-          setPlayerState(prev => ({
-            ...prev,
-            bufferAvailable: Math.min(60, bufferAge / 1000)
-          }));
-        }
-      };
-      
-      mediaRecorder.start(1000); // Capture every second
-    } catch (error) {
-      console.warn('Buffer recording not supported:', error);
-      setPlayerState(prev => ({ ...prev, bufferAvailable: 0 }));
-    }
-  }, []);
+  }, [playerState.volume, startBufferRecording]);
 
   const stop = useCallback(() => {
     if (audioRef.current) {
@@ -132,7 +142,7 @@ export const useAudioPlayer = () => {
       audioRef.current = null;
     }
     if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
+      try { mediaRecorderRef.current.stop(); } catch { /* noop */ }
       mediaRecorderRef.current = null;
     }
     audioChunksRef.current = [];
@@ -147,6 +157,23 @@ export const useAudioPlayer = () => {
       bufferAvailable: 0,
       isLive: true
     }));
+  }, []);
+
+  // Ensure cleanup on unmount to prevent multiple streams
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (mediaRecorderRef.current) {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch { /* noop */ }
+        mediaRecorderRef.current = null;
+      }
+      audioChunksRef.current = [];
+    };
   }, []);
 
   const setVolume = useCallback((volume: number) => {

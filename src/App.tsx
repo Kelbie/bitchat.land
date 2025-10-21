@@ -1017,6 +1017,7 @@ export default function App({
                   searchText={searchText}
                   filteredEvents={filteredEvents}
                   theme={theme}
+                  selectedChannel={selectedChannelKey}
                 />
               </div>
             </ChatPage>
@@ -1047,6 +1048,7 @@ export default function App({
                   searchText={searchText}
                   filteredEvents={filteredEvents}
                   theme={theme}
+                  selectedChannel={selectedChannelKey}
                 />
               </div>
             </RadioPageComponent>

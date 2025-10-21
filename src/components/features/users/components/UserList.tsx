@@ -12,15 +12,15 @@ export function UserList({
   searchText,
   filteredEvents,
   theme = "matrix",
-}: UserListProps) {
+  selectedChannel,
+}: UserListProps & { selectedChannel?: string }) {
   const { filteredUsers } = useUserFiltering(users, searchText, filteredEvents);
 
   // Create list items for the common List component
   const listItems = useMemo((): ListItem<UserMeta>[] => {
     return filteredUsers.map(user => ({
-      key: user.pubkey,
+      key: user.pubkey, // Use pubkey as the key for users
       data: user,
-      isSectionHeader: false,
     }));
   }, [filteredUsers]);
 
@@ -49,6 +49,7 @@ export function UserList({
       emptyMessage={!searchText ? "select a channel to see users" : "no users found"}
       estimateItemSize={45}
       borderDirection="left"
+      resetKey={`${selectedChannel || 'no-channel'}-${searchText}`}
     />
   );
 }

@@ -15,10 +15,10 @@ interface StationCardProps {
 const variants = cva("", {
   variants: {
     type: {
-      card: "flex items-center gap-4 p-3 rounded-md cursor-pointer group transition-colors",
+      card: "flex items-center gap-4 p-3 rounded-md cursor-pointer group transition-colors overflow-hidden",
       statusIndicator: "w-2 h-2 rounded-full flex-shrink-0",
-      stationName: "font-medium truncate",
-      stationInfo: "text-sm truncate",
+      stationName: "font-medium break-words whitespace-normal",
+      stationInfo: "text-sm break-words whitespace-normal",
       distance: "text-sm",
       badge: "text-xs px-2 py-1 rounded",
       languageBadge: "text-xs px-2 py-1 rounded",

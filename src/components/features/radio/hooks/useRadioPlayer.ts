@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAudioPlayer } from "./useAudioPlayer";
+import { useRadioPlayerContext } from "../context/RadioPlayerContext";
 import { RadioService } from "@/services/radioService";
 import { StationWithDistance, PlayerState, PlayerActions } from "@/types/app";
 
@@ -8,7 +8,7 @@ const radioService = new RadioService();
 export function useRadioPlayer(stations: StationWithDistance[]) {
   const [currentStation, setCurrentStation] = useState<StationWithDistance | null>(null);
   const [currentStationIndex, setCurrentStationIndex] = useState(0);
-  const audioPlayer = useAudioPlayer();
+  const audioPlayer = useRadioPlayerContext();
 
   const handleStationPlay = async (station: StationWithDistance) => {
     try {
