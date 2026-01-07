@@ -53,6 +53,10 @@ export class GeoRelayDirectory {
    * Returns up to `count` relay URLs (wss://) closest to the geohash center.
    */
   closestRelays(toGeohash: string, count: number = 5): string[] {
+    // Match Android: return empty list for empty/invalid geohash
+    if (!toGeohash || toGeohash.length === 0) {
+      return [];
+    }
     const center = this.decodeCenter(toGeohash);
     return this.closestRelaysByCoords(center.lat, center.lon, count);
   }
@@ -63,7 +67,8 @@ export class GeoRelayDirectory {
   closestRelaysByCoords(toLat: number, toLon: number, count: number = 5): string[] {
     if (this.entries.length === 0) return [];
     
-    const sorted = this.entries
+    // Create a copy to avoid mutating the original array (matches Android behavior)
+    const sorted = [...this.entries]
       .sort((a, b) => {
         const distA = this.haversineKm(toLat, toLon, a.lat, a.lon);
         const distB = this.haversineKm(toLat, toLon, b.lat, b.lon);
@@ -173,9 +178,14 @@ export class GeoRelayDirectory {
 
   /**
    * Decodes a geohash into the center latitude/longitude of its bounding box.
-   * Mirrors the Swift implementation.
+   * Mirrors the Android/Swift implementation.
    */
   private decodeCenter(geohash: string): { lat: number; lon: number } {
+    // Match Android: return default for empty geohash
+    if (!geohash || geohash.length === 0) {
+      return { lat: 0, lon: 0 };
+    }
+    
     const latInterval: [number, number] = [-90.0, 90.0];
     const lonInterval: [number, number] = [-180.0, 180.0];
 

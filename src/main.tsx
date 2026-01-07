@@ -5,16 +5,19 @@ import ParentSize from '@visx/responsive/lib/components/ParentSize';
 
 import Example from './App';
 import { RadioPlayerProvider } from '@/components/features/radio';
+import { AppLoader } from '@/components/layout';
 import './index.css';
 
 const root = createRoot(document.getElementById('root')!);
 
 root.render(
   <BrowserRouter>
-    <RadioPlayerProvider>
-      <ParentSize>
-        {({ width, height }) => <Example width={width} height={height} />}
-      </ParentSize>
-    </RadioPlayerProvider>
+    <AppLoader theme="matrix" minLoadingTime={2000}>
+      <RadioPlayerProvider>
+        <ParentSize>
+          {({ width, height }) => <Example width={width} height={height} />}
+        </ParentSize>
+      </RadioPlayerProvider>
+    </AppLoader>
   </BrowserRouter>,
 );

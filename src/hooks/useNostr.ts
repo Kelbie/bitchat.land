@@ -5,6 +5,7 @@ import { NostrEvent, GeohashActivity } from "@/types";
 import { NOSTR_RELAYS } from "@/constants/projections";
 import { findMatchingGeohash } from "@/utils/geohashUtils";
 import { GeoRelayDirectory } from "@/utils/geoRelayDirectory";
+import { prefetchService, PrefetchedEvent } from "@/services/prefetchService";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -295,7 +296,7 @@ class NostrConnection {
     const unsubscribeMain = this.relayPool.subscribe(
       [{
         kinds: [20000, 23333], 
-        since: Math.floor(Date.now() / 1000) - (60 * 60)
+        since: Math.floor(Date.now() / 1000) - (24 * 60 * 60) // 24 hour lookback
       }],
       relays,
       (event: NostrEventOriginal, isAfterEose: boolean, relayURL?: string) => {
@@ -601,6 +602,9 @@ class NostrConnection {
       this._isEnabled = true;
       this.createRelayPool();
 
+      // Load prefetched events first
+      this.loadPrefetchedEvents();
+
       const initialRelays = this.getInitialRelays();
       this.relays = initialRelays;
       this.updateStatus();
@@ -614,6 +618,127 @@ class NostrConnection {
       this._isConnected = false;
       this._status = "Connection failed";
       this.onStateChange?.();
+    }
+  }
+
+  /**
+   * Load prefetched events from the prefetch service into the events array
+   */
+  private loadPrefetchedEvents(): void {
+    try {
+      // Check if prefetch service has completed
+      if (!prefetchService.isComplete()) {
+        return;
+      }
+
+      const prefetchedEvents = prefetchService.getEvents();
+      
+      if (prefetchedEvents.length === 0) {
+        return;
+      }
+
+      console.log(`Loading ${prefetchedEvents.length} prefetched events`);
+
+      // Process each prefetched event
+      for (const prefetched of prefetchedEvents) {
+        const event = prefetched.event;
+        
+        // Skip if already processed
+        if (this._events.some(e => e.id === event.id)) {
+          continue;
+        }
+
+        // Process the event to update stats and add to array
+        this.processPrefetchedEvent(event, prefetched.relayUrl);
+      }
+
+      this.onStateChange?.();
+    } catch (error) {
+      console.warn("Failed to load prefetched events:", error);
+    }
+  }
+
+  /**
+   * Process a prefetched event (similar to handleEvent but without animation)
+   */
+  private processPrefetchedEvent(event: NostrEventOriginal, relayURL: string): void {
+    const eventGeohash = getTagValue(event, "g");
+    const eventGroup = getTagValue(event, "d");
+    const eventKind = event.kind as number | undefined;
+
+    // Validate events based on kind rules
+    if (eventKind === 20000 && eventGeohash) {
+      const gh = eventGeohash.toLowerCase();
+      if (!VALID_GEOHASH_CHARS.test(gh)) {
+        return;
+      }
+    }
+
+    const locationIdentifier = eventGeohash || eventGroup;
+    if (!locationIdentifier) return;
+
+    // Create enhanced event with relay URL
+    const enhancedEvent: NostrEvent = {
+      ...event,
+      relayUrl: relayURL || undefined
+    };
+
+    // Handle geohash events
+    if (eventGeohash) {
+      // Update consolidated geohash stats
+      const currentStats = this._geohashStats.get(eventGeohash) || {
+        geohash: eventGeohash,
+        lastActivity: 0,
+        eventCount: 0,
+        totalEvents: 0
+      };
+
+      this._geohashStats.set(eventGeohash, {
+        ...currentStats,
+        totalEvents: currentStats.totalEvents + 1
+      });
+
+      // Find matching geohash for activity tracking
+      const matchingGeohash = findMatchingGeohash(
+        eventGeohash,
+        this.searchGeohash,
+        this.currentGeohashes
+      );
+
+      if (matchingGeohash) {
+        const matchingStats = this._geohashStats.get(matchingGeohash) || {
+          geohash: matchingGeohash,
+          lastActivity: 0,
+          eventCount: 0,
+          totalEvents: 0
+        };
+
+        this._geohashStats.set(matchingGeohash, {
+          ...matchingStats,
+          lastActivity: event.created_at * 1000,
+          eventCount: matchingStats.eventCount + 1,
+          totalEvents: eventGeohash === matchingGeohash ?
+            matchingStats.totalEvents : matchingStats.totalEvents + 1
+        });
+      }
+    } else if (eventGroup) {
+      // Update consolidated geohash stats for groups
+      const currentStats = this._geohashStats.get(eventGroup) || {
+        geohash: eventGroup,
+        lastActivity: 0,
+        eventCount: 0,
+        totalEvents: 0
+      };
+
+      this._geohashStats.set(eventGroup, {
+        ...currentStats,
+        totalEvents: currentStats.totalEvents + 1
+      });
+    }
+
+    // Add event without duplicates
+    if (!this._events.some(existingEvent => existingEvent.id === enhancedEvent.id)) {
+      this._events.push(enhancedEvent);
     }
   }
 

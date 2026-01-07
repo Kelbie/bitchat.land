@@ -86,6 +86,11 @@ export const FloatingWalletIcon: React.FC<FloatingWalletIconProps> = ({
 
   const themeClasses = getThemeClasses();
 
+  // Hide wallet completely when balance is 0
+  if (!isLoading && totalBalance === 0) {
+    return null;
+  }
+
   return (
     <button
       onClick={onClick}
