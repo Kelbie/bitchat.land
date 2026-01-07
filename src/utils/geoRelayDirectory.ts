@@ -23,6 +23,7 @@ export class GeoRelayDirectory {
     // Initialize ready promise
     this.readyPromise = this.loadLocalEntries().then(entries => {
       this.entries = entries;
+      console.log(`[GeoRelayDirectory] Initial load complete: ${entries.length} relay entries`);
     });
     // Fire-and-forget remote refresh if stale
     this.prefetchIfNeeded();
@@ -37,9 +38,18 @@ export class GeoRelayDirectory {
 
   /**
    * Wait for the directory to be ready (data loaded)
+   * If initial load returned empty, also wait for remote fetch
    */
   async waitForReady(): Promise<void> {
-    return this.readyPromise;
+    await this.readyPromise;
+    
+    // If still no entries, try fetching from remote and wait
+    if (this.entries.length === 0) {
+      console.log(`[GeoRelayDirectory] No entries after initial load, fetching from remote...`);
+      await this.fetchRemote();
+    }
+    
+    console.log(`[GeoRelayDirectory] Ready with ${this.entries.length} relay entries`);
   }
 
   /**
@@ -55,9 +65,11 @@ export class GeoRelayDirectory {
   closestRelays(toGeohash: string, count: number = 5): string[] {
     // Match Android: return empty list for empty/invalid geohash
     if (!toGeohash || toGeohash.length === 0) {
+      console.warn(`[GeoRelayDirectory] closestRelays called with empty geohash`);
       return [];
     }
     const center = this.decodeCenter(toGeohash);
+    console.log(`[GeoRelayDirectory] Geohash "${toGeohash}" decoded to center: lat=${center.lat.toFixed(4)}, lon=${center.lon.toFixed(4)}`);
     return this.closestRelaysByCoords(center.lat, center.lon, count);
   }
 

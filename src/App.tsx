@@ -14,8 +14,9 @@ import {
 
 import { GeoMercatorProps } from "@/types";
 import { useDrag, useZoom } from "./components/features/map";
-import { useNostr } from "@/hooks";
+import { useGeoRelays } from "@/hooks";
 import { getPow } from "nostr-tools/nip13";
+// Event store is available via: import { useEventStore, useEventsByGeohash, useCountsByChannel } from "@/stores";
 import { RecentEvents, ChatInput } from "./components/features/chat";
 import { Map, ProjectionSelector, Connections } from "./components/features/map";
 import { MobileHeader, MarqueeBanner } from "./components/layout";
@@ -56,6 +57,7 @@ import { AdminPage } from "./pages/AdminPage";
 import { MapPage } from "./pages/MapPage";
 import { ChatPage } from "./pages/ChatPage";
 import { RadioPage as RadioPageComponent } from "./pages/RadioPage";
+import { BoundariesGlobe } from "./components/features/boundaries";
 
 // Valid geohash characters (base32 without 'a', 'i', 'l', 'o')
 const VALID_GEOHASH_CHARS = /^[0-9bcdefghjkmnpqrstuvwxyz]+$/;
@@ -106,9 +108,16 @@ export default function App({
     const path = location.pathname;
     if (path === "/") return "map";
     if (path === "/chat") return "chat";
+    // Country routes like /ug are map views (boundaries explorer)
+    if (path.match(/^\/[a-z]{2}$/i)) return "map";
     if (path === "/radio") return "radio";
     if (path === "/admin") return "admin";
     return "map"; // default
+  }, [location.pathname]);
+  
+  // Check if we're on a country-specific boundaries route (e.g., /ug)
+  const isCountryRoute = useMemo(() => {
+    return location.pathname.match(/^\/[a-z]{2}$/i) !== null;
   }, [location.pathname]);
 
   // Profile state using React state with localStorage initialization
@@ -117,6 +126,9 @@ export default function App({
   const [showFavoritesModal, setShowFavoritesModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [pinnedChannels, setPinnedChannels] = useState<string[]>([]);
+  
+  // Boundaries explorer mode - toggle between geohash map and boundaries explorer
+  const [boundariesMode, setBoundariesMode] = useState(false);
 
   // Search and zoom state
   const [searchText, setSearchText] = useState("");
@@ -247,7 +259,7 @@ export default function App({
       ? generateLocalizedGeohashes(primarySearchGeohash.toLowerCase())
       : generateGeohashes(geohashDisplayPrecision, null);
 
-  // Initialize Nostr with animation callback
+  // Initialize GeoRelays with animation callback
   const {
     geohashActivity,
     nostrEnabled,
@@ -255,12 +267,10 @@ export default function App({
     allEventsByGeohash,
     toggleNostr,
     connectionInfo
-  } = useNostr(
-    searchGeohash,
-    currentGeohashes,
-    animateGeohash,
-    selectedChannelKey
-  );
+  } = useGeoRelays({
+    primaryGeohash: primarySearchGeohash || undefined,
+    onGeohashAnimate: animateGeohash,
+  });
 
   // Apply PoW filtering but keep all events stored
   const filteredEvents = useMemo(() => {
@@ -269,7 +279,7 @@ export default function App({
     return allStoredEvents.filter((ev) => getPow(ev.id) >= settings.powDifficulty);
   }, [allStoredEvents, settings.powEnabled, settings.powDifficulty]);
 
-  // Build users list from events - moved here after useNostr hook
+  // Build users list from events - computed after useGeoRelays hook
   const users = useMemo<UserMeta[]>(() => {
     // Guard against undefined filteredEvents
     if (!filteredEvents || filteredEvents.length === 0) {
@@ -888,38 +898,46 @@ export default function App({
           {/* Map Route */}
           <Route path="/" element={
             <MapPage>
-              <section
-                aria-label="Interactive World Map with Geohash Heatmap"
-                className="w-full h-full"
-              >
-                <Map
-                  filteredEvents={filteredEvents}
-                  width={mapWidth || 800}
-                  height={mapHeight || 600}
-                  projection={projection || "natural_earth"}
-                  currentScale={currentScale || 1}
-                  centerX={centerX || 0}
-                  centerY={centerY || 0}
-                  isDragging={isDragging || false}
-                  hasDragged={hasDragged || false}
-                  events={!!events}
-                  onMapClick={handleMapClick}
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMoveWithDrag}
-                  onMouseUp={handleMouseUp}
-                  currentGeohashes={currentGeohashes || []}
-                  geohashActivity={geohashActivity || {}}
-                  allEventsByGeohash={allEventsByGeohash || {}}
-                  animatingGeohashes={animatingGeohashes || []}
-                  showSingleCharGeohashes={showSingleCharGeohashes || false}
-                  showGeohashText={showGeohashText || false}
-                  effectivePrecision={effectivePrecision || 1}
-                  shouldShowLocalizedPrecision={!!shouldShowLocalizedPrecision}
-                  searchText={searchText || ""}
-                  onGeohashClick={handleGeohashClickForSearch}
-                  theme={theme || "matrix"}
+              {boundariesMode ? (
+                <BoundariesGlobe
+                  theme={theme}
+                  onExit={() => setBoundariesMode(false)}
+                  onGeohashSelect={handleGeohashClickForSearch}
                 />
-              </section>
+              ) : (
+                <section
+                  aria-label="Interactive World Map with Geohash Heatmap"
+                  className="w-full h-full"
+                >
+                  <Map
+                    filteredEvents={filteredEvents}
+                    width={mapWidth || 800}
+                    height={mapHeight || 600}
+                    projection={projection || "natural_earth"}
+                    currentScale={currentScale || 1}
+                    centerX={centerX || 0}
+                    centerY={centerY || 0}
+                    isDragging={isDragging || false}
+                    hasDragged={hasDragged || false}
+                    events={!!events}
+                    onMapClick={handleMapClick}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMoveWithDrag}
+                    onMouseUp={handleMouseUp}
+                    currentGeohashes={currentGeohashes || []}
+                    geohashActivity={geohashActivity || {}}
+                    allEventsByGeohash={allEventsByGeohash || {}}
+                    animatingGeohashes={animatingGeohashes || []}
+                    showSingleCharGeohashes={showSingleCharGeohashes || false}
+                    showGeohashText={showGeohashText || false}
+                    effectivePrecision={effectivePrecision || 1}
+                    shouldShowLocalizedPrecision={!!shouldShowLocalizedPrecision}
+                    searchText={searchText || ""}
+                    onGeohashClick={handleGeohashClickForSearch}
+                    theme={theme || "matrix"}
+                  />
+                </section>
+              )}
             </MapPage>
           } />
 
@@ -1056,28 +1074,54 @@ export default function App({
 
           {/* Admin Route */}
           <Route path="/admin" element={<AdminPage theme={"material"} />} />
+
+          {/* Country-specific routes - auto-zoom to country */}
+          <Route path="/ug" element={
+            <MapPage>
+              <BoundariesGlobe
+                theme={theme}
+                initialCountry="UG"
+                onExit={() => navigate('/')}
+                onGeohashSelect={handleGeohashClickForSearch}
+              />
+            </MapPage>
+          } />
         </Routes>
       </main>
 
-      {/* Connections Panel - Top left on map view */}
-      {activeView === "map" && (
-        <CornerOverlay position="bottom-right" theme={theme}>
-          <Connections
-            connectionInfo={connectionInfo}
-            theme={theme}
-            onToggleNostr={toggleNostr}
+      {/* Connections Panel - Hidden (user preference) */}
+      {/* <CornerOverlay position="bottom-right" theme={theme}>
+        <Connections
+          connectionInfo={connectionInfo}
+          theme={theme}
+          onToggleNostr={toggleNostr}
+        />
+      </CornerOverlay> */}
 
-          />
-        </CornerOverlay>
-      )}
-
-      {/* Projection Selector - Only show on map view */}
-      {activeView === "map" && (
+      {/* Projection Selector - Only show on map view when not in boundaries mode */}
+      {activeView === "map" && !boundariesMode && !isCountryRoute && (
         <ProjectionSelector
           projection={projection}
           onSelect={setProjection}
           theme={theme}
         />
+      )}
+
+      {/* Boundaries Mode Toggle - Only show on map view when not in boundaries mode */}
+      {activeView === "map" && !boundariesMode && !isCountryRoute && (
+        <div className="fixed top-20 right-4 z-50">
+          <button
+            onClick={() => setBoundariesMode(true)}
+            className={`px-4 py-2 rounded-lg font-medium text-sm transition-all shadow-lg ${
+              theme === "matrix"
+                ? "bg-gray-900 text-green-400 border border-green-500/30 hover:bg-gray-800 hover:border-green-500/50"
+                : "bg-white text-blue-600 border border-blue-200 hover:bg-blue-50"
+            }`}
+            title="Switch to Boundaries Explorer"
+          >
+            🌍 Explore Boundaries
+          </button>
+        </div>
       )}
 
       {/* Profile Generation Modal */}

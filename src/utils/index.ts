@@ -2,6 +2,7 @@ export * from "./channelCategorization";
 export * from "./channelJoinTracker";
 export * from "./commands";
 export * from "./contentParsers";
+export * from "./countryGeohashFinder";
 export * from "./favorites";
 export * from "./geohashUtils";
 export * from "./geoRelayDirectory";

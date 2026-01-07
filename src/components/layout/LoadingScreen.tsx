@@ -80,18 +80,25 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ progress, theme = 'matrix
     <div className={`fixed inset-0 ${t.container} flex flex-col items-center justify-center z-50`}>
       <div className="flex flex-col items-center gap-6 px-6 max-w-md w-full">
         
+        {/* Logo */}
+        <div className="flex items-center gap-3">
+          <img 
+            src={`/favicon${theme === "matrix" ? ".webp" : `_${theme}.webp`}`} 
+            alt="bitchat.land" 
+            className="w-16 h-16" 
+          />
+          <h1 className={`text-3xl font-bold tracking-wide ${t.title}`}>
+            BITCHAT.LAND
+          </h1>
+        </div>
+        
+        {/* Subtitle */}
+        <p className={`text-sm ${t.subtitle}`}>
+          Loading messages from worldwide relays
+        </p>
+        
         {/* Spinner */}
         <Spinner theme={theme} />
-        
-        {/* Title */}
-        <div className="text-center">
-          <h1 className={`text-2xl font-bold uppercase tracking-wider ${t.title}`}>
-            GEOHASH RADIO
-          </h1>
-          <p className={`text-sm mt-1 ${t.subtitle}`}>
-            Loading messages from worldwide relays
-          </p>
-        </div>
         
         {/* Phase indicator */}
         <div className={`text-sm flex items-center gap-1 ${t.subtitle}`}>

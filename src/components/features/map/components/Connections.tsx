@@ -9,7 +9,7 @@ export const truncate = (value: string, options: { length: number }): string => 
   return value;
 };
 
-// Simple interface that useNostr should export
+// Simple interface for connection info from useGeoRelays
 interface ConnectionInfo {
   relays: Array<{
     url: string;

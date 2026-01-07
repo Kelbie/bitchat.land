@@ -1,0 +1,15 @@
+# Nixpacks configuration for Railway deployment
+# This ensures Bun is used as the runtime
+
+[phases.setup]
+nixPkgs = ["bun"]
+
+[phases.install]
+cmds = ["bun install"]
+
+[phases.build]
+cmds = ["bun run build"]
+
+[start]
+cmd = "bun run server/index.ts"
+

@@ -8,6 +8,18 @@ export default defineConfig({
   define: {
     __DEV__: JSON.stringify(process.env.NODE_ENV === 'development'),
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'ws://localhost:3000',
+        ws: true,
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

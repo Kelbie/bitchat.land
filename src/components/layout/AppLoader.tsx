@@ -1,45 +1,67 @@
-import React, { useState, useEffect, useCallback, ReactNode } from 'react';
-import { prefetchService, PrefetchProgress, PrefetchedEvent } from '@/services/prefetchService';
+import React, { useState, useEffect, ReactNode } from 'react';
+import { serverEventService, ServerEventServiceState, StoredEvent } from '@/services/serverEventService';
 import { LoadingScreen } from './LoadingScreen';
+import type { PrefetchProgress } from '@/services/prefetchService';
 
 interface AppLoaderProps {
   children: ReactNode;
   theme?: 'matrix' | 'material';
   /** Minimum time to show loading screen (ms) for UX */
   minLoadingTime?: number;
-  /** Skip prefetch and go directly to app */
-  skipPrefetch?: boolean;
+  /** Skip loading and go directly to app */
+  skipLoading?: boolean;
 }
 
 /**
  * AppLoader wraps the main application and handles:
- * 1. Prefetching events from georelays on initial load
- * 2. Showing a loading animation during prefetch
- * 3. Exposing prefetched events to the app via context or callbacks
+ * 1. Fetching initial events from server
+ * 2. Connecting WebSocket for live updates
+ * 3. Showing a loading animation during initial fetch
  */
 const AppLoader: React.FC<AppLoaderProps> = ({
   children,
   theme = 'matrix',
-  minLoadingTime = 2000,
-  skipPrefetch = false,
+  minLoadingTime = 1500, // Shorter since server fetch is faster
+  skipLoading = false,
 }) => {
-  const [isLoading, setIsLoading] = useState(!skipPrefetch);
-  const [progress, setProgress] = useState<PrefetchProgress>({
-    phase: 'initializing',
-    totalRelays: 0,
-    connectedRelays: 0,
-    eventsReceived: 0,
-    currentRelay: null,
-    startedAt: null,
-    completedAt: null,
-    errorMessage: null,
+  const [isLoading, setIsLoading] = useState(!skipLoading);
+  const [serverState, setServerState] = useState<ServerEventServiceState>({
+    isConnected: false,
+    isLoading: true,
+    eventCount: 0,
+    lastUpdate: null,
+    error: null,
   });
-  const [prefetchedEvents, setPrefetchedEvents] = useState<PrefetchedEvent[]>([]);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+  const [fetchComplete, setFetchComplete] = useState(false);
+
+  // Convert server state to progress format for LoadingScreen compatibility
+  const progress: PrefetchProgress = {
+    phase: serverState.error 
+      ? 'error' 
+      : serverState.isLoading 
+        ? 'fetching' 
+        : fetchComplete 
+          ? 'complete' 
+          : 'connecting',
+    totalRelays: 0, // Not applicable for server mode
+    connectedRelays: serverState.isConnected ? 1 : 0,
+    eventsReceived: serverState.eventCount,
+    currentRelay: serverState.isConnected ? 'Server WebSocket' : null,
+    startedAt: new Date(),
+    completedAt: fetchComplete ? new Date() : null,
+    errorMessage: serverState.error,
+    // New fields for geohash tracking (from updated PrefetchProgress)
+    totalGeohashes: 0,
+    completedGeohashes: 0,
+    currentGeohash: null,
+    uniqueRelaysQueried: 0,
+    eventsPerGeohash: new Map(),
+  };
 
   // Start the minimum loading time timer
   useEffect(() => {
-    if (skipPrefetch) {
+    if (skipLoading) {
       setMinTimeElapsed(true);
       return;
     }
@@ -49,68 +71,61 @@ const AppLoader: React.FC<AppLoaderProps> = ({
     }, minLoadingTime);
 
     return () => clearTimeout(timer);
-  }, [minLoadingTime, skipPrefetch]);
+  }, [minLoadingTime, skipLoading]);
 
-  // Subscribe to prefetch progress
+  // Subscribe to server state changes
   useEffect(() => {
-    if (skipPrefetch) return;
+    if (skipLoading) return;
 
-    const unsubProgress = prefetchService.onProgress((p) => {
-      setProgress(p);
-    });
-
-    const unsubComplete = prefetchService.onComplete((events) => {
-      setPrefetchedEvents(events);
-      // Store events in window for access by useNostr
-      (window as unknown as { __prefetchedEvents?: PrefetchedEvent[] }).__prefetchedEvents = events;
+    const unsubState = serverEventService.onStateChange((state) => {
+      setServerState(state);
     });
 
     return () => {
-      unsubProgress();
-      unsubComplete();
+      unsubState();
     };
-  }, [skipPrefetch]);
+  }, [skipLoading]);
 
-  // Start prefetch on mount
+  // Initialize server connection on mount
   useEffect(() => {
-    if (skipPrefetch) return;
+    if (skipLoading) return;
 
-    // Check if already prefetched
-    if (prefetchService.isComplete()) {
-      const events = prefetchService.getEvents();
-      setPrefetchedEvents(events);
-      (window as unknown as { __prefetchedEvents?: PrefetchedEvent[] }).__prefetchedEvents = events;
-      setProgress(prefetchService.getProgress());
-      return;
-    }
+    // Start fetching and connect WebSocket
+    serverEventService.initialize()
+      .then((events) => {
+        console.log(`[AppLoader] Loaded ${events.length} initial events from server`);
+        // Store events in window for access by components (backwards compatibility)
+        (window as unknown as { __serverEvents?: StoredEvent[] }).__serverEvents = events;
+        setFetchComplete(true);
+      })
+      .catch((error) => {
+        console.error('[AppLoader] Server initialization failed:', error);
+        // Still mark as complete so app can load (may work without prefetch)
+        setFetchComplete(true);
+      });
 
-    // Start prefetch - wait for EOSE from all relays
-    prefetchService.prefetch({
-      maxRelays: 50, // Limit for performance
-      timeoutMs: 60000, // 60 second timeout to allow all relays to respond
-      sinceDurationSec: 86400, // 24 hours of events
-    }).catch((error) => {
-      console.error('Prefetch failed:', error);
-    });
-  }, [skipPrefetch]);
+    // Cleanup on unmount
+    return () => {
+      // Don't disconnect - keep WebSocket alive for the app
+    };
+  }, [skipLoading]);
 
   // Determine when to show the main app
   useEffect(() => {
-    if (skipPrefetch) {
+    if (skipLoading) {
       setIsLoading(false);
       return;
     }
 
-    const isComplete = progress.phase === 'complete' || progress.phase === 'error';
-    
-    if (isComplete && minTimeElapsed) {
+    // Show app when fetch is complete and minimum time has elapsed
+    if (fetchComplete && minTimeElapsed) {
       // Small delay for smooth transition
       const timer = setTimeout(() => {
         setIsLoading(false);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [progress.phase, minTimeElapsed, skipPrefetch]);
+  }, [fetchComplete, minTimeElapsed, skipLoading]);
 
   // Show loading screen
   if (isLoading) {
@@ -122,22 +137,22 @@ const AppLoader: React.FC<AppLoaderProps> = ({
 };
 
 /**
- * Hook to access prefetched events from within the app
+ * Hook to access server events from within the app
  */
-export function usePrefetchedEvents(): PrefetchedEvent[] {
-  const [events, setEvents] = useState<PrefetchedEvent[]>(() => {
+export function useServerEvents(): StoredEvent[] {
+  const [events, setEvents] = useState<StoredEvent[]>(() => {
     // Try to get from window first (for immediate access)
-    const windowEvents = (window as unknown as { __prefetchedEvents?: PrefetchedEvent[] }).__prefetchedEvents;
+    const windowEvents = (window as unknown as { __serverEvents?: StoredEvent[] }).__serverEvents;
     if (windowEvents) return windowEvents;
     
     // Otherwise get from service
-    return prefetchService.getEvents();
+    return serverEventService.getEvents();
   });
 
   useEffect(() => {
-    // Subscribe to complete event for any late updates
-    const unsub = prefetchService.onComplete((newEvents) => {
-      setEvents(newEvents);
+    // Subscribe to new events
+    const unsub = serverEventService.onEvent(() => {
+      setEvents(serverEventService.getEvents());
     });
     return unsub;
   }, []);
@@ -146,19 +161,33 @@ export function usePrefetchedEvents(): PrefetchedEvent[] {
 }
 
 /**
- * Hook to check prefetch status
+ * Hook to check server connection status
  */
-export function usePrefetchStatus() {
-  const [status, setStatus] = useState<PrefetchProgress>(prefetchService.getProgress());
+export function useServerStatus() {
+  const [status, setStatus] = useState<ServerEventServiceState>(serverEventService.getState());
 
   useEffect(() => {
-    const unsub = prefetchService.onProgress(setStatus);
+    const unsub = serverEventService.onStateChange(setStatus);
     return unsub;
   }, []);
 
   return status;
 }
 
+// Legacy exports for backwards compatibility
+export function usePrefetchedEvents(): StoredEvent[] {
+  return useServerEvents();
+}
+
+export function usePrefetchStatus() {
+  const serverStatus = useServerStatus();
+  // Convert to legacy format
+  return {
+    phase: serverStatus.isLoading ? 'fetching' : 'complete',
+    eventsReceived: serverStatus.eventCount,
+    isComplete: !serverStatus.isLoading,
+  };
+}
+
 export default AppLoader;
 export { AppLoader };
-

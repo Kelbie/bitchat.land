@@ -4,7 +4,7 @@ import React, { useMemo, useCallback } from "react";
 import { decodeGeohash, createGeohashPath } from "@/utils/geohashUtils";
 import { parseSearchQuery } from "@/utils/searchParser";
 import { globalStyles } from "@/styles";
-import { getTagValue } from "@/hooks/useNostr";
+import { getTagValue } from "@/hooks/useGeoRelays";
 
 interface GeohashLayerProps {
   currentGeohashes: string[];

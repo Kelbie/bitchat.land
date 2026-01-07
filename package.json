@@ -1,13 +1,20 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "bitchat-land",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "bun": ">=1.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "bun run server/index.ts",
+    "server:dev": "bun run --watch server/index.ts",
+    "start": "bun run server/index.ts",
+    "start:local": "bun run build && bun run server"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.62.0",
@@ -35,14 +42,15 @@
     "hls.js": "^1.6.11",
     "latlon-geohash": "^2.0.0",
     "lucide-react": "^0.541.0",
+    "mapbox-gl": "^3.9.4",
     "motion": "^12.23.19",
     "ngeohash": "^0.6.3",
     "nostr-relaypool": "^0.6.30",
     "nostr-tools": "^2.16.2",
     "polished": "^4.2.2",
-    "puppeteer": "^24.20.0",
     "react": "^18",
     "react-dom": "^18",
+    "react-map-gl": "^7.1.8",
     "react-router-dom": "^7.9.1",
     "react-scripts-ts": "3.1.0",
     "react-virtuoso": "^4.14.0",
@@ -50,13 +58,14 @@
     "react-window-infinite-loader": "^1.0.10",
     "secp256k1": "^5.0.1",
     "semver": "^7.7.2",
-    "sharp": "^0.34.3",
     "tailwind-merge": "^3.3.1",
     "topojson-client": "^3.1.0",
-    "usehooks-ts": "^3.1.1"
+    "usehooks-ts": "^3.1.1",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
+    "@types/mapbox-gl": "^3.4.1",
     "@types/ngeohash": "^0.6.8",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
@@ -72,7 +81,8 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
-    "vite": "^5.4.2"
-  },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+    "vite": "^5.4.2",
+    "puppeteer": "^24.20.0",
+    "sharp": "^0.34.3"
+  }
 }
