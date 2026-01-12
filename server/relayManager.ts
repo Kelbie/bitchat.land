@@ -3,8 +3,9 @@
  * 
  * Manages persistent WebSocket connections to georelays for all geohash regions.
  * - Generates depth-1 and depth-2 geohashes (1056 total)
- * - Connects to closest relays per geohash with #g filter
- * - Handles reconnection with exponential backoff
+ * - Uses one WebSocket per relay (shared across many geohash subscriptions)
+ * - Subscribes per-geohash using REQ with #g filter (per relay connection)
+ * - Handles reconnection with exponential backoff + jitter
  * - Sequential startup to avoid overwhelming relays
  */
 
@@ -29,12 +30,12 @@ interface RelayInfo {
   lon: number;
 }
 
-interface GeohashSubscription {
-  geohash: string;
-  relayUrls: string[];
-  connections: Map<string, WebSocket>;
-  reconnectAttempts: Map<string, number>;
-  isActive: boolean;
+type ManagerStatus = 'stopped' | 'starting' | 'running' | 'stopping';
+
+interface RelayConnectionState {
+  url: string;
+  ws: WebSocket | null;
+  reconnectAttempts: number;
 }
 
 type EventCallback = (event: NostrEvent, geohash: string, relay: string) => void;
@@ -116,9 +117,25 @@ function generateGeohashes(maxDepth: number): string[] {
 
 class GeohashRelayManager {
   private relays: RelayInfo[] = [];
-  private subscriptions: Map<string, GeohashSubscription> = new Map();
+  /**
+   * Geohashes we monitor and the relays assigned to each.
+   */
+  private geohashToRelays: Map<string, string[]> = new Map();
+  /**
+   * Reverse index: relay -> geohashes assigned to it.
+   */
+  private relayToGeohashes: Map<string, Set<string>> = new Map();
+  /**
+   * One WebSocket connection per relay URL.
+   */
+  private relayConnections: Map<string, RelayConnectionState> = new Map();
+  /**
+   * subscriptionId -> geohash mapping (per relay connection).
+   * We use stable IDs (geo_<geohash>) and keep the mapping to quickly route events.
+   */
+  private subscriptionIndex: Map<string, { geohash: string; relayUrl: string }> = new Map();
   private eventCallback: EventCallback | null = null;
-  private isRunning: boolean = false;
+  private status: ManagerStatus = 'stopped';
   private processedEvents: Set<string> = new Set();
 
   /**
@@ -228,62 +245,58 @@ class GeohashRelayManager {
   }
 
   /**
-   * Connect to a relay for a specific geohash
+   * Ensure relay connection exists and is connected.
    */
-  private connectToRelay(geohash: string, relayUrl: string): void {
-    const sub = this.subscriptions.get(geohash);
-    if (!sub || !sub.isActive) return;
+  private ensureRelayConnected(relayUrl: string): void {
+    if (this.status !== 'starting' && this.status !== 'running') return;
 
-    // Check if already connected
-    const existing = sub.connections.get(relayUrl);
-    if (existing && existing.readyState === WebSocket.OPEN) return;
+    const state = this.relayConnections.get(relayUrl) ?? {
+      url: relayUrl,
+      ws: null,
+      reconnectAttempts: 0,
+    };
+    this.relayConnections.set(relayUrl, state);
 
-    console.log(`[RelayManager] Connecting to ${relayUrl} for geohash ${geohash}`);
+    const existing = state.ws;
+    if (existing && (existing.readyState === WebSocket.OPEN || existing.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    console.log(`[RelayManager] Connecting to ${relayUrl}`);
 
     try {
       const ws = new WebSocket(relayUrl);
-      
+      state.ws = ws;
+
       ws.onopen = () => {
-        console.log(`[RelayManager] Connected to ${relayUrl} for ${geohash}`);
-        
-        // Reset reconnect attempts
-        sub.reconnectAttempts.set(relayUrl, 0);
-        
-        // Send subscription request with #g filter
-        const subscriptionId = `geo_${geohash}_${Date.now()}`;
-        const since = Math.floor(Date.now() / 1000) - (60 * 60); // Last hour
-        
-        const req = JSON.stringify([
-          'REQ',
-          subscriptionId,
-          {
-            kinds: [1, 20000, 23333],
-            '#g': [geohash],
-            since,
-            limit: 100,
-          }
-        ]);
-        
-        ws.send(req);
+        console.log(`[RelayManager] Connected to ${relayUrl}`);
+        state.reconnectAttempts = 0;
+        this.subscribeAllGeohashesOnRelay(relayUrl);
       };
 
       ws.onmessage = (msg) => {
         try {
           const data = JSON.parse(msg.data.toString());
-          
-          if (data[0] === 'EVENT' && data[2]) {
+
+          // Nostr: ["EVENT", <subscriptionId>, <event>]
+          if (data[0] === 'EVENT' && data[1] && data[2]) {
+            const subscriptionId = String(data[1]);
             const event = data[2] as NostrEvent;
-            
+
+            const mapped = this.subscriptionIndex.get(subscriptionId);
+            const geohash = mapped?.geohash;
+            if (!geohash) return;
+
             // Deduplicate
             if (!this.processedEvents.has(event.id)) {
               this.processedEvents.add(event.id);
-              
+
               // Limit processed events cache size
               if (this.processedEvents.size > 50000) {
                 const toDelete = Array.from(this.processedEvents).slice(0, 10000);
                 toDelete.forEach(id => this.processedEvents.delete(id));
               }
-              
+
               this.eventCallback?.(event, geohash, relayUrl);
             }
           }
@@ -293,44 +306,76 @@ class GeohashRelayManager {
       };
 
       ws.onerror = (err) => {
-        console.warn(`[RelayManager] Error on ${relayUrl} for ${geohash}:`, err);
+        console.warn(`[RelayManager] Error on ${relayUrl}:`, err);
       };
 
       ws.onclose = () => {
-        console.log(`[RelayManager] Disconnected from ${relayUrl} for ${geohash}`);
-        sub.connections.delete(relayUrl);
-        
-        // Schedule reconnection with exponential backoff
-        if (sub.isActive) {
-          this.scheduleReconnect(geohash, relayUrl);
+        console.log(`[RelayManager] Disconnected from ${relayUrl}`);
+        if (state.ws === ws) state.ws = null;
+        if (this.status === 'starting' || this.status === 'running') {
+          this.scheduleRelayReconnect(relayUrl);
         }
       };
-
-      sub.connections.set(relayUrl, ws);
     } catch (err) {
       console.error(`[RelayManager] Failed to connect to ${relayUrl}:`, err);
-      this.scheduleReconnect(geohash, relayUrl);
+      this.scheduleRelayReconnect(relayUrl);
+    }
+  }
+
+  private subscribeAllGeohashesOnRelay(relayUrl: string): void {
+    if (this.status !== 'starting' && this.status !== 'running') return;
+    const state = this.relayConnections.get(relayUrl);
+    if (!state?.ws || state.ws.readyState !== WebSocket.OPEN) return;
+
+    const geohashes = this.relayToGeohashes.get(relayUrl);
+    if (!geohashes || geohashes.size === 0) return;
+
+    const since = Math.floor(Date.now() / 1000) - (60 * 60); // Last hour
+
+    for (const geohash of geohashes) {
+      const subscriptionId = `geo_${geohash}`;
+      this.subscriptionIndex.set(subscriptionId, { geohash, relayUrl });
+
+      const req = JSON.stringify([
+        'REQ',
+        subscriptionId,
+        {
+          kinds: [1, 20000, 23333],
+          '#g': [geohash],
+          since,
+          limit: 100,
+        },
+      ]);
+
+      try {
+        state.ws.send(req);
+      } catch {
+        // If sending fails, we'll reconnect via onclose/onerror paths.
+      }
     }
   }
 
   /**
-   * Schedule reconnection with exponential backoff
+   * Schedule reconnection with exponential backoff + jitter (per relay).
    */
-  private scheduleReconnect(geohash: string, relayUrl: string): void {
-    const sub = this.subscriptions.get(geohash);
-    if (!sub || !sub.isActive) return;
+  private scheduleRelayReconnect(relayUrl: string): void {
+    const state = this.relayConnections.get(relayUrl);
+    if (!state) return;
+    if (this.status !== 'starting' && this.status !== 'running') return;
 
-    const attempts = sub.reconnectAttempts.get(relayUrl) || 0;
-    const delay = Math.min(
+    const attempts = state.reconnectAttempts;
+    const baseDelay = Math.min(
       CONFIG.RECONNECT_BASE_MS * Math.pow(2, attempts),
       CONFIG.RECONNECT_MAX_MS
     );
+    const jitter = Math.floor(Math.random() * 250);
+    const delay = baseDelay + jitter;
 
-    sub.reconnectAttempts.set(relayUrl, attempts + 1);
+    state.reconnectAttempts = attempts + 1;
 
     setTimeout(() => {
-      if (sub.isActive) {
-        this.connectToRelay(geohash, relayUrl);
+      if (this.status === 'starting' || this.status === 'running') {
+        this.ensureRelayConnected(relayUrl);
       }
     }, delay);
   }
@@ -339,8 +384,8 @@ class GeohashRelayManager {
    * Start all subscriptions
    */
   async start(): Promise<void> {
-    if (this.isRunning) return;
-    this.isRunning = true;
+    if (this.status === 'starting' || this.status === 'running') return;
+    this.status = 'starting';
 
     console.log('[RelayManager] Starting...');
 
@@ -351,40 +396,42 @@ class GeohashRelayManager {
     const geohashes = generateGeohashes(CONFIG.MAX_DEPTH);
     console.log(`[RelayManager] Will subscribe to ${geohashes.length} geohashes`);
 
-    // Start subscriptions sequentially with delay
+    // Build geohash -> relays mapping and relay -> geohashes reverse mapping
+    this.geohashToRelays.clear();
+    this.relayToGeohashes.clear();
+
     for (let i = 0; i < geohashes.length; i++) {
       const geohash = geohashes[i];
       const relayUrls = this.getClosestRelays(geohash, CONFIG.RELAYS_PER_GEOHASH);
-
       if (relayUrls.length === 0) continue;
 
-      const sub: GeohashSubscription = {
-        geohash,
-        relayUrls,
-        connections: new Map(),
-        reconnectAttempts: new Map(),
-        isActive: true,
-      };
-
-      this.subscriptions.set(geohash, sub);
-
-      // Connect to each relay
+      this.geohashToRelays.set(geohash, relayUrls);
       for (const relayUrl of relayUrls) {
-        this.connectToRelay(geohash, relayUrl);
+        const set = this.relayToGeohashes.get(relayUrl) ?? new Set<string>();
+        set.add(geohash);
+        this.relayToGeohashes.set(relayUrl, set);
       }
 
-      // Log progress every 100 geohashes
-      if ((i + 1) % 100 === 0) {
-        console.log(`[RelayManager] Started ${i + 1}/${geohashes.length} subscriptions`);
-      }
-
-      // Small delay to avoid overwhelming relays
+      // Small delay to avoid CPU spikes during startup mapping work
       if (i < geohashes.length - 1) {
         await new Promise(resolve => setTimeout(resolve, CONFIG.STARTUP_DELAY_MS));
       }
     }
 
-    console.log(`[RelayManager] Started all ${this.subscriptions.size} subscriptions`);
+    const uniqueRelayCount = this.relayToGeohashes.size;
+    console.log(`[RelayManager] Will connect to ${uniqueRelayCount} unique relays (shared across geohashes)`);
+
+    // Connect to each relay sequentially (much smaller than per-geohash connections)
+    const relayUrls = Array.from(this.relayToGeohashes.keys());
+    for (let i = 0; i < relayUrls.length; i++) {
+      this.ensureRelayConnected(relayUrls[i]);
+      if (i < relayUrls.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, CONFIG.STARTUP_DELAY_MS));
+      }
+    }
+
+    this.status = 'running';
+    console.log(`[RelayManager] Started (geohashes=${this.geohashToRelays.size}, relays=${uniqueRelayCount})`);
   }
 
   /**
@@ -392,22 +439,24 @@ class GeohashRelayManager {
    */
   stop(): void {
     console.log('[RelayManager] Stopping...');
-    this.isRunning = false;
+    if (this.status === 'stopped' || this.status === 'stopping') return;
+    this.status = 'stopping';
 
-    for (const sub of this.subscriptions.values()) {
-      sub.isActive = false;
-      for (const ws of sub.connections.values()) {
-        try {
-          ws.close();
-        } catch {
-          // Ignore close errors
-        }
+    for (const state of this.relayConnections.values()) {
+      try {
+        state.ws?.close();
+      } catch {
+        // Ignore close errors
       }
-      sub.connections.clear();
+      state.ws = null;
     }
 
-    this.subscriptions.clear();
+    this.relayConnections.clear();
+    this.geohashToRelays.clear();
+    this.relayToGeohashes.clear();
+    this.subscriptionIndex.clear();
     console.log('[RelayManager] Stopped');
+    this.status = 'stopped';
   }
 
   /**
@@ -422,19 +471,17 @@ class GeohashRelayManager {
     let activeConnections = 0;
     const uniqueRelays = new Set<string>();
 
-    for (const sub of this.subscriptions.values()) {
-      for (const [url, ws] of sub.connections) {
-        if (ws.readyState === WebSocket.OPEN) {
-          activeConnections++;
-          uniqueRelays.add(url);
-        }
+    for (const [url, state] of this.relayConnections) {
+      if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        activeConnections++;
+        uniqueRelays.add(url);
       }
     }
 
     return {
-      totalSubscriptions: this.subscriptions.size,
+      totalSubscriptions: this.geohashToRelays.size,
       activeConnections,
-      geohashesMonitored: this.subscriptions.size,
+      geohashesMonitored: this.geohashToRelays.size,
       uniqueRelays,
     };
   }
